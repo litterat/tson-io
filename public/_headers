@@ -1,0 +1,12 @@
+/2026-28/*.tn1
+  Content-Type: text/plain; charset=utf-8
+
+/raw/*
+  Content-Type: text/markdown; charset=utf-8
+  Cache-Control: public, max-age=3600
+
+/llms.txt
+  Content-Type: text/plain; charset=utf-8
+
+/research-llms.txt
+  Content-Type: text/plain; charset=utf-8

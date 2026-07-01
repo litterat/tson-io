@@ -1,0 +1,68 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+const siteTitle = 'tson.io';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title === siteTitle ? title : `${title} — ${siteTitle}`}</title>
+    {description && <meta name="description" content={description} />}
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body class="bg-white text-gray-900 min-h-screen flex flex-col">
+    <header class="border-b border-gray-200">
+      <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+        <a href="/" class="text-lg font-mono font-semibold tracking-tight hover:text-gray-600">
+          tson.io
+        </a>
+        <nav class="flex items-center gap-6 text-sm text-gray-600">
+          <a href="/research" class="hover:text-gray-900">Research</a>
+          <a href="/2026-28" class="hover:text-gray-900">Draft specification</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="flex-1">
+      <slot />
+    </main>
+
+    <footer class="border-t border-gray-200 mt-16">
+      <div class="max-w-5xl mx-auto px-6 py-8 text-sm text-gray-500 flex justify-between items-start">
+        <div>
+          <span>tson.io</span>
+          <div class="text-xs text-gray-400 mt-1">
+            &copy; 2026{' '}
+            <a
+              href="https://litterat.io"
+              rel="noopener"
+              target="_blank"
+              class="underline hover:text-gray-600"
+            >Litterat Pty Ltd</a>.
+          </div>
+        </div>
+        <div class="text-right">
+          <span>Tagged Structure Object Notation</span>
+          <div class="text-xs text-gray-400 mt-1">
+            Content licensed under{' '}
+            <a
+              href="https://creativecommons.org/licenses/by-nc-sa/4.0/"
+              rel="license noopener"
+              target="_blank"
+              class="underline hover:text-gray-600"
+            >CC BY-NC-SA 4.0</a>.
+          </div>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

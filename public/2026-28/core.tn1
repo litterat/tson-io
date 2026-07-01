@@ -1,0 +1,242 @@
+!!id:"http://tson.io/1/m/core.tn1"
+!!schema:"http://tson.io/1/m/meta.tn1"
+@doc:"""
+  TSON Core Type Library — canonical types for data interchange (Draft 2026-28).
+
+  Every type in core comes from a constructor defined in meta-kernel
+  or meta. Atoms are uniformly defined as empty instances:
+
+      integer  => !!type !integer_type {}
+      string   => !!type !string_type {}
+      date     => !!type !date_type {}
+      ...
+
+  Narrowings overlay literal values via the instance form:
+
+      uint8           => !!type !integer { min: 0  max: 255 }
+      non_empty_string => !!type !string { min_length: 1 }
+
+  Annotation types (`@ordered`, `@bounded`, `@numeric`, `@deprecated`,
+  `@since`, `@todo`, `@lang`) live in meta.tn1 — they must be reachable
+  through the `!!schema` chain to be usable as annotations (§5.4).
+  They appear here only by use, not by definition.
+
+  References:
+    ISO/IEC 11404:2007    General Purpose Datatypes
+    W3C XSD Part 2        Facet model and constraint vocabulary
+    JSON Schema 2020-12   Modern constraint vocabulary
+    IEEE 754-2019         Floating-point semantics
+    ISO 8601-1:2019       Date and time formats (duration)
+    RFC 3339              Internet date/time profile
+    RFC 9562              UUID format
+    RFC 4648              Base encoding
+    RFC 3986              URI syntax
+    RFC 5322              Email address format
+    RFC 5646              BCP 47 language tags
+    UNF Draft 1.1         Unicode Number Format
+  """
+!schema {
+  @doc:"""
+    Marker primitive. Re-exported from meta-kernel under the same name
+    so that core-only schemas can target it. The atom whose parsing
+    contract admits only the absent sentinel `_`. See spec §5.4 and §7.8.
+    """
+  marker => !!type !unit {}
+
+  @doc:"Two-value boolean enumeration."
+  boolean => !!type !enum [true false]
+
+  @doc:"Arbitrary-precision signed integer. UNF decimal/hex/octal/binary."
+  @ordered:TOTAL @bounded:false @numeric
+  integer => !!type !integer_type {}
+
+  @doc:"""
+    Real number with arbitrary precision. Includes special values
+    (.inf, .nan). PARTIAL ordering is due to NaN's incomparability
+    (NaN is neither less than, equal to, nor greater than any value
+    including itself); the underlying real numbers are totally ordered.
+    A narrowing that excludes NaN (e.g. via `allow_nan: false`) is
+    functionally totally ordered but inherits PARTIAL unless explicitly
+    re-annotated.
+    """
+  @ordered:PARTIAL @bounded:false @numeric
+  real => !!type !real_type {}
+
+  @doc:"Exact decimal, arbitrary precision. No floating-point rounding."
+  @ordered:TOTAL @bounded:false @numeric
+  decimal => !!type !decimal_type {}
+
+  @doc:"Exact fraction a/b. Reduced form, positive denominator."
+  @ordered:TOTAL @bounded:false @numeric
+  rational => !!type !rational_type {}
+
+  @doc:"Complex number a+bi or a+bj. Component representation is host-defined."
+  @ordered:NONE @bounded:false @numeric
+  complex => !!type !unit {}
+
+  @doc:"Signed 8-bit integer (-128 to 127)."
+  int8 => !!type !integer { min: -128  max: 127 }
+
+  @doc:"Signed 16-bit integer."
+  int16 => !!type !integer { min: -32768  max: 32767 }
+
+  @doc:"Signed 32-bit integer."
+  int32 => !!type !integer { min: -2147483648  max: 2147483647 }
+
+  @doc:"Signed 64-bit integer."
+  int64 => !!type !integer { min: -9223372036854775808  max: 9223372036854775807 }
+
+  @doc:"Signed 128-bit integer."
+  int128 => !!type !integer { min: -170141183460469231731687303715884105728  max: 170141183460469231731687303715884105727 }
+
+  @doc:"Signed 256-bit integer."
+  int256 => !!type !integer { min: -57896044618658097711785492504343953926634992332820282019728792003956564819968  max: 57896044618658097711785492504343953926634992332820282019728792003956564819967 }
+
+  @doc:"Unsigned 8-bit integer (0 to 255)."
+  uint8 => !!type !integer { min: 0  max: 255 }
+
+  @doc:"Unsigned 16-bit integer."
+  uint16 => !!type !integer { min: 0  max: 65535 }
+
+  @doc:"Unsigned 32-bit integer."
+  uint32 => !!type !integer { min: 0  max: 4294967295 }
+
+  @doc:"Unsigned 64-bit integer."
+  uint64 => !!type !integer { min: 0  max: 18446744073709551615 }
+
+  @doc:"Unsigned 128-bit integer."
+  uint128 => !!type !integer { min: 0  max: 340282366920938463463374607431768211455 }
+
+  @doc:"Unsigned 256-bit integer."
+  uint256 => !!type !integer { min: 0  max: 115792089237316195423570985008687907853269984665640564039457584007913129639935 }
+
+  @doc:"Integer greater than zero."
+  positive_integer => !!type !integer { min: 1 }
+
+  @doc:"Integer zero or greater."
+  non_negative_integer => !!type !integer { min: 0 }
+
+  @doc:"Integer less than zero."
+  negative_integer => !!type !integer { max: -1 }
+
+  @doc:"Integer zero or less."
+  non_positive_integer => !!type !integer { max: 0 }
+
+  @doc:"Explicit arbitrary-precision integer marker."
+  bigint => !!type integer
+
+  @doc:"IEEE 754 single-precision float."
+  float32 => !!type !real { min: -3.4028235e+38  max: 3.4028235e+38 }
+
+  @doc:"IEEE 754 double-precision float."
+  float64 => !!type !real { min: -1.7976931348623157e+308  max: 1.7976931348623157e+308 }
+
+  @doc:"Unicode code point sequence. The universal text type."
+  @ordered:NONE @bounded:false
+  string => !!type !string_type {}
+
+  @doc:"String with at least one character."
+  non_empty_string => !!type !string { min_length: 1 }
+
+  @doc:"Interoperable regular expression pattern per RFC 9485 (I-Regexp)."
+  @ordered:NONE @bounded:false
+  regex => !!type !regex_type {}
+
+  @doc:"Uniform Resource Identifier per RFC 3986."
+  @ordered:NONE @bounded:false
+  uri => !!type !uri_type {}
+
+  @doc:"Base64-encoded binary (RFC 4648)."
+  base64 => !!type !binary BASE64
+
+  @doc:"URL-safe base64-encoded binary (RFC 4648 §5)."
+  base64url => !!type !binary BASE64URL
+
+  @doc:"Base32-encoded binary (RFC 4648)."
+  base32 => !!type !binary BASE32
+
+  @doc:"Hex-encoded binary."
+  hex => !!type !binary HEX
+
+  @doc:"Calendar date. RFC 3339 full-date YYYY-MM-DD."
+  @ordered:TOTAL @bounded:false
+  date => !!type !date_type {}
+
+  @doc:"""
+    Time of day. RFC 3339 full-time HH:MM:SS. PARTIAL ordering reflects
+    that times with different timezone offsets are not unconditionally
+    comparable without resolving to a common reference; times within a
+    single timezone are totally ordered.
+    """
+  @ordered:PARTIAL @bounded:true
+  time => !!type !time_type {}
+
+  @doc:"""
+    Date and time. RFC 3339 date-time. PARTIAL ordering reflects that
+    datetimes with different timezone offsets require resolution to a
+    common reference (typically UTC) before comparison; datetimes
+    within a single timezone or all in UTC are totally ordered.
+    """
+  @ordered:PARTIAL @bounded:false
+  datetime => !!type !datetime_type {}
+
+  @doc:"""
+    Time duration. ISO 8601 PnYnMnDTnHnMnS. PARTIAL ordering reflects
+    that durations expressed with calendar units (years, months) have
+    no fixed length — P1M may be 28, 29, 30, or 31 days depending on
+    when applied — so two such durations are not unconditionally
+    comparable. Durations expressed only in fixed-length units (days,
+    hours, minutes, seconds) are totally ordered.
+    """
+  @ordered:PARTIAL @bounded:false
+  duration => !!type !duration_type {}
+
+  @doc:"128-bit identifier per RFC 9562."
+  @ordered:NONE @bounded:true
+  uuid => !!type !uuid_type {}
+
+  @doc:"Email address per RFC 5322."
+  @ordered:NONE @bounded:false
+  email => !!type !email_type {}
+
+  @doc:"""
+    Value whose type is unconstrained. Membership is the universe of
+    types. Distinct from absent and from the unit type. The validator
+    accepts any well-formed value of any type.
+    """
+  @ordered:NONE @bounded:false
+  unknown => !!type !unknown_type {}
+
+  @doc:"Marker annotation."
+  annotation => @annotation !!type marker
+
+  @doc:"String-valued documentation annotation."
+  documentation => @annotation !!type string
+
+  @doc:"Short alias for documentation annotation."
+  doc => @annotation !!type documentation
+
+  @doc:"Source-level alias name preserved on a resolved type reference."
+  alias => @annotation !!type string
+
+  @doc:"Alias for float32."
+  float => !!type float32
+
+  @doc:"Alias for float64."
+  double => !!type float64
+
+  @doc:"Alias for real."
+  number => !!type real
+
+  @doc:"Short alias for integer."
+  int => !!type integer
+
+  @doc:"Short alias for string."
+  str => !!type string
+
+  @doc:"Alias for string."
+  text => !!type string
+
+  @doc:"Alias for datetime."
+  timestamp => !!type datetime
+}

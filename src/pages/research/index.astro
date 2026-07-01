@@ -1,0 +1,70 @@
+---
+import Layout from '../../layout/Layout.astro';
+import { getCollection } from 'astro:content';
+import { micromark } from 'micromark';
+
+const entries = await getCollection('research');
+
+const series = [
+  { id: 'proto-schema',        title: 'Proto-Schema' },
+  { id: 'deep-dive-into-json', title: 'A Deep Dive into JSON' },
+];
+
+const bySeries = Object.fromEntries(
+  series.map(s => [
+    s.id,
+    entries
+      .filter(e => e.data.series === s.id)
+      .sort((a, b) => a.data.part - b.data.part),
+  ])
+);
+---
+
+<Layout title="Research" description="Research articles on JSON, data formats, and the design of TSON.">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <h1 class="text-3xl font-bold mb-2">Research</h1>
+    <p class="text-gray-600 mb-12 max-w-3xl">
+      Two series that build toward TSON from first principles. <strong class="font-medium text-gray-800">A Deep Dive into JSON</strong> takes
+      apart JSON's value types, syntax, and structure — numbers, strings, booleans, arrays, and objects —
+      to derive a set of structural primitives shared by data formats generally, then explores how
+      annotations, references, structural composition, and templates could extend JSON itself.
+      <strong class="font-medium text-gray-800">Proto-Schema</strong> formalises those primitives into a theoretical model for schemas,
+      deriving sequences, structural composition, choice, and multiplicity/nullability from the physical
+      constraints of serialization. Together, they trace the reasoning behind TSON's design.
+    </p>
+
+    {series.map(s => (
+      <section class="mb-14">
+        <h2 class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200">{s.title}</h2>
+        <ul class="space-y-4">
+          {bySeries[s.id].map(entry => {
+            const [seriesId, slug] = entry.id.split('/');
+            // Extract subtitle after the colon
+            const subtitle = entry.data.title.includes(':')
+              ? entry.data.title.split(':').slice(1).join(':').trim()
+              : entry.data.title;
+            return (
+              <li class="flex gap-4 items-baseline">
+                <span class="text-gray-300 w-8 shrink-0 text-right">&bull;</span>
+                <div>
+                  <a
+                    href={`/research/${seriesId}/${slug}`}
+                    class="font-medium hover:underline"
+                  >
+                    {subtitle}
+                  </a>
+                  {entry.data.abstract && (
+                    <div
+                      class="text-sm text-gray-500 mt-1 [&_p]:mt-0 [&_a]:underline [&_a]:text-gray-600 [&_a:hover]:text-gray-900"
+                      set:html={micromark(entry.data.abstract)}
+                    />
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    ))}
+  </div>
+</Layout>

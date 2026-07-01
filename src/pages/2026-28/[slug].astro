@@ -1,0 +1,52 @@
+---
+import Layout from '../../layout/Layout.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('spec');
+  return entries.map(entry => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { title, draft, status, description } = entry.data;
+const rawUrl = `/raw/2026-28/${entry.id}.md`;
+
+const { Content } = await render(entry);
+---
+
+<Layout title={title} description={description}>
+  <div class="max-w-3xl mx-auto px-6 py-10">
+
+    <!-- Breadcrumb -->
+    <nav class="text-sm text-gray-500 mb-8 flex items-center gap-1.5">
+      <a href="/2026-28" class="hover:text-gray-900">Specification</a>
+      <span>/</span>
+      <span class="text-gray-700">{title}</span>
+    </nav>
+
+    <!-- Header -->
+    <header class="mb-10">
+      <h1 class="text-3xl font-bold leading-tight mb-3">{title}</h1>
+      <div class="flex items-center gap-4 text-sm text-gray-500">
+        <span>Draft {draft}</span>
+        <span>·</span>
+        <span>{status}</span>
+        <span>·</span>
+        <a href={rawUrl} class="hover:text-gray-900 font-mono">view raw ↗</a>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <article class="prose prose-gray max-w-none">
+      <Content />
+    </article>
+
+    <div class="mt-16 pt-8 border-t border-gray-200">
+      <a href="/2026-28" class="text-sm text-gray-500 hover:text-gray-900">← Back to Specification</a>
+    </div>
+
+  </div>
+</Layout>

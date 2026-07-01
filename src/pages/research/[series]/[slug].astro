@@ -1,0 +1,101 @@
+---
+import Layout from '../../../layout/Layout.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('research');
+  return entries.map(entry => {
+    const [series, slug] = entry.id.split('/');
+    return { params: { series, slug }, props: { entry } };
+  });
+}
+
+const { entry } = Astro.props;
+const { series, seriesTitle, part, title, description, originalUrl, originalDate } = entry.data;
+const [seriesId, slug] = entry.id.split('/');
+
+const originalDateFormatted = originalDate
+  ? originalDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  : null;
+
+// Build sorted list of all entries in this series for prev/next nav
+const allEntries = await getCollection('research', e => e.data.series === series);
+allEntries.sort((a, b) => a.data.part - b.data.part);
+
+const currentIndex = allEntries.findIndex(e => e.id === entry.id);
+const prev = currentIndex > 0 ? allEntries[currentIndex - 1] : null;
+const next = currentIndex < allEntries.length - 1 ? allEntries[currentIndex + 1] : null;
+
+function entryUrl(e: typeof entry) {
+  const [s, sl] = e.id.split('/');
+  return `/research/${s}/${sl}`;
+}
+
+function entrySubtitle(e: typeof entry) {
+  return e.data.title.includes(':')
+    ? e.data.title.split(':').slice(1).join(':').trim()
+    : e.data.title;
+}
+
+const subtitle = entrySubtitle(entry);
+const rawUrl = `/raw/research/${entry.id}.md`;
+
+const { Content } = await render(entry);
+---
+
+<Layout title={subtitle} description={description}>
+  <div class="max-w-3xl mx-auto px-6 py-10">
+
+    <!-- Breadcrumb -->
+    <nav class="text-sm text-gray-500 mb-8 flex items-center gap-1.5">
+      <a href="/research" class="hover:text-gray-900">Research</a>
+      <span>/</span>
+      <a href="/research" class="hover:text-gray-900">{seriesTitle}</a>
+      <span>/</span>
+      <span class="text-gray-700">Part {part}</span>
+    </nav>
+
+    <!-- Header -->
+    <header class="mb-10">
+      <p class="text-sm font-mono text-gray-400 mb-2">{seriesTitle} · Part {part}</p>
+      <h1 class="text-3xl font-bold leading-tight mb-4">{subtitle}</h1>
+      <div class="flex items-center gap-4 text-sm text-gray-500">
+        <a href={rawUrl} class="hover:text-gray-900 font-mono">view raw ↗</a>
+        {originalUrl && (
+          <>
+            <span class="text-gray-300">·</span>
+            <a href={originalUrl} target="_blank" rel="noopener" class="hover:text-gray-900">
+              Originally published{originalDateFormatted && ` ${originalDateFormatted}`} on Substack ↗
+            </a>
+          </>
+        )}
+      </div>
+    </header>
+
+    <!-- Content -->
+    <article class="prose prose-gray max-w-none">
+      <Content />
+    </article>
+
+    <!-- Prev / Next -->
+    <nav class="mt-16 pt-8 border-t border-gray-200 grid grid-cols-2 gap-4">
+      <div>
+        {prev && (
+          <a href={entryUrl(prev)} class="group block">
+            <span class="text-xs text-gray-400 block mb-1">← Previous</span>
+            <span class="text-sm font-medium group-hover:underline">{entrySubtitle(prev)}</span>
+          </a>
+        )}
+      </div>
+      <div class="text-right">
+        {next && (
+          <a href={entryUrl(next)} class="group block">
+            <span class="text-xs text-gray-400 block mb-1">Next →</span>
+            <span class="text-sm font-medium group-hover:underline">{entrySubtitle(next)}</span>
+          </a>
+        )}
+      </div>
+    </nav>
+
+  </div>
+</Layout>
