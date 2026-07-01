@@ -1,5 +1,5 @@
 User-agent: *
-Content-Signal: search=yes,ai-train=no,ai-input=yes
+Content-Signal: search=yes,ai-train=yes,ai-input=yes
 Allow: /
 
 Sitemap: https://tson.io/sitemap.xml
