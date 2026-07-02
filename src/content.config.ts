@@ -16,6 +16,7 @@ const specSchema = z.object({
   title: z.string(),
   draft: z.string(),
   status: z.string(),
+  part: z.number().int().positive().optional(),
   description: z.string().optional(),
 });
 
@@ -26,7 +27,7 @@ export const collections = {
   }),
 
   spec: defineCollection({
-    loader: glob({ pattern: '*.md', base: './src/content/2026-28' }),
+    loader: glob({ pattern: '*.md', base: './src/content/2026-30/spec' }),
     schema: specSchema,
   }),
 };

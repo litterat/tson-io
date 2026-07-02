@@ -1,7 +1,7 @@
 !!id:"http://tson.io/1/m/core.tn1"
 !!schema:"http://tson.io/1/m/meta.tn1"
 @doc:"""
-  TSON Core Type Library — canonical types for data interchange (Draft 2026-28).
+  TSON Core Type Library — canonical types for data interchange (Draft 2026-30).
 
   Every type in core comes from a constructor defined in meta-kernel
   or meta. Atoms are uniformly defined as empty instances:
@@ -37,11 +37,11 @@
   """
 !schema {
   @doc:"""
-    Marker primitive. Re-exported from meta-kernel under the same name
+    Void primitive. Re-exported from meta-kernel under the same name
     so that core-only schemas can target it. The atom whose parsing
     contract admits only the absent sentinel `_`. See spec §5.4 and §7.8.
     """
-  marker => !!type !unit {}
+  void => !!type !unit {}
 
   @doc:"Two-value boolean enumeration."
   boolean => !!type !enum [true false]
@@ -208,7 +208,7 @@
   unknown => !!type !unknown_type {}
 
   @doc:"Marker annotation."
-  annotation => @annotation !!type marker
+  annotation => @annotation !!type void
 
   @doc:"String-valued documentation annotation."
   documentation => @annotation !!type string

@@ -1,187 +1,281 @@
 ---
 import Layout from '../layout/Layout.astro';
 
-const jsonExample = `{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "created": "2025-03-13",
-  "base_config": {
-    "host": "localhost",
-    "port": 5432,
-    "debug": false
+// ── hero diff panes ──────────────────────────────────────────
+// .noise = syntax JSON requires that TSON makes optional
+// .gain  = meaning TSON adds that JSON cannot express
+const heroJson = `{
+  <span class="noise">"</span><span class="tk">name</span><span class="noise">"</span><span class="tp">:</span> <span class="ts">"Ada Lovelace"</span><span class="noise">,</span>
+  <span class="noise">"</span><span class="tk">born</span><span class="noise">"</span><span class="tp">:</span> <span class="ts"><span class="noise">"</span>1815-12-10<span class="noise">"</span></span><span class="noise">,</span>
+  <span class="noise">"</span><span class="tk">fields</span><span class="noise">"</span><span class="tp">:</span> <span class="tp">[</span><span class="ts"><span class="noise">"</span>mathematics<span class="noise">"</span></span><span class="noise">,</span> <span class="ts"><span class="noise">"</span>computing<span class="noise">"</span></span><span class="tp">]</span><span class="noise">,</span>
+  <span class="noise">"</span><span class="tk">verified</span><span class="noise">"</span><span class="tp">:</span> <span class="tn">true</span><span class="noise">,</span>
+  <span class="noise">"</span><span class="tk">note</span><span class="noise">"</span><span class="tp">:</span> <span class="tn">null</span>
+}`;
+
+const heroTson = `{
+  <span class="tk">name</span><span class="tp">:</span> <span class="ts">"Ada Lovelace"</span>
+  <span class="tk">born</span><span class="tp">:</span> <span class="gain">!date</span> <span class="tn">1815-12-10</span>
+  <span class="tk">fields</span><span class="tp">:</span> <span class="tp">[</span><span class="ts">mathematics computing</span><span class="tp">]</span>
+  <span class="tk">verified</span><span class="tp">:</span> <span class="tn">true</span>
+  <span class="tk">note</span><span class="tp">:</span> <span class="tn">null</span>
+}`;
+
+// ── the ledger ───────────────────────────────────────────────
+// chips cite TSON Part 1 (Data Format) unless marked otherwise
+const rows = [
+  {
+    chip: '§3.3',
+    title: 'Quotes are optional',
+    why: 'Identifiers and scalar values are unquoted tokens, defined over Unicode identifier properties — so this works in every script, not just ASCII. Quote only what needs quoting: spaces, colons, free text.',
+    snippets: [
+      { tag: 'json', kind: 'json', html: '<span class="tp">"</span><span class="tk">city</span><span class="tp">": "</span><span class="ts">Melbourne</span><span class="tp">", "</span><span class="tk">имя</span><span class="tp">": "</span><span class="ts">Алиса</span><span class="tp">"</span>' },
+      { tag: 'tson', kind: 'tson', html: '<span class="tk">city</span><span class="tp">:</span> <span class="ts">Melbourne</span>  <span class="tk">имя</span><span class="tp">:</span> <span class="ts">Алиса</span>' },
+    ],
   },
-  "production": {
-    "host": "localhost",
-    "port": 8080,
-    "debug": false
-  }
-}`;
-
-const tsonExample = `{
-  id: !uuid 550e8400-e29b-41d4-a716-446655440000
-  created: !date 2025-03-13
-  base-config: &base { host: localhost port: 5432 debug: false }
-  production: { ...base port: 8080 }
-}`;
-
-const schemaExample = `!!id:"http://example.com/config.tn1"
-!!schema:"http://tson.io/1/m/meta.tn1"
-!!import:"http://tson.io/1/m/core.tn1"
-!schema {
-  config => !!type {
-    host:  string
-    port:  integer ~ 8080
-    debug: boolean = false
-    label: string?
-  }
-
-  production => !!type config {
-    host: = "prod.example.com"
-    port: = 9090
-  }
-}`;
-
-const schemaDataExample = `!!schema:"http://example.com/config.tn1"
-{
-  server1: !production { label: "server1" }
-}`;
-
-const schemaResolvedExample = `{ host: "prod.example.com" port: 9090 debug: false label: "server1" }`;
-
-const schemaPoints = [
-  { term: 'string / integer / boolean', body: 'Field types reference other definitions by name — string and integer are types from the core library, resolved the same way production or config would be.' },
-  { term: '~ 8080', body: 'A default value: port is 8080 unless the data supplies its own, or a narrowing changes it — as production does below.' },
-  { term: '= false', body: 'A fixed value: debug is always false. It\'s immutable from this definition down; data may omit it but can\'t override it.' },
-  { term: 'string?', body: 'An optional field: label may be omitted entirely.' },
-  { term: 'production => !!type config { host: = ... port: = ... }', body: 'Narrowing: production is a config with host newly fixed and port\'s default replaced by a fixed value — debug and label are inherited unchanged.' },
-  { term: '!production { label: "server1" }', body: 'Construction: the data instantiates production, supplying only label — host, port, and debug all come from the schema.' },
+  {
+    chip: '§3.7',
+    title: 'Commas are whitespace',
+    why: 'Any whitespace separates items; commas still work, so JSON habits carry over. Trailing commas remain errors in both.',
+    snippets: [
+      { tag: 'json', kind: 'json', html: '<span class="tp">[</span><span class="tn">1</span><span class="tp">,</span> <span class="tn">2</span><span class="tp">,</span> <span class="tn">3</span><span class="tp">,</span> <span class="tn">4</span><span class="tp">,</span> <span class="tn">5</span><span class="tp">]</span>' },
+      { tag: 'tson', kind: 'tson', html: '<span class="tp">[</span><span class="tn">1 2 3 4 5</span><span class="tp">]</span>' },
+    ],
+  },
+  {
+    chip: '§6.3',
+    title: 'Numbers you can actually write',
+    why: 'Via the Unicode Number Format: arbitrary precision, hex and binary, digit separators, exact rationals, complex numbers, signed infinities, NaN — and scientific notation the way physics writes it.',
+    snippets: [
+      { tag: 'json — closest you can get', kind: 'json', html: '<span class="tp">"</span><span class="tk">mask</span><span class="tp">":</span> <span class="tn">255</span><span class="tp">, "</span><span class="tk">budget</span><span class="tp">":</span> <span class="tn">1000000</span><span class="tp">,</span>\n<span class="tp">"</span><span class="tk">ratio</span><span class="tp">":</span> <span class="tn">3.142857142857143</span><span class="tp">, "</span><span class="tk">limit</span><span class="tp">":</span> <span class="ts">"Infinity"</span>' },
+      { tag: 'tson', kind: 'tson', html: '<span class="tk">mask</span><span class="tp">:</span> <span class="gain">0xFF</span>   <span class="tk">budget</span><span class="tp">:</span> <span class="gain">1_000_000</span>   <span class="tk">ratio</span><span class="tp">:</span> <span class="gain">22/7</span>\n<span class="tk">atoms</span><span class="tp">:</span> <span class="gain">6.02×10²³</span>   <span class="tk">limit</span><span class="tp">:</span> <span class="gain">∞</span>   <span class="tk">gap</span><span class="tp">:</span> <span class="gain">.nan</span>' },
+    ],
+  },
+  {
+    chip: '§3.2.2',
+    title: 'Strings with more than one line',
+    why: 'Triple-quoted blocks with common indentation stripped, so multi-line text stays readable in source and exact in value.',
+    snippets: [
+      { tag: 'json', kind: 'json', html: '<span class="tp">"</span><span class="tk">poem</span><span class="tp">": "</span><span class="ts">Roses are red\\nViolets are blue</span><span class="tp">"</span>' },
+      { tag: 'tson', kind: 'tson', html: '<span class="tk">poem</span><span class="tp">:</span> <span class="gain">"""</span>\n  <span class="ts">Roses are red</span>\n  <span class="ts">Violets are blue</span>\n  <span class="gain">"""</span>' },
+    ],
+  },
+  {
+    chip: '§4.3.2',
+    title: 'Maps with real keys',
+    why: 'JSON objects force every key into a string. TSON keeps records (fixed named fields, :) and maps (variable associations, =>) distinct — and map keys can be any value.',
+    snippets: [
+      { tag: 'json — keys stringified', kind: 'json', html: '{ <span class="tp">"</span><span class="tk">1</span><span class="tp">": "</span><span class="ts">one</span><span class="tp">", "</span><span class="tk">2026-03-13</span><span class="tp">": "</span><span class="ts">launch</span><span class="tp">"</span> }' },
+      { tag: 'tson', kind: 'tson', html: '{ <span class="tn">1</span> <span class="gain">=&gt;</span> <span class="ts">one</span>  <span class="tn">2026-03-13</span> <span class="gain">=&gt;</span> <span class="ts">launch</span> }' },
+    ],
+  },
+  {
+    chip: '§4.4',
+    title: 'Absent is not null',
+    why: 'JSON gives two states — key missing, or null — to do three jobs. TSON’s absent sentinel _ says “this position exists and holds no value”, leaving null to be a value.',
+    snippets: [
+      { tag: 'json — is this unset, unknown, or removed?', kind: 'json', html: '<span class="tp">"</span><span class="tk">phone</span><span class="tp">":</span> <span class="tn">null</span>' },
+      { tag: 'tson', kind: 'tson', html: '<span class="tk">phone</span><span class="tp">:</span> <span class="gain">_</span>   <span class="tk">scores</span><span class="tp">:</span> <span class="tp">[</span><span class="tn">1</span> <span class="gain">_</span> <span class="tn">3</span> <span class="gain">_</span> <span class="tn">5</span><span class="tp">]</span>' },
+    ],
+  },
+  {
+    chip: '§5.2',
+    title: 'Metadata that travels with the value',
+    why: 'Annotations attach ordered, preserved metadata to any value — no more _comment fields pretending to be data. This is also why TSON needs no comment syntax: annotations survive parsing.',
+    snippets: [
+      { tag: 'json — the workaround', kind: 'json', html: '<span class="tp">"</span><span class="tk">phone_comment</span><span class="tp">": "</span><span class="ts">deprecated, use mobile</span><span class="tp">",</span>\n<span class="tp">"</span><span class="tk">phone</span><span class="tp">": "</span><span class="ts">555-0100</span><span class="tp">"</span>' },
+      { tag: 'tson', kind: 'tson', html: '<span class="gain">@deprecated:"use mobile"</span> <span class="tk">phone</span><span class="tp">:</span> <span class="ts">555-0100</span>' },
+    ],
+  },
+  {
+    chip: '§5.1 · Part 2',
+    title: 'Types when you want them',
+    why: 'Type annotations tag a value with what it is. A built-in vocabulary — dates, UUIDs, binary, precise numerics — works with no schema at all, and the value parses to the native type, not a string.',
+    snippets: [
+      { tag: 'json — strings that mean things', kind: 'json', html: '<span class="tp">"</span><span class="tk">id</span><span class="tp">": "</span><span class="ts">550e8400-e29b-41d4-a716-446655440000</span><span class="tp">",</span>\n<span class="tp">"</span><span class="tk">price</span><span class="tp">":</span> <span class="tn">19.99</span>' },
+      { tag: 'tson', kind: 'tson', html: '<span class="tk">id</span><span class="tp">:</span> <span class="gain">!uuid</span> <span class="tn">550e8400-e29b-41d4-a716-446655440000</span>\n<span class="tk">price</span><span class="tp">:</span> <span class="gain">!decimal</span> <span class="tn">19.99</span>' },
+    ],
+  },
+  {
+    chip: 'Part 3',
+    chipAlt: true,
+    title: 'Schemas when you need them',
+    why: 'One directive points a document at a published, immutable, hash-pinned schema. Types are defined in the same syntax as data — records, narrowing, composition, enums — and validated on read.',
+    snippets: [
+      { tag: 'tson — data', kind: 'tson', html: '<span class="gain">!!schema:</span><span class="ts">"https://example.com/people.tn1?sha256=c4d5…"</span>\n<span class="gain">!person</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">Alice</span>  <span class="tk">age</span><span class="tp">:</span> <span class="tn">30</span> }' },
+      { tag: 'tson — schema', kind: 'tson', html: '<span class="tk">person</span> <span class="gain">=&gt;</span> <span class="gain">!!type</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">string</span>  <span class="tk">age</span><span class="tp">:</span> <span class="ts">integer</span> }\n<span class="tk">employee</span> <span class="gain">=&gt;</span> <span class="gain">!!type</span> <span class="ts">person</span> <span class="gain">&amp;</span> { <span class="tk">department</span><span class="tp">:</span> <span class="ts">string</span> }' },
+    ],
+  },
 ];
 
-const features = [
-  {
-    title: 'Minimal required syntax',
-    body: 'Commas and quotes are optional wherever the structure is unambiguous. Fewer tokens to generate and parse, and fewer syntax errors from a misplaced comma or unclosed quote.',
-  },
-  {
-    title: 'Real types, not strings-in-disguise',
-    body: 'UUIDs, dates, decimals, and arbitrary-precision integers are native, tagged values (!uuid, !date, !decimal) instead of strings a consumer has to re-parse and hope it guessed the format right.',
-  },
-  {
-    title: 'References & composition',
-    body: 'Anchors (&name) and spread (...name) let a document point at a shape instead of repeating it — less duplication, less drift, fewer tokens for the same information.',
-  },
-  {
-    title: 'Schema separate from data',
-    body: 'A document declares !!schema once; the schema (pinned by content hash) defines every type. Validation is a single deterministic contract, not ad hoc inference.',
-  },
+const layers = [
+  { part: 'Part 1', title: 'Data Format', body: 'The lexer, the structural grammar, and base type resolution. Everything on this page above the types row.' },
+  { part: 'Part 2', title: 'Type Vocabulary', body: 'Built-in type annotations — dates, UUIDs, binary, precise numerics — available with no schema at all.' },
+  { part: 'Part 3', title: 'Schemas & Directives', body: 'The type-definition grammar, composition and narrowing, the schema chain, and hash-pinned publishing.' },
 ];
 ---
 
 <Layout
   title="tson.io"
-  description="TSON — Tagged Structure Object Notation. A data interchange format designed for both humans and AI systems, extending JSON with richer types, annotations, and a layered type system."
+  description="TSON is a Unicode-first superset of JSON: unquoted names, optional commas, real numbers, typed values, and schemas. See the differences side by side."
 >
-  <!-- Hero -->
-  <div class="max-w-5xl mx-auto px-6 pt-20 pb-16">
-    <h1 class="text-5xl font-bold font-mono tracking-tight mb-4">TSON</h1>
-    <p class="text-xl text-gray-600 max-w-2xl mb-2">Tagged Structure Object Notation</p>
-    <p class="text-gray-500 max-w-2xl mb-10">
-      A Unicode text-based data interchange format designed for both humans and AI systems.
-      TSON extends JSON with richer structural types, optional type annotations, references,
-      structural composition, and a layered type system that separates structural parsing
-      from semantic interpretation — while staying terse and forgiving enough for a language
-      model to read and write reliably.
-    </p>
-    <div class="flex gap-4">
-      <a
-        href="/2026-28/tson-spec-2026-28"
-        class="inline-block bg-gray-900 text-white px-5 py-2.5 text-sm font-medium hover:bg-gray-700"
-      >
-        Read the draft specification
-      </a>
-      <a
-        href="/research"
-        class="inline-block border border-gray-300 text-gray-700 px-5 py-2.5 text-sm font-medium hover:border-gray-500 hover:text-gray-900"
-      >
-        Research articles
-      </a>
+  <div id="vsjson">
+    <!-- Hero -->
+    <div class="max-w-5xl mx-auto px-6 pt-20 pb-10">
+      <h1 class="text-4xl md:text-5xl font-bold font-mono tracking-tight mb-5 leading-tight">
+        JSON, minus the noise.<br />
+        Plus <span class="text-teal-700">numbers</span>, <span class="text-teal-700">types</span>, and <span class="text-teal-700">schemas</span>.
+      </h1>
+      <p class="text-gray-500 max-w-2xl">
+        <strong class="text-gray-900">TSON</strong> is a Unicode-first superset of JSON. Names go
+        unquoted in any script, commas are optional, numbers keep their meaning, and values can
+        carry types and metadata.
+        <strong class="text-gray-900">Every valid JSON document is already valid TSON.</strong>
+      </p>
     </div>
-  </div>
 
-  <div class="border-t border-gray-200" />
-
-  <!-- Example -->
-  <div class="max-w-5xl mx-auto px-6 py-16">
-    <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-6">
-      Same data, less noise
-    </h2>
-    <div class="grid md:grid-cols-2 gap-6">
-      <div>
-        <p class="text-xs font-mono text-gray-400 mb-2">JSON</p>
-        <pre class="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm overflow-x-auto"><code>{jsonExample}</code></pre>
+    <!-- Diff demo -->
+    <div class="max-w-5xl mx-auto px-6 pb-6">
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="border border-gray-200 rounded-md overflow-hidden">
+          <div class="flex justify-between items-baseline px-4 py-2.5 border-b border-gray-200 font-mono text-xs tracking-widest">
+            <span class="font-semibold uppercase text-gray-700">json</span>
+            <span class="text-gray-400" id="count-json"></span>
+          </div>
+          <pre class="bg-gray-50 p-4 text-sm leading-7 overflow-x-auto" id="pane-json"><code set:html={heroJson} /></pre>
+        </div>
+        <div class="border border-gray-200 rounded-md overflow-hidden">
+          <div class="flex justify-between items-baseline px-4 py-2.5 border-b border-gray-200 font-mono text-xs tracking-widest">
+            <span class="font-semibold uppercase text-teal-700">tson</span>
+            <span class="text-gray-400" id="count-tson"></span>
+          </div>
+          <pre class="bg-gray-50 p-4 text-sm leading-7 overflow-x-auto" id="pane-tson"><code set:html={heroTson} /></pre>
+        </div>
       </div>
-      <div>
-        <p class="text-xs font-mono text-gray-400 mb-2">TSON</p>
-        <pre class="bg-gray-900 text-gray-100 rounded-md p-4 text-sm overflow-x-auto"><code>{tsonExample}</code></pre>
+      <div class="flex flex-wrap items-center gap-5 pt-5">
+        <button
+          id="diff-toggle"
+          aria-pressed="false"
+          class="font-mono text-sm font-semibold bg-gray-900 text-white px-5 py-2.5 rounded-full hover:bg-gray-700 cursor-pointer"
+        >Show what changes</button>
+        <p class="text-sm text-gray-500">
+          <span id="verdict-msg">Same data, both sides.</span>
+          <span class="diff-legend opacity-0 transition-opacity motion-reduce:transition-none">
+            <span class="inline-block w-2.5 h-2.5 rounded-xs bg-red-100 border border-red-700 ml-2.5 mr-1" aria-hidden="true"></span>syntax JSON requires
+            <span class="inline-block w-2.5 h-2.5 rounded-xs bg-teal-100 border border-teal-700 ml-2.5 mr-1" aria-hidden="true"></span>meaning TSON adds
+          </span>
+        </p>
       </div>
     </div>
-    <p class="text-sm text-gray-500 mt-4">
-      No quoted keys, no commas, a native <code class="font-mono bg-gray-100 px-1 rounded">uuid</code> and
-      <code class="font-mono bg-gray-100 px-1 rounded">date</code> instead of ambiguous strings, and
-      <code class="font-mono bg-gray-100 px-1 rounded">production</code> composes <code class="font-mono bg-gray-100 px-1 rounded">base-config</code> instead of repeating it.
-    </p>
-  </div>
 
-  <div class="border-t border-gray-200" />
+    <!-- Ledger -->
+    <div class="max-w-5xl mx-auto px-6 pt-14">
+      <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-2">What changes</h2>
+      <p class="text-gray-500 max-w-2xl mb-8">
+        Nine differences, each with its home in the specification. The chips cite TSON Part 1
+        (Data Format) unless marked otherwise.
+      </p>
 
-  <!-- What's different -->
-  <div class="max-w-5xl mx-auto px-6 py-16">
-    <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-8">
-      What's different from JSON
-    </h2>
-    <div class="grid md:grid-cols-2 gap-x-12 gap-y-10">
-      {features.map(f => (
-        <div>
-          <h3 class="font-medium text-gray-900 mb-1.5">{f.title}</h3>
-          <p class="text-sm text-gray-500">{f.body}</p>
+      {rows.map((row) => (
+        <div class="grid md:grid-cols-[5fr_7fr] gap-5 md:gap-8 py-7 border-t border-gray-200 last:border-b">
+          <div>
+            <span class={`inline-block font-mono text-xs font-semibold rounded-full px-3 py-1 mb-3 ${row.chipAlt ? 'bg-indigo-50 text-indigo-800' : 'bg-gray-100 text-teal-800'}`}>{row.chip}</span>
+            <h3 class="text-lg font-semibold mb-1.5">{row.title}</h3>
+            <p class="text-sm text-gray-500 max-w-md">{row.why}</p>
+          </div>
+          <div class="grid gap-3 content-start">
+            {row.snippets.map((s) => (
+              <div class={`border border-gray-200 rounded-md border-l-3 ${s.kind === 'tson' ? 'border-l-teal-600' : 'border-l-gray-300'}`}>
+                <div class="font-mono text-[11px] uppercase tracking-widest text-gray-400 px-3.5 pt-2">{s.tag}</div>
+                <pre class="px-3.5 pb-3 pt-1 text-sm leading-6 overflow-x-auto"><code set:html={s.html} /></pre>
+              </div>
+            ))}
+          </div>
         </div>
       ))}
     </div>
-  </div>
 
-  <div class="border-t border-gray-200" />
-
-  <!-- How a schema is written -->
-  <div class="max-w-5xl mx-auto px-6 py-16">
-    <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-6">
-      How a schema is written
-    </h2>
-    <p class="text-sm text-gray-500 max-w-2xl mb-8">
-      There's no separate schema language. A schema is a TSON document that defines types with
-      <code class="font-mono bg-gray-100 px-1 rounded">!!type</code>; data documents reference it with
-      <code class="font-mono bg-gray-100 px-1 rounded">!!schema</code> and instantiate its types by name.
-    </p>
-
-    <p class="text-xs font-mono text-gray-400 mb-2">config.tn1 — schema</p>
-    <pre class="bg-gray-900 text-gray-100 rounded-md p-4 text-sm overflow-x-auto mb-8"><code>{schemaExample}</code></pre>
-
-    <div class="grid md:grid-cols-2 gap-6 mb-4">
-      <div>
-        <p class="text-xs font-mono text-gray-400 mb-2">data — instantiates production</p>
-        <pre class="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm overflow-x-auto"><code>{schemaDataExample}</code></pre>
-      </div>
-      <div>
-        <p class="text-xs font-mono text-gray-400 mb-2">resolves to</p>
-        <pre class="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm overflow-x-auto"><code>{schemaResolvedExample}</code></pre>
+    <!-- Compatibility band -->
+    <div class="max-w-5xl mx-auto px-6 py-16">
+      <div class="bg-gray-900 text-gray-200 rounded-xl px-8 py-10 md:px-10">
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-3">Compatibility</h2>
+        <p class="font-mono font-semibold text-xl md:text-2xl leading-snug max-w-xl">
+          Every valid JSON document is a valid <span class="text-teal-400">TSON</span> document.
+        </p>
+        <p class="mt-4 text-sm text-gray-400 max-w-2xl">
+          Paste your JSON in unchanged — the commas and quoted keys JSON requires are simply
+          optional in TSON. And two things TSON deliberately doesn't add: comment syntax
+          (annotations are metadata that survives parsing) and anchors or merge operators
+          (a value is complete where it stands — no resolution hops to read a document).
+        </p>
       </div>
     </div>
 
-    <dl class="grid md:grid-cols-2 gap-x-12 gap-y-5 mt-10">
-      {schemaPoints.map(p => (
-        <div>
-          <dt class="font-mono text-sm text-gray-800 mb-1">{p.term}</dt>
-          <dd class="text-sm text-gray-500">{p.body}</dd>
-        </div>
-      ))}
-    </dl>
+    <!-- Series strip -->
+    <div class="max-w-5xl mx-auto px-6 pb-16">
+      <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-5">
+        The specification, in three layers
+      </h2>
+      <div class="grid md:grid-cols-3 gap-4">
+        {layers.map((l) => (
+          <div class="border border-gray-200 rounded-md p-5">
+            <div class="font-mono text-xs font-semibold uppercase tracking-widest text-teal-800">{l.part}</div>
+            <h3 class="font-semibold mt-1.5 mb-1">{l.title}</h3>
+            <p class="text-sm text-gray-500">{l.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
   </div>
 </Layout>
+
+<style is:global>
+  /* token colouring inside set:html snippets (scoped styles don't reach injected HTML) */
+  #vsjson .tk { color: #111827; font-weight: 500; }   /* keys — gray-900 */
+  #vsjson .ts { color: #6e5a44; }                     /* strings */
+  #vsjson .tn { color: #111827; }                     /* numbers/keywords */
+  #vsjson .tp { color: #9ca3af; }                     /* punctuation — gray-400 */
+  #vsjson .gain { color: #0f766e; font-weight: 500; border-radius: 3px; } /* teal-700 */
+  #vsjson .noise { border-radius: 3px; }
+  #vsjson .noise, #vsjson .gain { transition: background-color .25s, color .25s; }
+  @media (prefers-reduced-motion: reduce) {
+    #vsjson .noise, #vsjson .gain { transition: none; }
+  }
+  #vsjson.diff .noise {
+    color: #b91c1c;                 /* red-700 */
+    background: #fee2e2;            /* red-100 */
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
+    text-decoration-color: #b91c1c;
+  }
+  #vsjson.diff .gain { background: #ccfbf1; }         /* teal-100 */
+  #vsjson.diff .diff-legend { opacity: 1; }
+</style>
+
+<script>
+  const root = document.getElementById('vsjson');
+  const toggle = document.getElementById('diff-toggle');
+  const msg = document.getElementById('verdict-msg');
+  const jsonPane = document.getElementById('pane-json');
+  const tsonPane = document.getElementById('pane-tson');
+
+  if (root && toggle && msg && jsonPane && tsonPane) {
+    const nonWs = (el: HTMLElement) => el.textContent!.replace(/\s+/g, '').length;
+    let noise = 0;
+    jsonPane.querySelectorAll('.noise').forEach((el) => { noise += el.textContent!.length; });
+
+    const cj = document.getElementById('count-json');
+    const ct = document.getElementById('count-tson');
+    if (cj) cj.textContent = `${nonWs(jsonPane)} chars`;
+    if (ct) ct.textContent = `${nonWs(tsonPane)} chars`;
+
+    const baseMsg = 'Same data, both sides.';
+    const diffMsg = `<b class="text-gray-900">${noise} characters</b> of required punctuation removed; one <b class="text-gray-900">typed date</b> gained.`;
+
+    toggle.addEventListener('click', () => {
+      const on = root.classList.toggle('diff');
+      toggle.setAttribute('aria-pressed', String(on));
+      toggle.textContent = on ? 'Hide the diff' : 'Show what changes';
+      msg.innerHTML = on ? diffMsg : baseMsg;
+    });
+  }
+</script>

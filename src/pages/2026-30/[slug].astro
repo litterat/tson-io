@@ -11,8 +11,8 @@ export async function getStaticPaths() {
 }
 
 const { entry } = Astro.props;
-const { title, draft, status, description } = entry.data;
-const rawUrl = `/raw/2026-28/${entry.id}.md`;
+const { title, draft, status, part, description } = entry.data;
+const rawUrl = `/raw/2026-30/${entry.id}.md`;
 
 const { Content } = await render(entry);
 ---
@@ -22,13 +22,16 @@ const { Content } = await render(entry);
 
     <!-- Breadcrumb -->
     <nav class="text-sm text-gray-500 mb-8 flex items-center gap-1.5">
-      <a href="/2026-28" class="hover:text-gray-900">Specification</a>
+      <a href="/2026-30" class="hover:text-gray-900">Specification</a>
       <span>/</span>
       <span class="text-gray-700">{title}</span>
     </nav>
 
     <!-- Header -->
     <header class="mb-10">
+      {part !== undefined && (
+        <p class="text-sm font-mono text-gray-400 mb-2">Part {part} of 3</p>
+      )}
       <h1 class="text-3xl font-bold leading-tight mb-3">{title}</h1>
       <div class="flex items-center gap-4 text-sm text-gray-500">
         <span>Draft {draft}</span>
@@ -45,7 +48,7 @@ const { Content } = await render(entry);
     </article>
 
     <div class="mt-16 pt-8 border-t border-gray-200">
-      <a href="/2026-28" class="text-sm text-gray-500 hover:text-gray-900">← Back to Specification</a>
+      <a href="/2026-30" class="text-sm text-gray-500 hover:text-gray-900">← Back to Specification</a>
     </div>
 
   </div>

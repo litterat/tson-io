@@ -12,7 +12,7 @@ export function researchLine(base: string, e: CollectionEntry<'research'>) {
 }
 
 export function specLine(base: string, e: CollectionEntry<'spec'>) {
-  const url = `${base}/raw/2026-28/${e.id}.md`;
+  const url = `${base}/raw/2026-30/${e.id}.md`;
   const desc = e.data.description ? `: ${e.data.description}` : '';
   return `- [${e.data.title}](${url})${desc}`;
 }

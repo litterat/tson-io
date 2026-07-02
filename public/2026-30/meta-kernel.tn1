@@ -1,6 +1,6 @@
 !!id:"http://tson.io/1/m/meta-kernel.tn1"
 !!schema:"http://tson.io/1/m/meta-kernel.tn1"
-@doc:"TSON meta-kernel — self-referencing bootstrap layer (Draft 2026-28)"
+@doc:"TSON meta-kernel — self-referencing bootstrap layer (Draft 2026-30)"
 !schema {
   @doc:"Base kinds. `top` is the structural root; every type in the schema IS-A `top`."
   top       => !!type {}
@@ -17,7 +17,7 @@
   @doc:"""
     Unit atom constructor. An atom with no constraint vocabulary — the
     atom equivalent of the empty record `{}` for products. Its instances
-    (`value`, `token`, `marker` in the kernel; `complex` in core) are
+    (`value`, `token`, `void` in the kernel; `complex` in core) are
     opaque atoms distinguished by name and prose-level parsing contract,
     not by schema shape.
     """
@@ -51,7 +51,7 @@
     token is not used in data and exists so the kernel can describe
     lexical identifiers (type names, field names, parameter names) and
     enum members honestly. It is not currently re-exported in core (no
-    core-level type targets it directly), unlike `marker` which is
+    core-level type targets it directly), unlike `void` which is
     re-exported because annotations in core need it. The
     implementation-internal constraints on what constitutes a
     well-formed token are fixed by the grammar; no constraint vocabulary
@@ -60,9 +60,9 @@
   token => !!type !unit {}
 
   @doc:"""
-    Marker primitive. Instance of the unit atom constructor whose
+    Void primitive. Instance of the unit atom constructor whose
     parsing contract admits only the absent sentinel `_`. The host
-    value is absent. marker is the target type for bare annotations
+    value is absent. void is the target type for bare annotations
     (`@T` with no value); the resolver fills the implicit `_` and
     validates against this contract. See §5.4.
 
@@ -152,7 +152,7 @@
   type_kind           => !!type !enum [ATOM PRODUCT SUM REFERENCE]
 
   @doc:"Annotation type markers."
-  annotation    => @annotation !!type marker
+  annotation    => @annotation !!type void
   documentation => @annotation !!type string
   doc           => @annotation !!type documentation
   alias         => @annotation !!type string

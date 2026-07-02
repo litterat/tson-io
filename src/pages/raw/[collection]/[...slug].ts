@@ -3,7 +3,7 @@
  *
  * URLs:
  *   /raw/research/deep-dive-into-json/part-1-introduction-and-core-limitations.md
- *   /raw/2026-28/tson-spec-2026-28.md
+ *   /raw/2026-30/tson-part1-data-format.md
  *
  * The response is plain text with the original frontmatter stripped,
  * so LLMs and tools receive clean markdown content.
@@ -28,7 +28,7 @@ export const getStaticPaths: GetStaticPaths = async () => {
 
   const specPaths = specEntries.map((entry) => ({
     params: {
-      collection: '2026-28',
+      collection: '2026-30',
       slug: `${entry.id}.md`,
     },
     props: { body: entry.body ?? '', title: entry.data.title },
