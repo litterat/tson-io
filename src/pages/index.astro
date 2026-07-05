@@ -120,8 +120,8 @@ const rows = [
 ];
 
 const layers = [
-  { part: 'Part 1', title: 'Data Format', body: 'The lexer, the structural grammar, base type resolution, and the built-in type vocabulary — dates, UUIDs, binary, precise numerics, available with no schema at all.' },
-  { part: 'Part 2', title: 'Schemas & Directives', body: 'The type-definition grammar, composition and narrowing, the schema chain, and hash-pinned publishing.' },
+  { part: 'Part 1', title: 'Data Format', href: part1Url, body: 'The lexer, the structural grammar, base type resolution, and the built-in type vocabulary — dates, UUIDs, binary, precise numerics, available with no schema at all.' },
+  { part: 'Part 2', title: 'Schemas & Directives', href: part2Url, body: 'The type-definition grammar, composition and narrowing, the schema chain, and hash-pinned publishing.' },
 ];
 ---
 
@@ -231,11 +231,11 @@ const layers = [
       </h2>
       <div class="grid md:grid-cols-2 gap-4">
         {layers.map((l) => (
-          <div class="border border-gray-200 rounded-md p-5">
+          <a href={l.href} class="block border border-gray-200 rounded-md p-5 hover:border-gray-400">
             <div class="font-mono text-xs font-semibold uppercase tracking-widest text-teal-800">{l.part}</div>
             <h3 class="font-semibold mt-1.5 mb-1">{l.title}</h3>
             <p class="text-sm text-gray-500">{l.body}</p>
-          </div>
+          </a>
         ))}
       </div>
     </div>
