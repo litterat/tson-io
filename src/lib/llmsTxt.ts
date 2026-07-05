@@ -7,7 +7,10 @@ export function subtitle(title: string) {
 export function researchLine(base: string, e: CollectionEntry<'research'>) {
   const sub = subtitle(e.data.title);
   const url = `${base}/raw/research/${e.id}.md`;
-  const desc = e.data.description ? `: ${e.data.description}` : '';
+  const abstract = e.data.abstract
+    ? e.data.abstract.replace(/\]\(\/research\//g, `](${base}/research/`)
+    : '';
+  const desc = abstract ? `: ${abstract}` : '';
   return `- [${sub}](${url})${desc}`;
 }
 
