@@ -22,9 +22,13 @@ const heroTson = `{
 
 // ── the ledger ───────────────────────────────────────────────
 // chips cite TSON Part 1 (Data Format) unless marked otherwise
+const part1Url = '/2026/tson-part1-data-format';
+const part2Url = '/2026/tson-part2-schemas-directives';
+
 const rows = [
   {
-    chip: '§3.3',
+    chip: '§2.4',
+    href: `${part1Url}#24-tokens`,
     title: 'Quotes are optional',
     why: 'Identifiers and scalar values are unquoted tokens, defined over Unicode identifier properties — so this works in every script, not just ASCII. Quote only what needs quoting: spaces, colons, free text.',
     snippets: [
@@ -33,7 +37,8 @@ const rows = [
     ],
   },
   {
-    chip: '§3.7',
+    chip: '§2.4',
+    href: `${part1Url}#24-tokens`,
     title: 'Commas are whitespace',
     why: 'Any whitespace separates items; commas still work, so JSON habits carry over. Trailing commas remain errors in both.',
     snippets: [
@@ -43,6 +48,7 @@ const rows = [
   },
   {
     chip: '§7.6',
+    href: `${part1Url}#76-number-grammar`,
     title: 'Numbers you can actually write',
     why: 'Arbitrary precision, hex and binary, digit separators, signed infinities, and NaN resolve with no annotation at all. Rationals and complex numbers need an explicit type identifier in schemaless data — that annotation is the only route to them, since base resolution treats them as strings otherwise.',
     snippets: [
@@ -51,7 +57,8 @@ const rows = [
     ],
   },
   {
-    chip: '§3.2.2',
+    chip: '§7.2.3',
+    href: `${part1Url}#723-multi-line-tokens`,
     title: 'Strings with more than one line',
     why: 'Triple-quoted blocks with common indentation stripped, so multi-line text stays readable in source and exact in value.',
     snippets: [
@@ -60,7 +67,8 @@ const rows = [
     ],
   },
   {
-    chip: '§4.3.2',
+    chip: '§2.6',
+    href: `${part1Url}#26-map`,
     title: 'Maps with real keys',
     why: 'JSON objects force every key into a string. TSON keeps records (fixed named fields, :) and maps (variable associations, =>) distinct — and map keys can be any value.',
     snippets: [
@@ -69,7 +77,8 @@ const rows = [
     ],
   },
   {
-    chip: '§4.4',
+    chip: '§2.9',
+    href: `${part1Url}#29-the-absent-sentinel`,
     title: 'Absent is not null',
     why: 'JSON gives two states — key missing, or null — to do three jobs. TSON’s absent sentinel _ says “this position exists and holds no value”, leaving null to be a value.',
     snippets: [
@@ -78,7 +87,8 @@ const rows = [
     ],
   },
   {
-    chip: '§5.2',
+    chip: '§3.1',
+    href: `${part1Url}#31-annotations`,
     title: 'Metadata that travels with the value',
     why: 'Annotations attach ordered, preserved metadata to any value — no more _comment fields pretending to be data. This is also why TSON needs no comment syntax: annotations survive parsing.',
     snippets: [
@@ -88,6 +98,7 @@ const rows = [
   },
   {
     chip: '§5.1',
+    href: `${part1Url}#51-applicability`,
     title: 'Types when you want them',
     why: 'Type annotations tag a value with what it is. A built-in vocabulary — dates, UUIDs, binary, precise numerics — works with no schema at all, and the value parses to the native type, not a string.',
     snippets: [
@@ -98,6 +109,7 @@ const rows = [
   {
     chip: 'Part 2',
     chipAlt: true,
+    href: part2Url,
     title: 'Schemas when you need them',
     why: 'One directive points a document at a published, immutable, hash-pinned schema. Types are defined in the same syntax as data — records, narrowing, composition, enums — and validated on read.',
     snippets: [
@@ -177,7 +189,10 @@ const layers = [
       {rows.map((row) => (
         <div class="grid md:grid-cols-[5fr_7fr] gap-5 md:gap-8 py-7 border-t border-gray-200 last:border-b">
           <div>
-            <span class={`inline-block font-mono text-xs font-semibold rounded-full px-3 py-1 mb-3 ${row.chipAlt ? 'bg-indigo-50 text-indigo-800' : 'bg-gray-100 text-teal-800'}`}>{row.chip}</span>
+            <a
+              href={row.href}
+              class={`inline-block font-mono text-xs font-semibold rounded-full px-3 py-1 mb-3 hover:underline ${row.chipAlt ? 'bg-indigo-50 text-indigo-800' : 'bg-gray-100 text-teal-800'}`}
+            >{row.chip}</a>
             <h3 class="text-lg font-semibold mb-1.5">{row.title}</h3>
             <p class="text-sm text-gray-500 max-w-md">{row.why}</p>
           </div>
