@@ -1,33 +1,35 @@
 ---
-title: "TSON Part 3: Schemas and Directives"
-draft: "2026-30"
+title: "TSON Part 2: Schemas and Directives"
+draft: "2026 Revision 31"
 status: "Working Draft"
-part: 3
+part: 2
 description: >
   The schema layer: the !!type definition grammar, composition and narrowing, the schema chain
   and its resolution model, the resolver output contract, and the five registered directives.
 ---
 
-# TSON Part 3: Schemas and Directives
+# TSON Part 2: Schemas and Directives
 
-## Draft 2026-30
+## 2026 Revision 31
 
-**Status:** Working Draft
-**Series:** TSON Specification, Part 3 of 3
+**Status:** Working revision. The 2026 revision series is subject to change without compatibility guarantees. When finalised, this specification will be published as **TSON version 1** and frozen; until then, revisions are released under the 2026 series.
+
+**Series:** TSON Specification, Part 2 of 2
+
+**Copyright:** © 2026 Litterat Pty Ltd. This document is licensed under the Creative Commons Attribution-ShareAlike 4.0 International License (CC BY-SA 4.0): https://creativecommons.org/licenses/by-sa/4.0/
 
 
 ## 1. Introduction
 
 This document defines the TSON **schema layer**: the `!!type` type-definition grammar, the type system and its operations, the schema chain and its resolution model, the resolver output contract, and the five registered directives (`!!schema`, `!!id`, `!!import`, `!!include`, `!!type`).
 
-[TSON-DATA] defines the lexer, the data grammar, and base type resolution; [TSON-TYPES] defines the schemaless built-in type vocabulary. This document adds the ability to define types, publish them as schemas, reference them from data documents, and validate data against them. It introduces no lexical changes: the type-definition grammar is a parser context activated by the `!!type` directive over the token stream that [TSON-DATA] already defines, and every operator it uses is a token the Part 1 lexer already emits.
+[TSON-DATA] defines the lexer, the data grammar, base type resolution, and the built-in type vocabulary. This document adds the ability to define types, publish them as schemas, reference them from data documents, and validate data against them. It introduces no lexical changes: the type-definition grammar is a parser context activated by the `!!type` directive over the token stream that [TSON-DATA] already defines, and every operator it uses is a token the Part 1 lexer already emits.
 
 
 ### 1.1 The TSON Specification Series
 
-- **Part 1: Data Format** [TSON-DATA] — the lexer, the data grammar, and base type resolution.
-- **Part 2: Type Vocabulary** [TSON-TYPES] — the built-in atom types and the type annotations available without a schema.
-- **Part 3: Schemas and Directives** (this document) — the type-definition grammar, the type system, the schema chain, and the registered directives.
+- **Part 1: Data Format** [TSON-DATA] — the lexer, the data grammar, base type resolution, and the built-in type vocabulary.
+- **Part 2: Schemas and Directives** (this document) — the type-definition grammar, the type system, the schema chain, and the registered directives.
 
 
 ### 1.2 Design Principles

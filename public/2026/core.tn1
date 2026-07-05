@@ -1,7 +1,7 @@
 !!id:"http://tson.io/1/m/core.tn1"
 !!schema:"http://tson.io/1/m/meta.tn1"
 @doc:"""
-  TSON Core Type Library — canonical types for data interchange (Draft 2026-30).
+  TSON Core Type Library — canonical types for data interchange (2026 Revision 31).
 
   Every type in core comes from a constructor defined in meta-kernel
   or meta. Atoms are uniformly defined as empty instances:

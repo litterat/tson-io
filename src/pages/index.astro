@@ -87,7 +87,7 @@ const rows = [
     ],
   },
   {
-    chip: '§5.1 · Part 2',
+    chip: '§5.1',
     title: 'Types when you want them',
     why: 'Type annotations tag a value with what it is. A built-in vocabulary — dates, UUIDs, binary, precise numerics — works with no schema at all, and the value parses to the native type, not a string.',
     snippets: [
@@ -96,7 +96,7 @@ const rows = [
     ],
   },
   {
-    chip: 'Part 3',
+    chip: 'Part 2',
     chipAlt: true,
     title: 'Schemas when you need them',
     why: 'One directive points a document at a published, immutable, hash-pinned schema. Types are defined in the same syntax as data — records, narrowing, composition, enums — and validated on read.',
@@ -108,9 +108,8 @@ const rows = [
 ];
 
 const layers = [
-  { part: 'Part 1', title: 'Data Format', body: 'The lexer, the structural grammar, and base type resolution. Everything on this page above the types row.' },
-  { part: 'Part 2', title: 'Type Vocabulary', body: 'Built-in type annotations — dates, UUIDs, binary, precise numerics — available with no schema at all.' },
-  { part: 'Part 3', title: 'Schemas & Directives', body: 'The type-definition grammar, composition and narrowing, the schema chain, and hash-pinned publishing.' },
+  { part: 'Part 1', title: 'Data Format', body: 'The lexer, the structural grammar, base type resolution, and the built-in type vocabulary — dates, UUIDs, binary, precise numerics, available with no schema at all.' },
+  { part: 'Part 2', title: 'Schemas & Directives', body: 'The type-definition grammar, composition and narrowing, the schema chain, and hash-pinned publishing.' },
 ];
 ---
 
@@ -213,9 +212,9 @@ const layers = [
     <!-- Series strip -->
     <div class="max-w-5xl mx-auto px-6 pb-16">
       <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-5">
-        The specification, in three layers
+        The specification, in two parts
       </h2>
-      <div class="grid md:grid-cols-3 gap-4">
+      <div class="grid md:grid-cols-2 gap-4">
         {layers.map((l) => (
           <div class="border border-gray-200 rounded-md p-5">
             <div class="font-mono text-xs font-semibold uppercase tracking-widest text-teal-800">{l.part}</div>

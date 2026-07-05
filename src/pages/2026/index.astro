@@ -11,15 +11,15 @@ const tsonParts = entries
 const otherDocs = entries.filter(e => e.data.part === undefined);
 ---
 
-<Layout title="Specification" description="The TSON specification, in three parts, plus the companion Unicode Number Format specification.">
+<Layout title="Specification" description="The TSON specification, in two parts.">
   <div class="max-w-5xl mx-auto px-6 py-12">
     <h1 class="text-3xl font-bold mb-2">Specification</h1>
     <p class="text-gray-600 mb-4">
-      The TSON specification, split into three parts, plus companion specifications developed
-      alongside it.
+      The TSON specification, split into two parts, plus room for companion specifications
+      developed alongside it.
     </p>
     <p class="text-sm text-gray-500 mb-12 max-w-2xl border border-gray-200 rounded-md px-4 py-3">
-      These documents describe the specification text. Implementations of TSON or UNF — parsers,
+      These documents describe the specification text. Implementations of TSON — parsers,
       encoders, libraries — may be licensed however you choose; the specification's license
       applies to the written text, not to code that implements it.
     </p>
@@ -30,7 +30,7 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
         {tsonParts.map(entry => (
           <li>
             <span class="text-xs font-mono text-gray-400 mr-2">Part {entry.data.part}</span>
-            <a href={`/2026-30/${entry.id}`} class="font-medium text-lg hover:underline">
+            <a href={`/2026/${entry.id}`} class="font-medium text-lg hover:underline">
               {entry.data.title}
             </a>
             <div class="flex items-center gap-3 mt-1 text-sm text-gray-500">
@@ -52,7 +52,7 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
         <ul class="space-y-6">
           {otherDocs.map(entry => (
             <li>
-              <a href={`/2026-30/${entry.id}`} class="font-medium text-lg hover:underline">
+              <a href={`/2026/${entry.id}`} class="font-medium text-lg hover:underline">
                 {entry.data.title}
               </a>
               <div class="flex items-center gap-3 mt-1 text-sm text-gray-500">
@@ -77,7 +77,7 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
       <ul class="space-y-2 font-mono text-sm">
         {['meta-kernel.tn1', 'meta.tn1', 'core.tn1'].map(file => (
           <li>
-            <a href={`/2026-30/${file}`} class="text-gray-700 hover:text-gray-900 hover:underline">
+            <a href={`/2026/${file}`} class="text-gray-700 hover:text-gray-900 hover:underline">
               {file}
             </a>
           </li>

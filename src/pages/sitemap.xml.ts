@@ -23,8 +23,8 @@ export const GET: APIRoute = async ({ site }) => {
     `${base}/`,
     `${base}/research`,
     ...researchEntries.map(e => `${base}/research/${e.id}`),
-    `${base}/2026-30`,
-    ...specEntries.map(e => `${base}/2026-30/${e.id}`),
+    `${base}/2026`,
+    ...specEntries.map(e => `${base}/2026/${e.id}`),
   ];
 
   const body = [

@@ -1,6 +1,6 @@
 !!id:"http://tson.io/1/m/meta-kernel.tn1"
 !!schema:"http://tson.io/1/m/meta-kernel.tn1"
-@doc:"TSON meta-kernel — self-referencing bootstrap layer (Draft 2026-30)"
+@doc:"TSON meta-kernel — self-referencing bootstrap layer (2026 Revision 31)"
 !schema {
   @doc:"Base kinds. `top` is the structural root; every type in the schema IS-A `top`."
   top       => !!type {}

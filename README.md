@@ -12,8 +12,8 @@ Built with [Astro](https://astro.build) and [Tailwind CSS](https://tailwindcss.c
 ```
 src/
   content/
-    2026-30/
-      spec/            # TSON Part 1/2/3 (Draft 2026-30) plus companion specs (e.g. UNF)
+    2026/
+      spec/            # TSON Part 1/2 (2026 Revision 31), plus any companion specs
       m/                # .tn1 schema source files (meta-kernel, meta, core)
     research/
       deep-dive-into-json/   # "A Deep Dive into JSON" article series
@@ -25,8 +25,8 @@ src/
     index.astro                     # Home page — TSON vs JSON comparison
     research/index.astro            # Research index
     research/[series]/[slug].astro  # Research article pages
-    2026-30/index.astro             # Specification index
-    2026-30/[slug].astro            # Specification document pages
+    2026/index.astro                 # Specification index
+    2026/[slug].astro                # Specification document pages
     raw/[collection]/[...slug].ts   # Serves raw markdown (frontmatter stripped) for LLMs/tools
     llms.txt.ts                     # /llms.txt — spec + schema index for LLMs
     research-llms.txt.ts            # /research-llms.txt — research index (optional/background)
@@ -34,19 +34,19 @@ src/
   lib/
     llmsTxt.ts          # Shared helpers for the llms.txt endpoints
 public/
-  2026-30/              # Static .tn1 schema files served as-is
+  2026/                 # Static .tn1 schema files served as-is
   images/                # Images extracted from the research articles
   robots.txt             # Content-Signal preferences + sitemap reference
   _headers                # Cloudflare response headers (content types, Link header, etc.)
 scripts/                 # One-off Python scripts used to migrate/format content
 ```
 
-The TSON specification is split into three parts — **Part 1: Data Format**, **Part 2: Type
-Vocabulary**, **Part 3: Schemas and Directives** — plus companion specifications developed
-alongside it (e.g. the Unicode Number Format, which TSON's numeric type vocabulary references).
+The TSON specification is split into two parts — **Part 1: Data Format** (the lexer, grammar,
+base type resolution, and built-in type vocabulary) and **Part 2: Schemas and Directives** — plus
+room for companion specifications developed alongside it, if any exist for the current revision.
 
 Every research article and specification document is available both as rendered HTML and as raw
-markdown at `/raw/research/<series>/<slug>.md` or `/raw/2026-30/<slug>.md`, so the content is
+markdown at `/raw/research/<series>/<slug>.md` or `/raw/2026/<slug>.md`, so the content is
 readable by both humans and LLMs/tools.
 
 ## Development
@@ -69,10 +69,10 @@ automatically on push to `main` via the Cloudflare Workers & Pages GitHub integr
 The **source code** in this repository (Astro components, scripts, configuration, and styles) is
 licensed under the [MIT License](./LICENSE).
 
-The **written content** under `src/content/research/` and `src/content/2026-30/spec/` (the
-research articles, the TSON specification, and companion specifications such as UNF) is licensed
+The **written content** under `src/content/research/` and `src/content/2026/spec/` (the
+research articles, the TSON specification, and any companion specifications) is licensed
 separately under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). This covers the
-specification *text* only — implementations of TSON or UNF (parsers, encoders, libraries) may be
+specification *text* only — implementations of TSON (parsers, encoders, libraries) may be
 licensed however their authors choose.
 
 © 2026 [Litterat Pty Ltd](https://litterat.io)

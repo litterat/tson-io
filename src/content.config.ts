@@ -27,7 +27,7 @@ export const collections = {
   }),
 
   spec: defineCollection({
-    loader: glob({ pattern: '*.md', base: './src/content/2026-30/spec' }),
+    loader: glob({ pattern: '*.md', base: './src/content/2026/spec' }),
     schema: specSchema,
   }),
 };
