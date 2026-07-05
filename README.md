@@ -34,7 +34,7 @@ src/
   lib/
     llmsTxt.ts          # Shared helpers for the llms.txt endpoints
 public/
-  2026/                 # Static .tn1 schema files served as-is
+  2026/m/               # Static .tn1 schema files served as-is
   images/                # Images extracted from the research articles
   robots.txt             # Content-Signal preferences + sitemap reference
   _headers                # Cloudflare response headers (content types, Link header, etc.)

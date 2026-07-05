@@ -1,5 +1,5 @@
-!!id:"http://tson.io/1/m/core.tn1"
-!!schema:"http://tson.io/1/m/meta.tn1"
+!!id:"http://tson.io/2026/m/core.tn1"
+!!schema:"http://tson.io/2026/m/meta.tn1"
 @doc:"""
   TSON Core Type Library — canonical types for data interchange (2026 Revision 31).
 
