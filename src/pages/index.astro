@@ -42,12 +42,12 @@ const rows = [
     ],
   },
   {
-    chip: '§6.3',
+    chip: '§7.6',
     title: 'Numbers you can actually write',
-    why: 'Via the Unicode Number Format: arbitrary precision, hex and binary, digit separators, exact rationals, complex numbers, signed infinities, NaN — and scientific notation the way physics writes it.',
+    why: 'Arbitrary precision, hex and binary, digit separators, signed infinities, and NaN resolve with no annotation at all. Rationals and complex numbers need an explicit type identifier in schemaless data — that annotation is the only route to them, since base resolution treats them as strings otherwise.',
     snippets: [
       { tag: 'json — closest you can get', kind: 'json', html: '<span class="tp">"</span><span class="tk">mask</span><span class="tp">":</span> <span class="tn">255</span><span class="tp">, "</span><span class="tk">budget</span><span class="tp">":</span> <span class="tn">1000000</span><span class="tp">,</span>\n<span class="tp">"</span><span class="tk">ratio</span><span class="tp">":</span> <span class="tn">3.142857142857143</span><span class="tp">, "</span><span class="tk">limit</span><span class="tp">":</span> <span class="ts">"Infinity"</span>' },
-      { tag: 'tson', kind: 'tson', html: '<span class="tk">mask</span><span class="tp">:</span> <span class="gain">0xFF</span>   <span class="tk">budget</span><span class="tp">:</span> <span class="gain">1_000_000</span>   <span class="tk">ratio</span><span class="tp">:</span> <span class="gain">22/7</span>\n<span class="tk">atoms</span><span class="tp">:</span> <span class="gain">6.02×10²³</span>   <span class="tk">limit</span><span class="tp">:</span> <span class="gain">∞</span>   <span class="tk">gap</span><span class="tp">:</span> <span class="gain">.nan</span>' },
+      { tag: 'tson', kind: 'tson', html: '<span class="tk">mask</span><span class="tp">:</span> <span class="gain">0xFF</span>   <span class="tk">budget</span><span class="tp">:</span> <span class="gain">1_000_000</span>   <span class="tk">ratio</span><span class="tp">:</span> <span class="gain">!rational</span> <span class="tn">22/7</span>\n<span class="tk">atoms</span><span class="tp">:</span> <span class="tn">6.02e23</span>   <span class="tk">limit</span><span class="tp">:</span> <span class="gain">∞</span>   <span class="tk">gap</span><span class="tp">:</span> <span class="gain">.nan</span>' },
     ],
   },
   {
