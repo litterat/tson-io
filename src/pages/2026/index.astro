@@ -37,6 +37,8 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
               <span>Draft {entry.data.draft}</span>
               <span>·</span>
               <span>{entry.data.status}</span>
+              <span>·</span>
+              <a href={`/raw/2026/${entry.id}.md`} class="hover:text-gray-900 font-mono">view raw ↗</a>
             </div>
             {entry.data.description && (
               <p class="text-sm text-gray-500 mt-1">{entry.data.description}</p>
@@ -59,6 +61,8 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
                 <span>Draft {entry.data.draft}</span>
                 <span>·</span>
                 <span>{entry.data.status}</span>
+                <span>·</span>
+                <a href={`/raw/2026/${entry.id}.md`} class="hover:text-gray-900 font-mono">view raw ↗</a>
               </div>
               {entry.data.description && (
                 <p class="text-sm text-gray-500 mt-1">{entry.data.description}</p>
