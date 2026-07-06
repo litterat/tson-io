@@ -1,6 +1,6 @@
 ---
 title: "TSON Part 1: Data Format"
-draft: "2026 Revision 31"
+draft: "2026"
 status: "Working Draft"
 part: 1
 description: >
@@ -11,7 +11,7 @@ description: >
 
 # TSON Part 1: Data Format
 
-## 2026 Revision 31
+## 2026 Revision 32
 
 **Status:** Working revision. The 2026 revision series is subject to change without compatibility guarantees. When finalised, this specification will be published as **TSON version 1** and frozen (§1.2, principle 7); until then, revisions are released under the 2026 series.
 
@@ -55,11 +55,11 @@ This document defines the TSON **data format**: the lexer, the structural gramma
 The TSON specification is published in two parts:
 
 - **Part 1: Data Format** (this document) — the lexer, the data grammar, base type resolution, and the built-in type vocabulary.
-- **Part 2: Schemas and Directives** [TSON-SCHEMA] — the schema grammar, the type system, the schema chain, and the semantics of the registered directives.
+- **Part 2: Schema Modules and the Type System** [TSON-SCHEMA] — the module grammar, the type system, the schema chain, and the operations of the `schema`, `meta`, and `import` directives.
 
 Each part adds capability without modifying the parts below it. The lexer defined in this document is complete: higher parts introduce no new tokens, no new lexer modes, and no changes to character classification.
 
-The schema grammar of [TSON-SCHEMA] is a sibling grammar that shares this document's lexer and core value rules. It alone defines the value-producing directive `!!type`, the type-expression syntax that gives the reserved special tokens (§7.2.5) their meaning, and the semantics of the registered directives. None of that syntax appears in data documents: in the data grammar, a reserved special token is a parse error, and a `!!` token whose name is not followed by an adjacent `:` is a parse error.
+[TSON-SCHEMA] defines a second document kind, the **schema module**, recognised by the header dispatch of §2.2. A module is a sibling grammar that shares this document's lexer and core value rules: its declaration grammar gives the reserved special tokens (§7.2.5) their meaning, and [TSON-SCHEMA] defines the operations of the directives (§3.3). None of that syntax appears in data documents: in the data grammar, a reserved special token is a parse error, and a `!!` token whose name is not followed by an adjacent `:` is a parse error.
 
 
 ### 1.4 Notation and Keywords
@@ -75,15 +75,18 @@ Error categorisation — which processing layer rejects a violation and the cano
 ### 1.5 Conformance
 
 
-A **conforming TSON data-format processor** implements the lexer (§7.2), the structural grammar (§2), the augmentation syntax (§3), base type resolution (§4), and the built-in type vocabulary (§5) as defined in this document. Such a processor:
+This series defines two conformance classes.
+
+A **Class 1 processor** (data-format processor) implements the lexer (§7.2), the header and structural grammar (§2), the augmentation syntax (§3), base type resolution (§4), and the built-in type vocabulary (§5) as defined in this document. Such a processor:
 
 - MUST parse every well-formed data document and reject every ill-formed one, reporting errors per §8.1;
 - MUST recognise every annotation name in the built-in vocabulary and resolve annotated tokens per the named atom's contract (§5) — the vocabulary is implemented as a unit, so two conforming processors never disagree on whether a built-in name is meaningful;
-- MUST preserve annotations, type annotations outside the vocabulary, and unknown configuration directives (§3);
-- MUST treat a directive token (`!!`) whose name is not followed by an adjacent `:` as a parse error (§1.3);
+- MUST preserve annotations, type annotations outside the vocabulary, and `schema` directives it does not act on (§3);
+- MUST treat a directive token (`!!`) whose name is not followed by an adjacent `:` as a parse error (§1.3), and a directive name outside the closed positional set — or inside it but outside its position — as a parse error (§3.3);
+- MUST reject a schema module — a document whose header contains `!!meta` (§2.2) — reporting it as a schema module per §8.1, not as a malformed data document;
 - is NOT REQUIRED to implement the schema layer of [TSON-SCHEMA].
 
-Processors implementing [TSON-SCHEMA] MUST also conform to this document.
+A **Class 2 processor** (schema-aware processor) implements [TSON-SCHEMA] in addition and MUST also conform to this document.
 
 
 ## 2. Documents and Structure
@@ -91,7 +94,7 @@ Processors implementing [TSON-SCHEMA] MUST also conform to this document.
 
 ### 2.1 A Complete Example
 
-A data document exercising the prologue, the three structural types, augmentation, the type vocabulary, and the absent sentinel:
+A data document exercising the header, the three structural types, augmentation, the type vocabulary, and the absent sentinel:
 
 ```
 !!id:"https://example.com/orders/1042.tn1"
@@ -124,19 +127,30 @@ A data document exercising the prologue, the three structural types, augmentatio
 }
 ```
 
-The two prologue directives name the document and bind its schema, and the field-level `!!schema` on `shipping` scopes a different schema to that one value (§2.2, §3.3). Annotations attach metadata at three levels: `@doc` on the document, the valueless `@deprecated` on a field's value, and `@expires` on a map key (§3.1). Type references invoke the built-in vocabulary — `!uuid`, `!date`, and `!decimal` parse their tokens by atom contract (§3.2, §5) — while unannotated tokens resolve by the base rules of §4: `1042` and `0b0110` are integers, `.5` is a float, and `GOLD`, `A-100`, and `10%` are strings (as `2026-07-01` would be without its `!date`). The value is a record (§2.5) containing a nested record, an array of records (§2.7), and a map (§2.6). Tokens are quoted only where content demands it — `"ada@example.com"` contains a special character, `"12 Byron Rd"` a space — and `notes` is a multi-line token whose common indentation is stripped (§7.2.3, §2.4). The absent sentinel `_` marks a field and a map entry that are present with explicitly no value (§2.9).
+The two header directives name the document and bind its schema, and the field-level `!!schema` on `shipping` scopes a different schema to that one value (§2.2, §3.3). Annotations attach metadata at three levels: `@doc` on the document, the valueless `@deprecated` on a field's value, and `@expires` on a map key (§3.1). Type references invoke the built-in vocabulary — `!uuid`, `!date`, and `!decimal` parse their tokens by atom contract (§3.2, §5) — while unannotated tokens resolve by the base rules of §4: `1042` and `0b0110` are integers, `.5` is a float, and `GOLD`, `A-100`, and `10%` are strings (as `2026-07-01` would be without its `!date`). The value is a record (§2.5) containing a nested record, an array of records (§2.7), and a map (§2.6). Tokens are quoted only where content demands it — `"ada@example.com"` contains a special character, `"12 Byron Rd"` a space — and `notes` is a multi-line token whose common indentation is stripped (§7.2.3, §2.4). The absent sentinel `_` marks a field and a map entry that are present with explicitly no value (§2.9).
 
 
-### 2.2 Document and Prologue
+### 2.2 Document and Header
 
 
-A TSON document is the outermost structure. A document contains exactly one **directed value** (§2.3): zero or more configuration directives followed by exactly one data value.
+A TSON document is the outermost structure: a **header** followed by a body. The header is a fixed sequence of directives — names, order, and cardinality are enforced by the grammar (§3.3, §7.4) — and it determines the document kind:
 
 ```
-document = ws directed-value ws
+document   = ws ( data-doc / module-doc )
+
+data-doc   = [ id-directive ws ] [ schema-directive ws ] data-value ws
+module-doc = id-directive ws module-content
+           ; module-content begins with the meta-directive and is
+           ; defined normatively in [TSON-SCHEMA]
+
+id-directive     = "!!" "id"     ":" quoted-token
+schema-directive = "!!" "schema" ":" quoted-token
+meta-directive   = "!!" "meta"   ":" quoted-token
 ```
 
-Configuration directives at the document level form the **document prologue** and scope to the document's value. Annotations sit closest to the value they describe; a type annotation that precedes the document's core value is a property of the document, not of the inner value. A document with no directives or augmentation is simply a value.
+**Kind dispatch.** A parser consumes the `!!id` directive if present; if the next token is the directive `!!meta`, the document is a **schema module** and its remaining grammar is defined by [TSON-SCHEMA] — otherwise it is a **data document**, defined by this document. Classification therefore requires at most two directives of lookahead, no value parsing, and no backtracking. A `!!meta` directive without a preceding `!!id` is a parse error: schema modules are always identified. A Class 1 processor rejects module documents with a categorized diagnostic (§1.5, §8.1).
+
+Header directives are properties of the document, not of the body's root value. The root value of a data document is an ordinary data value: it carries annotations and a type annotation like any other value — a type annotation preceding the root core value identifies the expected type of the document's contained value — but never directives. A document with an empty header and no augmentation is simply a value.
 
 Because a document contains exactly one value and directives do not produce content, a pure-metadata document uses the absent sentinel (§2.9) as its value:
 
@@ -146,16 +160,25 @@ _
 ```
 
 
+#### 2.2.1 Identity and Content Addressing
+
+
+The `!!id` directive names the document: its argument is a URI identifying the document as a published artifact. In data documents `!!id` is optional; in schema modules it is mandatory (§2.2). Identity gives diagnostics, imports, and registries a stable way to refer to the document independent of its storage location.
+
+When the identifying URI carries a content hash (the URI convention is defined in [TSON-SCHEMA]), the document is **content-addressed** and immutable: any change to its bytes changes its identity. A content-addressed document MUST place the `id-directive` at the very start of the document, followed by a line terminator, and MUST be encoded in UTF-8. The hash input is every byte after that line terminator — the id line is excluded so that a document can state its own identity without the circularity of hashing its own hash.
+
+Content addressing composes. A data document may reference its schema by hashed URI, that schema its meta-schema, and so on to the pre-loaded bootstrap ([TSON-SCHEMA]), so a consumer holding a single identifier can verify the integrity of a document together with its entire contract chain — a Merkle-style dependency graph in the manner of content-addressed stores. Ordering, consensus, and mutability policy are application concerns outside this series.
+
+
 ### 2.3 Values
 
 
-TSON uses a single parser with two closely related value rules. A **directed value** is zero or more configuration directives followed by a data value; it occurs in exactly three positions — the document level, record field values, and map entry values. A **data value** is zero or more annotations, an optional type reference, and a core value; it occurs everywhere a value does.
+TSON uses a single parser with two closely related value rules. A **scoped value** is an optional `schema` directive followed by a data value; it occurs in exactly two positions — record field values and map entry values. A **data value** is zero or more annotations, an optional type reference, and a core value; it occurs everywhere a value does.
 
 ```
-directed-value   = *( config-directive ws ) data-value
+scoped-value     = [ schema-directive ws ] data-value
 
-config-directive = "!!" directive-name ":" quoted-token
-directive-name   = unquoted-token
+schema-directive = "!!" "schema" ":" quoted-token
 
 data-value       = *annotation [type-ref] core-value
 
@@ -166,7 +189,7 @@ core-value       = record / map / array
                  / absent / token
 ```
 
-A configuration directive affects how the value that follows it is interpreted and scopes to the directed value it prefixes (§3.3). The data grammar is closed: it contains no value-producing directives (§1.3).
+A `schema` directive affects how the value that follows it is interpreted and scopes to the value it prefixes (§3.3). The data grammar is closed: no directive produces content, and the directive name set is fixed (§3.3).
 
 There are three structural types for contained data; the document is the implicit outermost structure.
 
@@ -176,7 +199,7 @@ There are three structural types for contained data; the document is the implici
 | Map    | `{ => }`    | `=>`      | Variable key-value associations  |
 | Array  | `[ ]`       | whitespace| Variable-length sequence         |
 
-Field values and map entry values are directed values; map keys and array elements are data values.
+Field values and map entry values are scoped values; map keys and array elements are data values.
 
 
 ### 2.4 Tokens
@@ -202,11 +225,11 @@ A record is an ordered collection of named fields enclosed in curly braces. Fiel
 
 ```
 record     = "{" ws field *( separator field ) ws "}"
-field      = field-name ws ":" ws directed-value
+field      = field-name ws ":" ws scoped-value
 field-name = token                          ; unquoted or quoted
 ```
 
-A field's value is a directed value, so configuration directives may prefix it:
+A field's value is a scoped value, so a `schema` directive may prefix it:
 
 ```
 { database: !!schema:"https://example.com/db-config.tn1" { host: db1 port: 5432 } }
@@ -226,7 +249,7 @@ A map is a collection of key-value associations enclosed in curly braces. Keys a
 
 ```
 map       = "{" ws map-entry *( separator map-entry ) ws "}"
-map-entry = data-value ws "=>" ws directed-value
+map-entry = data-value ws "=>" ws scoped-value
 ```
 
 Map keys are data values — they may carry annotations and a type reference but not directives. Keys are not restricted to strings.
@@ -289,7 +312,7 @@ Whether absent values at optional positions are encoded on the wire using `_` or
 
 Augmentation adds metadata, type information, and directives to values without modifying the structural grammar. All augmentation is optional and is expressed within the value rules (§2.3).
 
-TSON supports three augmentation features: configuration directives (`!!`), annotations (`@`), and type annotations (`!name`). Directives are permitted only in directed-value positions; annotations and type annotations are available on every data value. Configuration directives precede annotations in the grammar; augmentation attaches to the value that follows it.
+TSON supports three augmentation features: configuration directives (`!!`), annotations (`@`), and type annotations (`!name`). Directives are permitted only in the document header (§2.2) and scoped-value positions (§2.3); annotations and type annotations are available on every data value. Directives precede annotations in the grammar; augmentation attaches to the value that follows it.
 
 Annotations are ordered in the token stream, and implementations MUST preserve their order.
 
@@ -335,30 +358,30 @@ Type expression syntax is not available in data values: array brackets, type arg
 ### 3.3 Directives
 
 
-A configuration directive provides pre-interpretation configuration: the `!!` compound token followed by a name, an adjacent `:`, and a quoted-token argument.
+A configuration directive provides pre-interpretation configuration: the `!!` compound token followed by a name, an adjacent `:`, and a quoted-token argument. Every directive in the series shares this lexical shape:
 
 ```
-config-directive = "!!" directive-name ":" quoted-token
-directive-name   = unquoted-token
+"!!" name ":" quoted-token
 ```
 
-The `:` MUST be adjacent to the directive name. The argument is a single quoted token; in every operation registered by this series it is a URI or file reference (RFC 3986).
+The `:` MUST be adjacent to the directive name. The argument is a single quoted token; in every directive of this series it is a URI or file reference (RFC 3986).
 
-Directives appear only in directed-value positions (§2.3): the document prologue, record field values, and map entry values. A directive scopes to the directed value it prefixes. Directives are not permitted before array elements, map keys, field names, or annotation values.
+Directives appear only in the document header (§2.2) and in scoped-value positions (§2.3): record field values and map entry values. A directive scopes to the document or value it prefixes. Directives are not permitted before array elements, map keys, field names, or annotation values.
 
-Unlike an annotation, a directive is not strippable metadata: it affects how the value is interpreted.
+Unlike an annotation, a directive is not strippable metadata: it affects how the value is interpreted. A Class 1 processor does not act on `schema` bindings — it preserves them for the consuming application — but it enforces directive grammar in full.
 
-**The directive registry.** Directive names resolve to canonical semantic operations through a registry that is closed by this series: implementations MUST NOT introduce operations beyond those registered by these documents. Directive names on the wire are always the canonical names; localized presentation is a tooling concern outside this series. This document registers no operations. [TSON-SCHEMA] registers three:
+**Closed positional name set.** Directive names are fixed by the grammar. Each name is legal in exactly one kind of position, and order and cardinality are enforced by the productions (§2.2, §7.4) rather than by prose. Four names exist in the series:
 
-| Name | Placement | Argument | Operation |
-|---|---|---|---|
-| `id` | Document prologue; first directive; at most once | URI | Names the document. The id line is excluded from content hashing. |
-| `schema` | Document prologue; field values; map entry values | URI | Binds the schema governing the directed value. |
-| `import` | Document prologue | URI | Extends the imported schema (schema documents). |
+| Name | Kind | Placement | Argument | Operation |
+|---|---|---|---|---|
+| `id` | both | Header; first line; optional in data documents, mandatory in modules | URI | Names the document (§2.2.1). The id line is excluded from content hashing. |
+| `schema` | data | Header, at most once; field values; map entry values | URI | Binds the schema governing the document or value in scope. |
+| `meta` | module | Module header; exactly once, immediately after `id` | URI | Binds the meta-schema governing the module's declarations. |
+| `import` | module | Module header; after `meta`; repeatable | URI | Imports the named module's declarations. |
 
-The placement and operation columns are normative in [TSON-SCHEMA]; they appear here informatively.
+Placements for `id` and `schema` are normative in this document; the `id` operation is defined in §2.2.1; the `schema`, `meta`, and `import` operations — and the module-side placements — are normative in [TSON-SCHEMA]. This document uses `meta` only for kind dispatch (§2.2).
 
-**Unknown directive handling.** To a processor conforming only to this document, every configuration directive is unknown, and every configuration directive is parseable — the argument is a single quoted token. Implementations MUST preserve unknown configuration directives, SHOULD surface them to the consuming application, MUST NOT act on directives they do not implement, and MUST NOT reject a document solely because an unknown configuration directive is present. Production systems MAY restrict which directives are accepted through configuration.
+Any other directive name, and any of these names outside its placement, is a parse error. There is no unknown-directive category and no directive extension mechanism: new capability arrives through the type system, not through the grammar (§1.2). Directive names on the wire are always the canonical names above; localized presentation is a tooling concern outside this series.
 
 **No parse-time I/O.** Directive arguments are references; a processor conforming to this document never dereferences them. Parsing a TSON data document performs no I/O — the document's structural meaning is fully determined by its bytes (§9.3).
 
@@ -564,11 +587,11 @@ The seven extension characters are all `Pattern_Syntax` and therefore immutable,
 
 The format-control characters ZWNJ (U+200C) and ZWJ (U+200D) are deliberately excluded from the profile, although UAX #31 permits them in restricted contexts and some languages admit them. They are invisible, which makes them confusable and spoofing surface (§9.4); names whose orthography requires them MUST be quoted.
 
-TSON documents are encoded in Unicode. UTF-8 is RECOMMENDED; UTF-16 and UTF-32 are permitted. [TSON-SCHEMA] imposes UTF-8 on schema documents referenced with a content hash.
+TSON documents are encoded in Unicode. UTF-8 is RECOMMENDED; UTF-16 and UTF-32 are permitted. Content-addressed documents MUST be UTF-8 (§2.2.1).
 
 **Byte order mark.** A single U+FEFF at the very start of a document is an encoding artifact: decoders MUST accept it and discard it before lexing — it is not whitespace and is not part of any token. U+FEFF anywhere else outside a quoted token is an unrecognised character and a lexer error (§7.2.4); within a quoted token it is ordinary content. Encoders using UTF-8 SHOULD NOT emit a byte order mark; for UTF-16 and UTF-32 the byte order mark belongs to the encoding scheme and is consumed by decoding.
 
-TSON documents use the media type `application/tson` (intended for IANA registration). Version information is not encoded in the media type; if disambiguation is needed in HTTP contexts, implementations MAY use `application/tson; version=1`. TSON version 1 uses the file extension **`.tn1`** for all documents; future major versions use correspondingly numbered extensions (`.tn2`, …). Whether a `.tn1` file is a data document or a schema document is determined by its content ([TSON-SCHEMA]).
+TSON documents use the media type `application/tson` (intended for IANA registration). Version information is not encoded in the media type; if disambiguation is needed in HTTP contexts, implementations MAY use `application/tson; version=1`. TSON version 1 uses the file extension **`.tn1`** for all documents; future major versions use correspondingly numbered extensions (`.tn2`, …). Whether a `.tn1` file is a data document or a schema module is determined by its header (§2.2): classification requires at most two directives of lookahead and no value parsing, so streams, previews, and content sniffers can classify a document from its opening bytes.
 
 
 ### 7.2 The Lexer
@@ -807,18 +830,28 @@ HEXDIG        = ; 0-9 / A-F / a-f
 ### 7.4 Data Grammar
 
 
-The parser consumes the token stream and produces a document tree using two value rules: `directed-value` (document level, record field values, map entry values) and `data-value` (everywhere a value occurs). Adjacency requirements that ABNF concatenation cannot express are enforced via source-position comparison; see §7.5.
+The parser consumes the token stream and produces a document tree. The `document` rule dispatches on the header (§2.2); values use two rules: `scoped-value` (record field values, map entry values) and `data-value` (everywhere a value occurs). Adjacency requirements that ABNF concatenation cannot express are enforced via source-position comparison; see §7.5.
 
 ```
-document        = ws directed-value ws
+document        = ws ( data-doc / module-doc )
 
-directed-value  = *( config-directive ws ) data-value
+data-doc        = [ id-directive ws ] [ schema-directive ws ]
+                  data-value ws
+module-doc      = id-directive ws module-content
+                ; module-content begins with meta-directive and is
+                ; defined in [TSON-SCHEMA]; a Class 1 processor
+                ; rejects module documents (§1.5, §8.1).
 
-config-directive = "!!" directive-name ":" quoted-token
-directive-name   = unquoted-token
+id-directive     = "!!" "id"     ":" quoted-token
+schema-directive = "!!" "schema" ":" quoted-token
+meta-directive   = "!!" "meta"   ":" quoted-token
                 ; ":" MUST be adjacent to the directive name (§7.5).
                 ; "!!" whose name is not followed by an adjacent ":"
-                ; is a parse error (§1.3).
+                ; is a parse error (§1.3). String literals match
+                ; exact characters (§7.3): directive names are
+                ; case-sensitive. Any other directive name —
+                ; including module-side "import" outside a module
+                ; header — is a parse error (§3.3).
 
 data-value      = *annotation [type-ref] core-value
 
@@ -828,14 +861,16 @@ core-value      = record / map / array
                 / empty-brace / absent / token
 
 record          = "{" ws field *( separator field ) ws "}"
-field           = field-name ws ":" ws directed-value
+field           = field-name ws ":" ws scoped-value
 
 map             = "{" ws map-entry
                  *( separator map-entry ) ws "}"
-map-entry       = data-value ws "=>" ws directed-value
+map-entry       = data-value ws "=>" ws scoped-value
 
 array           = "[" ws [ data-value
                  *( separator data-value ) ] ws "]"
+
+scoped-value    = [ schema-directive ws ] data-value
 
 ; ── Shared terminals ──────────────────────────────────────
 
@@ -940,13 +975,15 @@ String literals in this grammar match exact characters (§7): the base prefixes 
 Errors fall into four categories corresponding to the processing layers. The categories are defined here for the whole series; the resolver and validation categories are populated mainly by the higher parts.
 
 - **Lexer errors** — Malformed tokens: unterminated quoted or multi-line tokens, invalid escapes, unpaired surrogate escapes, unrecognised characters, unquoted tokens that are not NFC-normalized.
-- **Parser errors** — Structural mismatches: unclosed brackets, adjacency violations, unexpected tokens, missing separators, `!!` without an adjacent colon form.
+- **Parser errors** — Structural mismatches: unclosed brackets, adjacency violations, unexpected tokens, missing separators, `!!` without an adjacent colon form, a directive name outside the closed positional set or outside its placement (§3.3).
 - **Resolver errors** — Reference and resolution failures. At the data-format layer: an absent sentinel in map key position; a built-in type annotation on a container value (§5.1). [TSON-SCHEMA] adds unresolved type names and schema resolution failures.
 - **Validation errors** — Type and constraint violations. At the data-format layer: range violations by the numeric atoms and CIDR prefix lengths (§5). [TSON-SCHEMA] generalises validation to author-declared constraints.
 
 **Canonical phrasing.** Normative rules throughout this series refer to errors using one of four canonical phrasings, each mapping unambiguously to a category: "is a lexer error", "is a parse error", "is a resolver error", "is a validation error". Where conformance language appears without an explicit category, the layer that detects the violation determines the category.
 
 Implementations MUST include source position (line, column, and byte offset) in all error reports, SHOULD include expected-vs-found information for token and structural mismatches, and SHOULD continue processing after an error to report multiple issues in a single pass.
+
+**Module diagnostics.** A Class 1 processor encountering `!!meta` in the header MUST report the document as a TSON schema module that this processor does not support (§1.5) — a categorized diagnostic, not a generic unexpected-token error. Additionally, when a data document's root value is a token followed by an unexpected `=>`, the processor SHOULD note that the input resembles a schema module missing its `!!meta` directive.
 
 
 ## 9. Security Considerations
@@ -971,7 +1008,7 @@ TSON documents processed at the data-format layer carry no structural type guara
 ### 9.3 Directive Security
 
 
-Directives are a control channel that affects interpretation. Parsing a TSON data document performs no I/O: directive arguments are references that a data-format processor never dereferences (§3.3), so a document's structural meaning is fully determined by its bytes. Dereferencing is defined by [TSON-SCHEMA] and performed under application policy. Applications processing untrusted TSON input SHOULD restrict which directives are honoured when handing documents to higher-part processors.
+Directives are a control channel that affects interpretation. The directive name set is closed and positional (§3.3): there is no unknown-directive category, and therefore no channel for carrying unprocessed configuration through a conforming parser. Parsing a TSON document performs no I/O: directive arguments are references that a data-format processor never dereferences (§3.3), so a document's structural meaning is fully determined by its bytes. Dereferencing is defined by [TSON-SCHEMA] and performed under application policy. Applications processing untrusted TSON input SHOULD restrict which schema bindings are honoured when handing documents to Class 2 processors.
 
 
 ### 9.4 Confusable Characters
@@ -1014,7 +1051,7 @@ Unicode identifiers introduce visually confusable field names — Latin `a` (U+0
 
 | Reference | Title | URL |
 |-----------|-------|-----|
-| TSON-SCHEMA | TSON Part 2: Schemas and Directives | &lt;pinned at publication&gt; |
+| TSON-SCHEMA | TSON Part 2: Schema Modules and the Type System | &lt;pinned at publication&gt; |
 
 
 ### 10.3 Informative References
