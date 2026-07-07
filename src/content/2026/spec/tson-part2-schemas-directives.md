@@ -1,16 +1,17 @@
 ---
-title: "TSON Part 2: Schemas and Directives"
-draft: "2026 Revision 31"
+title: "TSON Part 2: Schema Modules and the Type System"
+draft: "2026 Revision 32"
 status: "Working Draft"
 part: 2
 description: >
-  The schema layer: the !!type definition grammar, composition and narrowing, the schema chain
-  and its resolution model, the resolver output contract, and the five registered directives.
+  The schema layer: the module grammar, the type system and its operations, the schema chain
+  and its resolution model, module compilation and resolver output, and the operations of the
+  schema, meta, and import directives.
 ---
 
-# TSON Part 2: Schemas and Directives
+# TSON Part 2: Schema Modules and the Type System
 
-## 2026 Revision 31
+## 2026 Revision 32
 
 **Status:** Working revision. The 2026 revision series is subject to change without compatibility guarantees. When finalised, this specification will be published as **TSON version 1** and frozen; until then, revisions are released under the 2026 series.
 
@@ -29,7 +30,7 @@ This document defines the TSON **schema layer**: the `!!type` type-definition gr
 ### 1.1 The TSON Specification Series
 
 - **Part 1: Data Format** [TSON-DATA] — the lexer, the data grammar, base type resolution, and the built-in type vocabulary.
-- **Part 2: Schemas and Directives** (this document) — the type-definition grammar, the type system, the schema chain, and the registered directives.
+- **Part 2: Schema Modules and the Type System** (this document) — the module grammar, the type system, the schema chain, and the operations of the `schema`, `meta`, and `import` directives.
 
 
 ### 1.2 Design Principles
@@ -45,12 +46,12 @@ In addition to the principles of [TSON-DATA] §1.2, the schema layer is governed
 
 ### 1.3 Conformance
 
-A **conforming TSON schema processor** conforms to [TSON-DATA] and [TSON-TYPES] and additionally implements the type-definition grammar (§3–§8, §17), the five registered directive operations (§9), schema resolution (§11, §14), the resolver output contract (§13), atom token parsing (§15), and validation. Such a processor:
+A **conforming TSON schema processor** conforms to [TSON-DATA] and additionally implements the type-definition grammar (§3–§8, §17), the five registered directive operations (§9), schema resolution (§11, §14), the resolver output contract (§13), atom token parsing (§15), and validation. Such a processor:
 
 - MUST pre-load the meta-kernel and meta-schema (§11.5, §14.1) and SHOULD pre-load the core type library;
-- MUST resolve type annotations through the active schema when one is in scope, and MUST NOT apply the [TSON-TYPES] built-in vocabulary in schema scope (§2.1);
+- MUST resolve type annotations through the active schema when one is in scope, and MUST NOT apply the [TSON-DATA] §5 built-in vocabulary in schema scope (§2.1);
 - MUST produce resolver output conforming to the `type_definition` contract (§13), including computed `supertypes` and `subtypes`;
-- MUST report errors in the categories and phrasings of [TSON-DATA] §9.6.
+- MUST report errors in the categories and phrasings of [TSON-DATA] §8.1.
 
 
 ### 1.4 Terminology
@@ -68,7 +69,7 @@ This document is published with four companion artifacts:
 |----------|--------|---------|
 | `meta-kernel.tn1` | Normative | The self-referencing bootstrap layer (§12) |
 | `meta.tn1` | Normative | The canonical meta-schema (§12) |
-| `core.tn1` | Normative | The core type library (§12, [TSON-TYPES] §5) |
+| `core.tn1` | Normative | The core type library (§12, [TSON-DATA] §5) |
 | Resolver Output Reference | Non-normative | Complete resolver output for the three schemas above, as test fixtures (§13) |
 
 The normative artifacts are pinned by content hash at publication. Per §11.5, implementations pre-load the kernel and meta-schema as in-memory structures; the artifact documents are descriptions of those structures, and the in-memory model is authoritative.
@@ -81,17 +82,17 @@ The normative artifacts are pinned by content hash at publication. Per §11.5, i
 
 ### 2.1 Type Annotation Resolution
 
-In data values, a type annotation (`!name`, [TSON-DATA] §5.1) marks **instantiation** — the value is concrete data conforming to the named type.
+In data values, a type annotation (`!name`, [TSON-DATA] §3.2) marks **instantiation** — the value is concrete data conforming to the named type.
 
 The type name resolves against the external schema identified by the current `!!schema` directive — never against definitions within the same document. See §11 for the complete schema resolution rules. Inside the type-definition grammar, `!` has an additional role: it marks constructor instantiation (§3.3).
 
-**The built-in vocabulary does not apply in schema scope.** When a schema is in scope, the [TSON-TYPES] built-in type annotations do not apply — all type annotations MUST resolve through the schema's type-name namespace (local entries plus imports, §11.3.2). A built-in annotation name that is not defined by the active schema is an unresolved type error. Schemas wanting `uuid`, `base64`, `datetime`, and the other built-in names import the core type library (or define them locally); built-ins are not implicitly available alongside a schema. This is the normative statement of the scoping rule restated in [TSON-TYPES] §2.
+**The built-in vocabulary does not apply in schema scope.** When a schema is in scope, the [TSON-DATA] §5 built-in type annotations do not apply — all type annotations MUST resolve through the schema's type-name namespace (local entries plus imports, §11.3.2). A built-in annotation name that is not defined by the active schema is an unresolved type error. Schemas wanting `uuid`, `base64`, `datetime`, and the other built-in names import the core type library (or define them locally); built-ins are not implicitly available alongside a schema. This is the normative statement of the scoping rule restated in [TSON-DATA] §5.1.
 
-A document with no `!!schema` directive has no type vocabulary: base type resolution ([TSON-DATA] §6) and the built-in annotations ([TSON-TYPES]) apply, and any other type annotation is preserved unresolved per [TSON-DATA] §5.1.
+A document with no `!!schema` directive has no type vocabulary: base type resolution ([TSON-DATA] §4) and the built-in annotations ([TSON-DATA] §5) apply, and any other type annotation is preserved unresolved per [TSON-DATA] §3.2.
 
 **Records are closed under their type.** When a schema is in scope and a record's type is known, the record MUST contain only fields defined by its type. Fields appearing in the data that are not present in the type definition are validation errors. This applies to both directly-typed records (`!person { ... }` validated against the `person` type) and structurally-positioned records (a record value at a record-typed field position). Schemaless records — records without a known type — have no closure rule because they have no defined field set; they are whatever the data says they are. Closure is what makes schema evolution a discrete operation rather than a backward-compatibility negotiation: every published schema version is a precise, immutable contract about what fields exist. See §11.4 for the schema-evolution implications.
 
-**Type expression syntax is not available in data values** ([TSON-DATA] §5.1). To annotate an array or map value with a named type in data, define a named type in the schema:
+**Type expression syntax is not available in data values** ([TSON-DATA] §3.2). To annotate an array or map value with a named type in data, define a named type in the schema:
 
 ```
 !schema {
@@ -108,14 +109,14 @@ Then in data: `!int_list [1 2 4 8 32]`, `!translations { en => Hello fr => Bonjo
 
 ### 2.2 Atom Parsing Replaces Base Type Resolution
 
-When a schema is in scope, base type resolution ([TSON-DATA] §6) does not apply at typed positions. Each position's declared atom type owns its own parsing contract (§15); unquoted tokens are interpreted by that atom's parser, not by the schemaless dispatch. The tokens `true`, `false`, and `null` have no special status in schemaful mode — their meaning is determined entirely by the type annotation or field type in the schema.
+When a schema is in scope, base type resolution ([TSON-DATA] §4) does not apply at typed positions. Each position's declared atom type owns its own parsing contract (§15); unquoted tokens are interpreted by that atom's parser, not by the schemaless dispatch. The tokens `true`, `false`, and `null` have no special status in schemaful mode — their meaning is determined entirely by the type annotation or field type in the schema.
 
 **`null` at `void`-typed positions.** The sole exception is a position whose declared type is `void` (§8): there the token `null` is accepted as an equivalent spelling of the absent sentinel `_` and normalised to absence. The concession is local to `void` — because `void` has a single inhabitant, there is no absence-vs-value distinction to lose — and does not change `null`'s meaning at any other position. Authors SHOULD write `_`; `null` is tolerated but discouraged, and a `void` position round-trips to `_`. This rule also covers JSON-shaped data processed under a schema: a JSON `null` landing at a `void`-typed position is accepted as absence, while everywhere else it must satisfy the position's declared type.
 
 
 ### 2.3 Sets
 
-A **set** is an unordered collection of unique values. Sets are not a distinct grammar construct — they share array syntax `[ ... ]` at the data level ([TSON-DATA] §4.3.4). Set-ness is a schema property declared via the `set` constructor (§8, defined in meta-kernel). Without a schema, every `[ ... ]` is an array; with a schema, the field's declared type determines whether the value is treated as an array or a set.
+A **set** is an unordered collection of unique values. Sets are not a distinct grammar construct — they share array syntax `[ ... ]` at the data level ([TSON-DATA] §2.7). Set-ness is a schema property declared via the `set` constructor (§8, defined in meta-kernel). Without a schema, every `[ ... ]` is an array; with a schema, the field's declared type determines whether the value is treated as an array or a set.
 
 A **set** is an unordered collection of unique values. Sets are not a distinct grammar construct — they share array syntax `[ ... ]` at the data level. Set-ness is a schema property declared via the `set` constructor (§8, defined in meta-kernel). Without a schema, every `[ ... ]` is an array; with a schema, the field's declared type determines whether the value is treated as an array or a set.
 
@@ -134,9 +135,9 @@ A **set** is an unordered collection of unique values. Sets are not a distinct g
 
 ### 2.4 The Absent Sentinel Under a Schema
 
-[TSON-DATA] §4.4 defines the absent sentinel and its data-value positions. `_` is not itself a type, but the type whose sole conforming value is `_` is `void` (§8), the unit type of absence; at a `void`-typed position the token `null` is also accepted as an equivalent spelling of `_` (§2.2). Everywhere else `_` (absence) and the base value `null` remain distinct.
+[TSON-DATA] §2.9 defines the absent sentinel and its data-value positions. `_` is not itself a type, but the type whose sole conforming value is `_` is `void` (§8), the unit type of absence; at a `void`-typed position the token `null` is also accepted as an equivalent spelling of `_` (§2.2). Everywhere else `_` (absence) and the base value `null` remain distinct.
 
-This document extends the position table of [TSON-DATA] §4.4 as follows:
+This document extends the position rules of [TSON-DATA] §2.9 as follows:
 
 | Position                                  | `_` permitted? | Meaning                                                                                          |
 |-------------------------------------------|----------------|--------------------------------------------------------------------------------------------------|
@@ -153,9 +154,9 @@ When a schema is in scope, absence at an element position requires the governing
 
 ### 2.5 Resolver Behaviours at Typed Positions
 
-**Typed key equality.** [TSON-DATA] §4.3.2 defines parser-layer (textual) duplicate-key detection for maps. When a schema is present and the key type is known, the resolver MAY additionally apply type-specific equality. The resolver SHOULD warn when type-aware equality detects duplicates that the parser did not catch. The MAY is deliberate: once keys are realised as host-language values, equality semantics are determined by the host language's collection types, and TSON cannot uniformly mandate equality rules across hosts it does not control.
+**Typed key equality.** [TSON-DATA] §2.6 defines parser-layer (textual) duplicate-key detection for maps. When a schema is present and the key type is known, the resolver MAY additionally apply type-specific equality. The resolver SHOULD warn when type-aware equality detects duplicates that the parser did not catch. The MAY is deliberate: once keys are realised as host-language values, equality semantics are determined by the host language's collection types, and TSON cannot uniformly mandate equality rules across hosts it does not control.
 
-**Empty braces.** [TSON-DATA] §4.3.5 defers empty-brace disambiguation to declared type information. Under a schema, the expected type at the position supplies that information: the resolver transforms an `EmptyBraceValue` into an empty record or empty map per the expected type, defaulting to an empty record when the position is untyped.
+**Empty braces.** [TSON-DATA] §2.8 defers empty-brace disambiguation to declared type information. Under a schema, the expected type at the position supplies that information: the resolver transforms an `EmptyBraceValue` into an empty record or empty map per the expected type, defaulting to an empty record when the position is untyped.
 
 
 ## 3. The Type Definition Grammar
@@ -191,7 +192,7 @@ Value modifiers are restricted to scalar tokens — quoted or unquoted — cover
 
 Complex default or fixed values (arrays, records) are not supported inline; define a named value and reference it instead.
 
-**Eager resolution.** Default and fixed value tokens are resolved and validated at schema-load time, not deferred to per-validation. The token is parsed by the field's type — for typed fields by the atom's parser; for `value`-typed fields by [TSON-DATA] §6 base type resolution — and stored as the resolved host value. A default or fixed value that fails parsing or fails the type's constraints is a schema-load error, not a deferred validation error. This matches §15's eager-conversion rule for constraint-field values and applies uniformly to defaults and fixed values on all field types.
+**Eager resolution.** Default and fixed value tokens are resolved and validated at schema-load time, not deferred to per-validation. The token is parsed by the field's type — for typed fields by the atom's parser; for `value`-typed fields by [TSON-DATA] §4 base type resolution — and stored as the resolved host value. A default or fixed value that fails parsing or fails the type's constraints is a schema-load error, not a deferred validation error. This matches §15's eager-conversion rule for constraint-field values and applies uniformly to defaults and fixed values on all field types.
 
 Examples within a record definition:
 
@@ -255,7 +256,7 @@ person => !!type { name: string }
 
 then `person` is referenced by name where needed.
 
-Inline forms with type-mode-exclusive syntax — array brackets `[T]` and `[T; +]`, type arguments `name<T>` and `map<K, V>`, choice parentheses `(A | B)` — remain permitted in field-type positions because their surface shape never appears in data values. Square brackets in data form arrays, but a `[T]` *in a type position* inside a `!!type` body is unambiguously a type expression because the surrounding grammar is `!!type`, and the same shape carries no other meaning the reader could mistake it for. Angle brackets and choice parentheses are reserved exclusively for the `!!type` grammar ([TSON-DATA] §3.6.2) — they have no data-mode reading at all. Constraint-bearing array forms like `[T; +]` synthesize a named container type per §14.
+Inline forms with type-mode-exclusive syntax — array brackets `[T]` and `[T; +]`, type arguments `name<T>` and `map<K, V>`, choice parentheses `(A | B)` — remain permitted in field-type positions because their surface shape never appears in data values. Square brackets in data form arrays, but a `[T]` *in a type position* inside a `!!type` body is unambiguously a type expression because the surrounding grammar is `!!type`, and the same shape carries no other meaning the reader could mistake it for. Angle brackets and choice parentheses are reserved exclusively for the `!!type` grammar ([TSON-DATA] §7.2.5) — they have no data-mode reading at all. Constraint-bearing array forms like `[T; +]` synthesize a named container type per §14.
 
 Beyond avoiding ambiguity, named definitions are self-documenting, reusable, and produce cleaner resolver output than synthetic types derived from parent context.
 
@@ -306,7 +307,7 @@ The `set` constructor narrows `array` and pins `state: = REQUIRED` — absence h
 [string integer boolean?]    three positions, third optional
 ```
 
-A tuple requires at least two element type expressions. When the parser encounters two or more type-refs separated by whitespace or comma inside brackets, the result is always a tuple. A semicolon after a single type-ref introduces a size specifier for an array. A single type-ref with no semicolon is an unconstrained array. The separator character (whitespace/comma vs semicolon) is the disambiguating signal. A single type in brackets (`[string]`) MUST be interpreted as an unconstrained array, not a one-element tuple. `[string,]` is a parse error — trailing separators are not permitted anywhere (see [TSON-DATA] §3.7).
+A tuple requires at least two element type expressions. When the parser encounters two or more type-refs separated by whitespace or comma inside brackets, the result is always a tuple. A semicolon after a single type-ref introduces a size specifier for an array. A single type-ref with no semicolon is an unconstrained array. The separator character (whitespace/comma vs semicolon) is the disambiguating signal. A single type in brackets (`[string]`) MUST be interpreted as an unconstrained array, not a one-element tuple. `[string,]` is a parse error — trailing separators are not permitted anywhere (see [TSON-DATA] §2.4).
 
 Tuple positions support only REQUIRED and OPTIONAL states; defaults and fixed values are not available for tuple elements. Tuples and arrays share the `element_state` enumeration in the meta-schema — it has just two members, reflecting the narrower vocabulary available to positional containers compared to record fields (which support five states via `field_state`).
 
@@ -370,7 +371,7 @@ The distinction is in the target of `!`:
 
 **Single-required-field positional form.** When a constructor has exactly one REQUIRED field, the data-value after `!C` fills that field directly. See §3.4 for the full desugaring rule.
 
-**Enum member naming convention.** Enum members are conventionally written in uppercase (`ACTIVE`, `INACTIVE`, `BASE64`, `HEX`) to distinguish them visually from type names (lowercase) and field names (lowercase). This is a style convention applied throughout the meta-schema and core type library; the parser does not enforce it. The single exception in the core library is `boolean`, whose members `true` and `false` retain their conventional lowercase form because they are language-level constants in the data grammar ([TSON-DATA] §6.2), not user-defined enum members. New enum types in user schemas SHOULD follow the uppercase convention for consistency with `core.tn1`.
+**Enum member naming convention.** Enum members are conventionally written in uppercase (`ACTIVE`, `INACTIVE`, `BASE64`, `HEX`) to distinguish them visually from type names (lowercase) and field names (lowercase). This is a style convention applied throughout the meta-schema and core type library; the parser does not enforce it. The single exception in the core library is `boolean`, whose members `true` and `false` retain their conventional lowercase form because they are language-level constants in the data grammar ([TSON-DATA] §4.2), not user-defined enum members. New enum types in user schemas SHOULD follow the uppercase convention for consistency with `core.tn1`.
 
 
 ### 3.4 Canonical Form and Desugaring
@@ -665,11 +666,11 @@ The resolver MUST detect and handle cycles in type references. A self-referentia
 
 ## 6. Annotations as Types
 
-[TSON-DATA] §5.2 defines annotation syntax and preservation. This section defines annotation semantics: an annotation is a typed metadata attachment, resolved and validated against a type reachable through the schema chain.
+[TSON-DATA] §3.1 defines annotation syntax and preservation. This section defines annotation semantics: an annotation is a typed metadata attachment, resolved and validated against a type reachable through the schema chain.
 
 Annotation values are always data values — concrete values, not type definitions. This applies both in data values and within the `!!type` grammar. An annotation on a type definition carries concrete metadata, not further type structure.
 
-Annotation placement in data values follows [TSON-DATA] §5.2; the resolver preserves annotations in their authored positions. The type-definition grammar adds one further position: in `field-def` (§17.1), annotations precede the field name and annotate the field itself, mapping to the `record_field` in the resolver output.
+Annotation placement in data values follows [TSON-DATA] §3.1; the resolver preserves annotations in their authored positions. The type-definition grammar adds one further position: in `field-def` (§17.1), annotations precede the field name and annotate the field itself, mapping to the `record_field` in the resolver output.
 
 In schema map entries, an annotation immediately preceding the key binds to the key. The convention `@doc:"..." name => !!type {...}` annotates `name` (the `type_name` token at the entry's key position), not the `type_definition` value. The resolver does not hoist annotations from the key to the value; if metadata about the type definition is intended, the annotation must precede the `!!type` directive on the value side: `name => @doc:"..." !!type {...}`.
 
@@ -800,13 +801,13 @@ Narrowings of these atoms use the instance form: `uint8 => !!type !integer { min
 
 **The `unit` atom constructor.** Atoms with no constraint vocabulary are constructed from `unit` — an atom constructor with zero fields, the atom equivalent of the empty record `{}` for products. Meta-kernel defines `unit` directly. Its instances are opaque atoms — atoms whose values the schema language cannot further describe, distinguished from each other by name and by prose-level parsing contract (§15). Meta-kernel defines three such instances:
 
-- `value` — admits [TSON-DATA] §6 products (null, boolean, UNF number, string). The escape hatch for fields whose type the schema language cannot express (see §12 and the `record_field.value` declaration).
+- `value` — admits [TSON-DATA] §4 products (null, boolean, number, string). The escape hatch for fields whose type the schema language cannot express (see §12 and the `record_field.value` declaration).
 - `token` — admits NFC-normalised lexemes. Used for identifier types (`type_name`, `field_name`, `param_name`) and enum members.
 - `void` — the unit type of absence: admits the absent sentinel `_` as its single canonical value (and the token `null` as an equivalent spelling, normalised to `_`; see below). Used as the target type for bare annotations like `@annotation` and `@numeric` (see §6), and usable in data as a field type or choice variant meaning "no value" — the opposite pole to `unknown` (any value ↔ no value).
 
 Core adds `complex` — host-defined complex-number representation. The kernel's `void` is re-exported in core under the same name so that core-only schemas can target it (see §12). Kind determination per §3.3 ensures all four are `kind: ATOM`.
 
-**`void` and `null`.** `void` is the type of absence; its canonical value is `_`. As a JSON-ergonomics concession, a `void`-typed position also accepts the token `null` as an equivalent spelling of `_`, normalised to absence — safe because `void` has a single inhabitant, so `null` and `_` cannot denote different things there. The concession is local to `void`: everywhere else `_` (absence) and `null` (the base null value, [TSON-DATA] §6.1) remain distinct, a distinction that `value`- and `unknown`-typed positions rely on. Authors SHOULD write `_`; `null` is tolerated but discouraged, and a `void` position round-trips to `_`.
+**`void` and `null`.** `void` is the type of absence; its canonical value is `_`. As a JSON-ergonomics concession, a `void`-typed position also accepts the token `null` as an equivalent spelling of `_`, normalised to absence — safe because `void` has a single inhabitant, so `null` and `_` cannot denote different things there. The concession is local to `void`: everywhere else `_` (absence) and `null` (the base null value, [TSON-DATA] §4.1) remain distinct, a distinction that `value`- and `unknown`-typed positions rely on. Authors SHOULD write `_`; `null` is tolerated but discouraged, and a `void` position round-trips to `_`.
 
 User schemas SHOULD NOT introduce additional unit instances without a documented parsing contract — the schema-level distinction between two unit instances is purely nominal, so adding one solely as a marker is reasonable, but inventing parsing semantics that conflict with the kernel's three is a recipe for confusion.
 
@@ -819,7 +820,7 @@ Two kinds of atoms, one representation: every atom in the type system — constr
 
 ## 9. Directives
 
-[TSON-DATA] §5.3 defines the directive mechanism: the two syntactic forms (configuration and value-producing), the directive registry, name localisation, and unknown-directive handling. This document registers the five operations of the TSON directive registry:
+[TSON-DATA] §3.3 defines the directive mechanism: the two syntactic forms (configuration and value-producing), the directive registry, name localisation, and unknown-directive handling. This document registers the five operations of the TSON directive registry:
 
 | Operation | Canonical name | Form | Defined in |
 |-----------|----------------|------|------------|
@@ -844,7 +845,7 @@ When a `!!schema` directive appears on a value, the referenced schema becomes th
 
 A document-level `!!schema` directive establishes the scope for the entire document. When used on a schema document (one containing type definitions), it identifies the meta-schema that governs the definitions. When used on a data document, it identifies the schema for type resolution.
 
-A document with no `!!schema` directive has no type vocabulary. Base type resolution ([TSON-DATA] §6) applies — unquoted tokens are resolved as null, boolean, integer, float, or string. Type annotations in such a document are limited to the built-in annotations defined in [TSON-TYPES] (e.g. `!uuid`, `!base64`, `!datetime`); any other type annotation is unresolved — the parser preserves it as a syntactic marker, but the resolver cannot validate it. Applications processing documents without `!!schema` SHOULD treat unresolved type annotations as informational.
+A document with no `!!schema` directive has no type vocabulary. Base type resolution ([TSON-DATA] §4) applies — unquoted tokens are resolved as null, boolean, integer, float, or string. Type annotations in such a document are limited to the built-in annotations defined in [TSON-DATA] §5 (e.g. `!uuid`, `!base64`, `!datetime`); any other type annotation is unresolved — the parser preserves it as a syntactic marker, but the resolver cannot validate it. Applications processing documents without `!!schema` SHOULD treat unresolved type annotations as informational.
 
 **`!!id`** — Declares the authoritative identity (URL) of a schema document. The `!!id` value is the URL that other documents use in their `!!schema` directives to reference this schema. It connects the file's content to its logical name in the schema library (§14).
 
@@ -852,8 +853,8 @@ A document with no `!!schema` directive has no type vocabulary. Base type resolu
 
 ```
 !!id:"http://example.com/people.tn1"
-!!schema:"http://tson.io/1/m/meta.tn1"
-!!import:"http://tson.io/1/m/core.tn1"
+!!schema:"https://tson.io/2026/m/meta.tn1"
+!!import:"https://tson.io/2026/m/core.tn1"
 !schema {
   person => !!type { name: string  age: integer }
 }
@@ -868,15 +869,15 @@ An application loading schemas from local files registers each one in the schema
 **Imports are shallow.** Only the entries defined in the imported schema's own map are imported — entries that the imported schema itself brought in via its own `!!import` directives are not transitively included. Each schema MUST explicitly import all the dependencies it needs.
 
 ```
-!!schema:"http://tson.io/1/m/meta.tn1"
-!!import:"http://tson.io/1/m/core.tn1"
+!!schema:"https://tson.io/2026/m/meta.tn1"
+!!import:"https://tson.io/2026/m/core.tn1"
 !!import:"http://example.com/medical-types.tn1"
 !schema {
   patient => !!type { name: string  dob: date  blood_type: blood_type }
 }
 ```
 
-Here `string` and `date` come from the core library, `blood_type` from the domain library, and `patient` is a local definition. If `medical-types.tn1` itself imports `core-a1.tn1`, those transitive entries are not included — only `blood_type` and any other entries defined directly in `medical-types.tn1` are available.
+Here `string` and `date` come from the core library, `blood_type` from the domain library, and `patient` is a local definition. If `medical-types.tn1` itself imports `core.tn1`, those transitive entries are not included — only `blood_type` and any other entries defined directly in `medical-types.tn1` are available.
 
 Multiple `!!import` directives are permitted and are loaded in declaration order. Each import adds its locally-defined entries to the accumulated type-name namespace (§11.3). If two imports define the same key, or if an import defines a key that also appears as a local entry in the following schema, the collision is a resolver error and the entire schema fails to load. Imports populate only the type-name namespace, so an import name that happens to match a name reachable through the `!!schema` chain is not a collision — the two live in separate namespaces.
 
@@ -897,7 +898,7 @@ The imported schema MUST itself be a valid TSON schema — a document whose core
 
 The `_` is required to make the inclusion point syntactically explicit. A `!!include` directive without a following `_`, or combined with other directives on the same value, is a parse error. The included document is a complete TSON document — its value may be any TSON value (record, array, scalar, etc.).
 
-**Schema scope does not propagate across inclusion boundaries.** The included value retains whatever schema context its source document declares. If the source document carries its own `!!schema` directive, type annotations within the included value resolve against that schema. If the source document has no `!!schema` directive, base type resolution ([TSON-DATA] §6) applies to the included value — type annotations are syntactically preserved but cannot be resolved, since base type resolution recognises only null, boolean, UNF number, and string. The including document's schema is never consulted for content within the inclusion.
+**Schema scope does not propagate across inclusion boundaries.** The included value retains whatever schema context its source document declares. If the source document carries its own `!!schema` directive, type annotations within the included value resolve against that schema. If the source document has no `!!schema` directive, base type resolution ([TSON-DATA] §4) applies to the included value — type annotations are syntactically preserved but cannot be resolved, since base type resolution recognises only null, boolean, number, and string. The including document's schema is never consulted for content within the inclusion.
 
 **Inclusion is value substitution.** `!!include` parses and resolves the referenced document as a complete, independent unit. The document's resolved value replaces the `_` at the include site. Nothing other than the resolved value crosses the boundary:
 
@@ -916,7 +917,7 @@ The `_` is required to make the inclusion point syntactically explicit. A `!!inc
 
 The `!!type` directive is the single type definition directive. It activates a specialized grammar for the value that follows, producing a type definition in the resolver's output.
 
-`!!type` is valid only on map entry values within a schema map (a map tagged with `!schema`). On map entries outside a schema map, the type directive is a resolver error — this is a resolver concern, not a parser concern ([TSON-DATA] §4.2).
+`!!type` is valid only on map entry values within a schema map (a map tagged with `!schema`). On map entries outside a schema map, the type directive is a resolver error — this is a resolver concern, not a parser concern ([TSON-DATA] §2.3).
 
 The `!!type` grammar supports the following forms:
 
@@ -998,7 +999,7 @@ lookup => !!type map<string, [integer; +]>
 
 Schema map entry values MAY carry either a `!!type` directive (the sugared form) or a literal `!type_definition` record (the desugared form, used by resolver output for round-trip). Both produce a `type_definition` in the namespace. Other map-entry values are resolver errors — schema entries are typed `type_definition` per the kernel, and only these two shapes produce that type. See §11.7 for the round-trip rationale.
 
-Unknown directive handling follows [TSON-DATA] §5.3: unknown configuration directives are preserved; unknown value-producing directives are parse errors.
+Unknown directive handling follows [TSON-DATA] §3.3: unknown configuration directives are preserved; unknown value-producing directives are parse errors.
 
 
 ## 10. The Spectrum of Completeness
@@ -1111,7 +1112,7 @@ The separation between a document and its schema serves two purposes:
 
 **Unambiguous resolution.** Because type references always resolve against an external schema, there is no ambiguity about what `!string` means in a given document. It means whatever the referenced schema defines it to mean. Two documents referencing the same schema have identical type vocabularies. Two documents referencing different schemas may give different meanings to the same name.
 
-A document with no `!!schema` directive has no type vocabulary. Base type resolution ([TSON-DATA] §6) applies, providing default interpretation of unquoted tokens as null, boolean, integer, float, or string. Type annotations in such a document are limited to the built-in annotations defined in [TSON-TYPES] (e.g. `!uuid`, `!base64`); any other type annotation is unresolved — the parser preserves it as a syntactic marker, but the resolver cannot validate it. Applications processing documents without `!!schema` SHOULD treat unresolved type annotations as informational.
+A document with no `!!schema` directive has no type vocabulary. Base type resolution ([TSON-DATA] §4) applies, providing default interpretation of unquoted tokens as null, boolean, integer, float, or string. Type annotations in such a document are limited to the built-in annotations defined in [TSON-DATA] §5 (e.g. `!uuid`, `!base64`); any other type annotation is unresolved — the parser preserves it as a syntactic marker, but the resolver cannot validate it. Applications processing documents without `!!schema` SHOULD treat unresolved type annotations as informational.
 
 
 ### 11.3 Schema Layering
@@ -1232,17 +1233,17 @@ The companion type `unknown` (defined in `core.tn1`) is a sum instance with univ
 At the data level, values matched by an `extern` field MUST carry their own `!!schema` directive identifying the external schema and a `!type` annotation identifying the type within it. Schema scope changes are always visible in the data, never implicit. When the parser encounters a `!!schema` directive on a value within a document, it pushes the new schema scope for that value. When the value ends, the scope reverts to the enclosing scope. This provides lexically scoped schema switching:
 
 ```
-!!schema:"https://tson.io/1/medical/patient.tn1?sha256=a4f2e8d1c3b5a7f9e2d4c6b8a0f1e3d5c7b9a2f4e6d8c0b3a5f7e9d1c4b6a8f0"
+!!schema:"https://tson.io/2026/medical/patient.tn1?sha256=a4f2e8d1c3b5a7f9e2d4c6b8a0f1e3d5c7b9a2f4e6d8c0b3a5f7e9d1c4b6a8f0"
 !patient_record {
   patient: "1234"
   attachments: [
-    !!schema:"https://tson.io/1/insurance/claim.tn1?sha256=f8b2a1d3c5e7f9a1b3d5e7f9a2b4d6e8f0a3b5d7e9f1a4b6d8e0f2a5b7d9e1f3"
+    !!schema:"https://tson.io/2026/insurance/claim.tn1?sha256=f8b2a1d3c5e7f9a1b3d5e7f9a2b4d6e8f0a3b5d7e9f1a4b6d8e0f2a5b7d9e1f3"
     !insurance_claim {
       claim_id: CLM-5678
       amount: 450.00
       provider: "City Medical"
     }
-    !!schema:"https://tson.io/1/radiology/report.tn1?sha256=d4e9c7f1a3b5d7e9f2a4b6d8e0f3a5b7d9e1f4a6b8d0e2f5a7b9d1e3f6a8b0d2"
+    !!schema:"https://tson.io/2026/radiology/report.tn1?sha256=d4e9c7f1a3b5d7e9f2a4b6d8e0f3a5b7d9e1f4a6b8d0e2f5a7b9d1e3f6a8b0d2"
     !radiology_report {
       study_id: RAD-9012
       modality: MRI
@@ -1271,8 +1272,8 @@ A schema is a map containing `name => definition` entries, tagged with the `!sch
 
 ```
 !!id:"http://example.com/people.tn1"
-!!schema:"http://tson.io/1/m/meta.tn1"
-!!import:"http://tson.io/1/m/core.tn1"
+!!schema:"https://tson.io/2026/m/meta.tn1"
+!!import:"https://tson.io/2026/m/core.tn1"
 !schema {
   person => !!type { name: string  age: integer }
   employee => !!type person & { department: string }
@@ -1300,9 +1301,9 @@ The `!schema` type annotation and the `!!schema` directive share a name but serv
 
 Two pre-loaded schemas form the meta-schema layer of TSON:
 
-- **`1/m/meta-kernel.tn1`** — the self-referencing bootstrap layer. Its `!!id` and `!!schema` both reference its own URL — it bootstraps by defining its own core types directly without importing a type library. The kernel defines `top`, `atom`, `product`, `sum`, the `record` / `array` / `map` / `tuple` / `enum` / `choice` constructors, the `record_field` / `tuple_element` / `parameter` / `type_definition` / `schema` supporting records, and the minimal scalar vocabulary (`integer`, `string`, `uri`, `regex`, `boolean`, `unit`, `value`, `token`, `void`) needed for its own constraint-field declarations.
+- **`2026/m/meta-kernel.tn1`** — the self-referencing bootstrap layer. Its `!!id` and `!!schema` both reference its own URL — it bootstraps by defining its own core types directly without importing a type library. The kernel defines `top`, `atom`, `product`, `sum`, the `record` / `array` / `map` / `tuple` / `enum` / `choice` constructors, the `record_field` / `tuple_element` / `parameter` / `type_definition` / `schema` supporting records, and the minimal scalar vocabulary (`integer`, `string`, `uri`, `regex`, `boolean`, `unit`, `value`, `token`, `void`) needed for its own constraint-field declarations.
 
-- **`1/m/meta.tn1`** — the canonical meta-schema, chained to by `!!schema` in user schemas. Built on top of the kernel; it adds the type constructors that the core type library (`core.tn1`) instantiates: `binary` with `binary_encoding`, `extern`, `unknown_type`, plus the constraint vocabularies for numeric (`real_type`, `decimal_type`, `rational_type`), temporal (`date_type`, `time_type`, `datetime_type`, `duration_type`), identifier (`uuid_type`), and text (`email_type`) atom families. Meta also hosts the application-level annotation types (`ordered`, `bounded`, `numeric`, `deprecated`, `since`, `todo`, `lang`) — annotation types must live in the schema chain to be usable as annotations (§6), and meta is the canonical location.
+- **`2026/m/meta.tn1`** — the canonical meta-schema, chained to by `!!schema` in user schemas. Built on top of the kernel; it adds the type constructors that the core type library (`core.tn1`) instantiates: `binary` with `binary_encoding`, `extern`, `unknown_type`, plus the constraint vocabularies for numeric (`real_type`, `decimal_type`, `rational_type`), temporal (`date_type`, `time_type`, `datetime_type`, `duration_type`), identifier (`uuid_type`), and text (`email_type`) atom families. Meta also hosts the application-level annotation types (`ordered`, `bounded`, `numeric`, `deprecated`, `since`, `todo`, `lang`) — annotation types must live in the schema chain to be usable as annotations (§6), and meta is the canonical location.
 
 Implementations MUST pre-load both. See §11.5 for the full bootstrap rule.
 
@@ -1314,7 +1315,7 @@ Each atom family that carries a constraint vocabulary is defined as a pair: a co
 
 The kernel also defines `unit` — an atom constructor with no constraint vocabulary — and three opaque instances:
 
-- `value` — admits [TSON-DATA] §6 products (null, boolean, UNF number, string). The escape hatch for fields whose type the schema language cannot express (see `record_field.value` and the constraint fields in meta where the constrained atom is not in scope).
+- `value` — admits [TSON-DATA] §4 products (null, boolean, number, string). The escape hatch for fields whose type the schema language cannot express (see `record_field.value` and the constraint fields in meta where the constrained atom is not in scope).
 - `token` — admits NFC-normalised lexemes. Used for identifier types (`type_name`, `field_name`, `param_name`) and enum members.
 - `void` — the unit type of absence: admits the absent sentinel `_` (and the token `null` as an equivalent spelling, normalised to `_`; see §8). Used as the target type for bare annotations like `@annotation` and `@numeric` (see §6).
 
@@ -1377,7 +1378,7 @@ For supertype composition (`person &`), the `supertypes` field records the paren
 
 **Empty record form** (`!!type {}`) is a special case of the record form — a record with zero fields. The result is a PRODUCT-kind type with an empty field list (`body: !record { fields: [] }`). The canonical empty-PRODUCT type in the kernel is `top` itself; structural mixins with zero fields would also produce this shape if any were defined.
 
-**Unit atom instances** (`!!type !unit {}`) are TSON's idiom for opaque atoms — atoms whose values the schema language cannot further describe, distinguished from each other by name and by prose-level parsing contract (§15). The result is an ATOM-kind type with `source: unit` and `body: !unit {}`. Meta-kernel defines three: `value` (admits [TSON-DATA] §6 products), `token` (admits NFC-normalised lexemes), and `void` (the unit type of absence — admits `_`, also accepting `null` as an equivalent spelling; used as the target type for bare annotations like `@annotation` and `@numeric`). Core adds `complex` (host-defined complex-number representation). User schemas SHOULD NOT introduce additional unit instances without a documented parsing contract — the schema-level distinction is purely nominal, so adding one solely as a marker is reasonable, but inventing parsing semantics that conflict with the kernel's three is a recipe for confusion.
+**Unit atom instances** (`!!type !unit {}`) are TSON's idiom for opaque atoms — atoms whose values the schema language cannot further describe, distinguished from each other by name and by prose-level parsing contract (§15). The result is an ATOM-kind type with `source: unit` and `body: !unit {}`. Meta-kernel defines three: `value` (admits [TSON-DATA] §4 products), `token` (admits NFC-normalised lexemes), and `void` (the unit type of absence — admits `_`, also accepting `null` as an equivalent spelling; used as the target type for bare annotations like `@annotation` and `@numeric`). Core adds `complex` (host-defined complex-number representation). User schemas SHOULD NOT introduce additional unit instances without a documented parsing contract — the schema-level distinction is purely nominal, so adding one solely as a marker is reasonable, but inventing parsing semantics that conflict with the kernel's three is a recipe for confusion.
 
 **Synthetic types.** When a definition uses an inline type-expression form — container (`[T]`, `[T; n]`, `[T, U]`, `set<T>`, `map<K, V>`) or choice (`(A | B)`) — for a field whose runtime type is not otherwise named, the resolver synthesizes an entry in the schema's namespace.
 
@@ -1471,7 +1472,7 @@ The same flattening applies in data mode. `!bigint 42` resolves to an integer-ty
 
 ## 14. Schema Resolution Model
 
-Schema URLs in TSON are **logical identifiers**, not fetch instructions. A URL like `http://tson.io/1/m/core.tn1` names a schema — it does not require the implementation to make an HTTP request to that address. Implementations resolve schema URLs through a **schema library**: a local store mapping URLs to schema content.
+Schema URLs in TSON are **logical identifiers**, not fetch instructions. A URL like `https://tson.io/2026/m/core.tn1` names a schema — it does not require the implementation to make an HTTP request to that address. Implementations resolve schema URLs through a **schema library**: a local store mapping URLs to schema content.
 
 ### 14.1 The Schema Library
 
@@ -1479,7 +1480,7 @@ Every TSON implementation maintains a schema library. The library is a map from 
 
 The library is populated through three mechanisms, in order of precedence:
 
-**Pre-loaded schemas.** The implementation ships with the meta-kernel (`tson.io/1/m/meta-kernel.tn1`) and the meta-schema (`tson.io/1/m/meta.tn1`) as pre-loaded entries, and SHOULD ship with the core type library (`tson.io/1/m/core.tn1`) as a pre-loaded entry as well. These schemas exist as in-memory structures before any document is parsed. Pre-loaded schemas are authoritative — their in-memory representation takes precedence over any external source (see §11.5).
+**Pre-loaded schemas.** The implementation ships with the meta-kernel (`tson.io/2026/m/meta-kernel.tn1`) and the meta-schema (`tson.io/2026/m/meta.tn1`) as pre-loaded entries, and SHOULD ship with the core type library (`tson.io/2026/m/core.tn1`) as a pre-loaded entry as well. These schemas exist as in-memory structures before any document is parsed. Pre-loaded schemas are authoritative — their in-memory representation takes precedence over any external source (see §11.5).
 
 **Registered schemas.** Applications register schemas in the library before parsing documents that reference them. Registration associates a URL with schema content and MAY occur from local files, embedded resources, or any application-specific source.
 
@@ -1491,7 +1492,7 @@ Schema URLs MAY include a content hash as a query parameter to provide integrity
 
 Hash values are encoded as lowercase hexadecimal. Schemas referenced with a content hash query parameter (`?sha256=...` or any future hash algorithm) MUST be stored and transmitted as UTF-8. A schema in UTF-16 or UTF-32 referenced with a content hash is a resolver error — the hash cannot be verified against a non-UTF-8 byte sequence without re-encoding, and re-encoding defeats the integrity guarantee.
 
-Schemas without a content hash MAY use any of the encodings permitted by [TSON-DATA] §2. The encoding choice in that case affects only storage and transmission; without a hash, no cross-encoding verification is performed.
+Schemas without a content hash MAY use any of the encodings permitted by [TSON-DATA] §7.1. The encoding choice in that case affects only storage and transmission; without a hash, no cross-encoding verification is performed.
 
 The hash is computed on the schema document's raw UTF-8 bytes as stored or transmitted, with one exclusion: if the document's first line is a `!!id` directive, that line (including its terminating newline) MUST be excluded from the hash input. This allows a schema to carry a content hash within its own `!!id` without a circular dependency. No other normalization, whitespace stripping, or transformation is performed — schemas are immutable, so the byte content is stable. The full hash MUST be provided; truncation MUST NOT be used — a truncated hash is a resolver error.
 
@@ -1511,7 +1512,7 @@ A schema declaring its own hash in `!!id` (first line excluded from hash input):
 
 ```
 !!id:"http://example.com/people.tn1?sha256=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
-!!schema:"http://tson.io/1/m/meta-a1.tn1"
+!!schema:"https://tson.io/2026/m/meta.tn1"
 !schema {
   ...
 }
@@ -1519,7 +1520,7 @@ A schema declaring its own hash in `!!id` (first line excluded from hash input):
 
 ### 14.3 URL Identity
 
-Two schema references are considered identical if and only if their URL strings are byte-for-byte identical after removing any query parameters used for content hashing. This means `http://tson.io/1/m/core.tn1` and `http://tson.io/1/m/core.tn1?sha256=9f86d0...` reference the same schema (with the latter additionally requiring hash verification). URL normalization (case folding, path resolution, percent-encoding) MUST NOT be performed — URLs MUST be compared as literal strings.
+Two schema references are considered identical if and only if their URL strings are byte-for-byte identical after removing any query parameters used for content hashing. This means `https://tson.io/2026/m/core.tn1` and `https://tson.io/2026/m/core.tn1?sha256=9f86d0...` reference the same schema (with the latter additionally requiring hash verification). URL normalization (case folding, path resolution, percent-encoding) MUST NOT be performed — URLs MUST be compared as literal strings.
 
 
 ## 15. Atom Token Parsing
@@ -1531,7 +1532,7 @@ Parsing and validation are distinct operations:
 - **Parsing** — Token (lexeme) to host value. The atom defines what tokens are accepted and what the resolved host value looks like. For example, `integer` accepts tokens that match the integer grammar and produces a host integer; `date` accepts tokens that match RFC 3339 full-date and produces a host date; `string` accepts any quoted or unquoted token and produces a host string.
 - **Validation** — Host value against the constraint record. For example, `uint8` (narrowing `integer` with `{min: 0 max: 255}`) parses the token as an integer first, then validates the parsed value against the range.
 
-A parse failure is distinct from a validation failure. The token `twelve` against a field of type `integer` is a parse error — the integer atom's parser cannot interpret `twelve` as an integer. The token `300` against a field of type `uint8` parses successfully as an integer, then fails validation against `max: 255`. Implementations SHOULD distinguish these in error reporting ([TSON-DATA] §9.6).
+A parse failure is distinct from a validation failure. The token `twelve` against a field of type `integer` is a parse error — the integer atom's parser cannot interpret `twelve` as an integer. The token `300` against a field of type `uint8` parses successfully as an integer, then fails validation against `max: 255`. Implementations SHOULD distinguish these in error reporting ([TSON-DATA] §8.1).
 
 **Enum member semantics.** The `enum` atom's `members` field is a `set<token>` — it enumerates the lexical tokens permitted at an enum-typed position. Parsing an enum-typed position is a token-identity check: the source token (canonicalised per `token`'s parsing contract, below) must match one of the member tokens. The resolved host value is determined by natural parsing of that token:
 
@@ -1540,23 +1541,23 @@ A parse failure is distinct from a validation failure. The token `twelve` agains
 
 The `members: set<token>` declaration describes the *permitted token lexemes*, not the resolved representation. Two distinct concerns — what tokens are accepted, what the runtime value looks like — share a single declaration because token identity is the canonical identifier for the member.
 
-**The `token` primitive.** The kernel defines `token` as an instance of `unit` (alongside `value`). A `token` value is the canonical NFC-normalised form of a source lexeme — for unquoted lexemes the lexer normalises ([TSON-DATA] §3.3), and for quoted lexemes appearing in identifier positions the resolver normalises ([TSON-DATA] §3.1.1). Two tokens are equal iff their canonical forms are byte-identical. Tokens are whitespace-free by construction — the lexer terminates tokens on whitespace — and this is a structural invariant, not a constraint. The `token` type carries no constraint vocabulary; its admissibility rules are fixed by the grammar.
+**The `token` primitive.** The kernel defines `token` as an instance of `unit` (alongside `value`). A `token` value is the canonical NFC-normalised form of a source lexeme — for unquoted lexemes the lexer normalises ([TSON-DATA] §7.2.1), and for quoted lexemes appearing in identifier positions the resolver normalises ([TSON-DATA] §7.2.1). Two tokens are equal iff their canonical forms are byte-identical. Tokens are whitespace-free by construction — the lexer terminates tokens on whitespace — and this is a structural invariant, not a constraint. The `token` type carries no constraint vocabulary; its admissibility rules are fixed by the grammar.
 
 `token` shares its host representation with `string` — both are sequences of Unicode code points — but differs in its parsing contract: a `token` value rejects whitespace and applies NFC, while a `string` value can contain any character permitted by the string literal grammar. Use `token` as a value type when the value must be a valid TSON identifier (map keys in `map<token, ...>` authored as bare unquoted lexemes, enum members, identifier-like fields). Use `string` for free-form textual content. The conflation between `token` as a lexical category (an identifier in the source) and `token` as a value type (a string with the identifier contract) is intentional: a `token` value can always be rendered back as an unquoted lexeme, and an unquoted lexeme can always be promoted to a `token` value without escaping.
 
 `token` is not used in data values and is not redefined in core or user schemas. It appears in the kernel's own declarations: `enum.members: set<token>`, and the identifier types `type_name`, `field_name`, and `param_name` (all defined as `!!type token`). These are the positions where the schema language describes lexical identifiers from the source, as distinct from arbitrary Unicode text (which uses `string`).
 
-**UNF reuse.** Atoms that parse numeric values (`integer`, `real`, `decimal`, `rational`, their narrowings in core, and user-defined numeric narrowings) SHOULD use UNF (Unicode Number Format) grammar and parsers for the relevant numeric form. This is functional reuse, not a normative dependency: each numeric atom defines its own parsing contract, and UNF is the canonical source for the grammar and parsing logic. An implementation may share a single UNF parser across all numeric atoms and dispatch based on the atom's declared form — this is the expected pattern.
+**Number-grammar reuse.** Atoms that parse numeric values (`integer`, `real`, `decimal`, `rational`, their narrowings in core, and user-defined numeric narrowings) SHOULD use the number grammar of [TSON-DATA] §7.6 for the relevant numeric form. This is functional reuse, not a normative dependency: each numeric atom defines its own parsing contract, and [TSON-DATA] §7.6 is the canonical source for the grammar and parsing logic. An implementation may share a single number parser across all numeric atoms and dispatch based on the atom's declared form — this is the expected pattern, and it matches how [TSON-DATA] §5.6 defines the built-in numeric atoms against the same productions.
 
 **Constraint fields typed as `value`.** Some atom constructors declare constraint fields with type `value` because the constrained atom cannot be referenced at the point of declaration — for example, `real_type.min: value?` cannot use `real` as its type because `real` is an instance of `real_type` (bootstrap ordering, §11.5). The `value` escape hatch defers the type decision to the atom implementation.
 
-Tokens at these positions are parsed by [TSON-DATA] §6 base type resolution. Whatever [TSON-DATA] §6 produces — an integer, a float, a string — is what the resolver stores in the constraint-record field.
+Tokens at these positions are parsed by [TSON-DATA] §4 base type resolution. Whatever [TSON-DATA] §4 produces — an integer, a float, a string — is what the resolver stores in the constraint-record field.
 
 Each constrained atom's implementation is responsible for converting `value`-typed constraint values to whatever internal representation it uses for validation. Conversion MUST occur at schema-load time (eager), not per-validation (lazy). Atoms that cannot convert a given constraint value — because the value is of a non-convertible type, out of the atom's internal range, or otherwise incompatible — MUST report an error at schema-load time. This ensures a schema either loads cleanly or fails with a clear diagnostic; a half-valid schema that silently mis-validates data is never produced.
 
 Two concrete consequences: (1) a decimal atom using an arbitrary-precision internal representation may accept integer, float, and string constraint values and normalise them, while a 32-bit-float atom may accept only values representable in IEEE 754 single precision and reject out-of-range constraints at load time. (2) Two implementations of the same atom may differ in which constraint-value types they accept, as long as they both validate successfully-loaded schemas identically. The permissiveness of conversion is an implementation choice; the validation semantics after conversion are the atom's contract.
 
-**Base type resolution as a schemaless default.** Section 8 defines a dispatch order (null, boolean, UNF number, string) that applies when no schema is in scope. This dispatch is itself an implicit atom parser — one that chooses across the atom family by first-character and pattern. When a schema is in scope, the field's declared atom's parser takes over; the dispatch does not apply.
+**Base type resolution as a schemaless default.** [TSON-DATA] §4 defines a resolution order (null, boolean, number, string) that applies when no schema is in scope. This dispatch is itself an implicit atom parser — one that chooses across the atom family by first-character and pattern. When a schema is in scope, the field's declared atom's parser takes over; the dispatch does not apply.
 
 
 ## 16. Security Considerations
@@ -1565,7 +1566,7 @@ The security considerations of [TSON-DATA] §9 apply. This section adds the sche
 
 ### 16.1 Schema Validation
 
-TSON documents without a `!!schema` directive carry no type guarantees — only base type resolution ([TSON-DATA] §6) applies. Applications processing untrusted TSON input SHOULD validate against a schema before use.
+TSON documents without a `!!schema` directive carry no type guarantees — only base type resolution ([TSON-DATA] §4) applies. Applications processing untrusted TSON input SHOULD validate against a schema before use.
 
 
 ### 16.2 External References
@@ -1590,7 +1591,7 @@ Directives (`!!`) are a control channel that affects interpretation. Unknown con
 
 ## 17. ABNF: The Type Definition Grammar
 
-This section extends the [TSON-DATA] §10 grammar with the type-definition grammar activated by the `!!type` directive. The lexer is unchanged ([TSON-DATA] §10.1); the productions below consume the same token stream.
+This section extends the [TSON-DATA] §7 grammar with the type-definition grammar activated by the `!!type` directive. The lexer is unchanged ([TSON-DATA] §7.3); the productions below consume the same token stream.
 
 ### 17.1 The Type Definition Grammar
 
@@ -1703,7 +1704,7 @@ Each case in the type-def block is decided by one-token lookahead at the start o
 
 ### 17.3 Adjacency Rules
 
-The following rows extend the adjacency table of [TSON-DATA] §10.3 for the operators of the type-definition grammar. As there, the rules are enforced by the parser via source-position comparison, not by the ABNF productions.
+The following rows extend the adjacency table of [TSON-DATA] §7.5 for the operators of the type-definition grammar. As there, the rules are enforced by the parser via source-position comparison, not by the ABNF productions.
 
 | Operator | Type | Context | Rule |
 |---|---|---|---|
@@ -1719,7 +1720,7 @@ The following rows extend the adjacency table of [TSON-DATA] §10.3 for the oper
 
 ### 17.4 Directive Constraints
 
-The grammar in [TSON-DATA] §10.2 permits `*directive` on any value. The following per-directive constraints are enforced by the parser. Constraints apply per value — directives on nested values are independent, so a nested record may carry its own `!!schema` regardless of what the enclosing value declares.
+The grammar in [TSON-DATA] §7.4 permits `*directive` on any value. The following per-directive constraints are enforced by the parser. Constraints apply per value — directives on nested values are independent, so a nested record may carry its own `!!schema` regardless of what the enclosing value declares.
 
 Every spec-defined directive has a typed input (the data-value or grammar that follows the directive name) and, for value-producing directives, a typed output (the value the directive produces in place of its position). The resolver validates inputs against the declared type and rejects mismatches as parse errors; outputs are typed so that surrounding grammar positions (e.g. a schema map entry requiring `type_definition` values) can accept the directive's result directly.
 
@@ -1733,7 +1734,7 @@ Every spec-defined directive has a typed input (the data-value or grammar that f
 
 **Repeats** — whether the directive may appear more than once on the same value. Violations are parse errors.
 
-**Exclusive** — whether the directive MUST be the only directive on its value. `!!type` is exclusive both at the directive level (no other directives on the same value) and at the grammar level (configuration directives MUST NOT precede a value-producing directive — see §9 and the grammar split in [TSON-DATA] §4.2; this is enforced by the grammar, not by a separate post-parse check). `!!include` is exclusive because it replaces the value with external content, making sibling directives meaningless; it MUST appear in a `data-value` position, never inside a `!!type` body (the type-def grammar is not a data-value position). Non-exclusive directives (`!!schema`, `!!id`, `!!import`) may freely coexist with each other. Violations are parse errors.
+**Exclusive** — whether the directive MUST be the only directive on its value. `!!type` is exclusive both at the directive level (no other directives on the same value) and at the grammar level (configuration directives MUST NOT precede a value-producing directive — see §9 and the grammar split in [TSON-DATA] §2.3; this is enforced by the grammar, not by a separate post-parse check). `!!include` is exclusive because it replaces the value with external content, making sibling directives meaningless; it MUST appear in a `data-value` position, never inside a `!!type` body (the type-def grammar is not a data-value position). Non-exclusive directives (`!!schema`, `!!id`, `!!import`) may freely coexist with each other. Violations are parse errors.
 
 **Input** — the value or grammar the directive accepts. URL-string inputs MUST be quoted tokens resolving to valid URIs; non-string inputs to these directives are parse errors. The `!!type` input is the type-def grammar (§9.2), not a data-value.
 
@@ -1758,12 +1759,10 @@ Unknown directive handling depends on form: unknown configuration directives (`!
 | RFC 9562 | Universally Unique IDentifiers (UUIDs) | https://www.rfc-editor.org/rfc/rfc9562 |
 | ISO 8601-1:2019 | Date and time — Representations for information interchange | https://www.iso.org/standard/70907.html |
 | IEEE 754-2019 | Standard for Floating-Point Arithmetic | https://ieeexplore.ieee.org/document/8766229 |
-| UNF | Unicode Number Format | https://tson.io/1/unf.md?sha256=&lt;pinned at publication&gt; |
-| TSON-DATA | TSON Part 1: Data Format | &lt;pinned at publication&gt; |
-| TSON-TYPES | TSON Part 2: Type Vocabulary | &lt;pinned at publication&gt; |
-| meta-kernel.tn1 | TSON Meta-Kernel (companion artifact) | http://tson.io/1/m/meta-kernel.tn1?sha256=&lt;pinned at publication&gt; |
-| meta.tn1 | TSON Meta-Schema (companion artifact) | http://tson.io/1/m/meta.tn1?sha256=&lt;pinned at publication&gt; |
-| core.tn1 | TSON Core Type Library (companion artifact) | http://tson.io/1/m/core.tn1?sha256=&lt;pinned at publication&gt; |
+| TSON-DATA | TSON Part 1: Data Format | https://tson.io/raw/2026/tson-part1-data-format.md (pinned at publication) |
+| meta-kernel.tn1 | TSON Meta-Kernel (companion artifact) | https://tson.io/2026/m/meta-kernel.tn1?sha256=&lt;pinned at publication&gt; |
+| meta.tn1 | TSON Meta-Schema (companion artifact) | https://tson.io/2026/m/meta.tn1?sha256=&lt;pinned at publication&gt; |
+| core.tn1 | TSON Core Type Library (companion artifact) | https://tson.io/2026/m/core.tn1?sha256=&lt;pinned at publication&gt; |
 
 ### 18.2 Informative References
 
