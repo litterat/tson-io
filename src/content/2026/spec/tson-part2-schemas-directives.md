@@ -46,7 +46,7 @@ In addition to the principles of [TSON-DATA] §1.2, the schema layer is governed
 
 ### 1.3 Conformance
 
-A **conforming TSON schema processor** conforms to [TSON-DATA] and additionally implements the type-definition grammar (§3–§8, §17), the five registered directive operations (§9), schema resolution (§11, §14), the resolver output contract (§13), atom token parsing (§15), and validation. Such a processor:
+A **conforming TSON schema processor** conforms to [TSON-DATA] and additionally implements the type-definition grammar (§3–§8, §17), the directive operations (§9), schema resolution (§11, §14), the resolver output contract (§13), atom token parsing (§15), and validation. Such a processor:
 
 - MUST pre-load the meta-kernel and meta-schema (§11.5, §14.1) and SHOULD pre-load the core type library;
 - MUST resolve type annotations through the active schema when one is in scope, and MUST NOT apply the [TSON-DATA] §5 built-in vocabulary in schema scope (§2.1);
@@ -77,7 +77,7 @@ The normative artifacts are pinned by content hash at publication. Per §11.5, i
 
 ## 2. Data Values Under a Schema
 
-[TSON-DATA] defines the syntax of data values and their schemaless interpretation. This section defines how an active schema changes that interpretation: type-annotation resolution (§2.1), atom parsing in place of base type resolution (§2.2), set semantics over array syntax (§2.3), extensions to the absent sentinel rules (§2.4), and resolver behaviours at typed positions (§2.5). A schema becomes active through the `!!schema` directive (§9.1).
+[TSON-DATA] defines the syntax of data values and their schemaless interpretation. This section defines how an active schema changes that interpretation: type-annotation resolution (§2.1), atom parsing in place of base type resolution (§2.2), set semantics over array syntax (§2.3), extensions to the absent sentinel rules (§2.4), and resolver behaviours at typed positions (§2.5). A schema becomes active through the `!!schema` directive (§9.2).
 
 
 ### 2.1 Type Annotation Resolution
@@ -141,7 +141,6 @@ This document extends the position rules of [TSON-DATA] §2.9 as follows:
 |-------------------------------------------|----------------|--------------------------------------------------------------------------------------------------|
 | Array element (schema in scope)           | conditional    | Permitted only when the array type's element state is OPTIONAL, written `[T?]` (§3.2)            |
 | Tuple element                             | yes            | Element position explicitly absent (occupies a slot); the position's state must be OPTIONAL (§3.2) |
-| `!!include` directive value               | required       | The included content replaces `_` (`!!include:"..." _`, §9.1)                                    |
 | Field-type position (type-definition grammar) | no         | Parse error — use type parameters for "type to be filled later" (§5)                             |
 | Type-ref position (type-definition grammar) | no           | Parse error                                                                                      |
 | Type-def body (declaration right-hand side) | no             | Parse error — use `{}` for an empty record                                                       |
@@ -666,7 +665,7 @@ Annotation placement in data values follows [TSON-DATA] §3.1; the resolver pres
 
 In module declarations, an annotation immediately preceding the declared name binds to the name. The convention `@doc:"..." name => {...}` annotates `name` (the `type_name` token at the declaration's name position), not the `type_definition` value. The resolver does not hoist annotations from the key to the value; if metadata about the type definition is intended, the annotation must follow `=>` on the value side: `name => @doc:"..." {...}`.
 
-**Annotations are types.** An annotation `@T` (or `@T:value`) names a type `T` and attaches it as metadata to the surrounding value. Annotation resolution is type-name resolution against the `!!schema` directive's chain only: `T` is looked up in the namespace populated by the schema chain (the active schema, its `!!schema` parent, and so on transitively up to a pre-loaded root). `!!import` entries and local entries of the schema currently being authored are NOT part of the annotation namespace. To use a type as an annotation in a document or schema, that type must be reachable through the `!!schema` chain — typically meaning the type lives in `meta.tn1` (which the meta-kernel chains through) or another schema chained as an ancestor of the active schema. The result is then validated against `T`'s contract:
+**Annotations are types.** An annotation `@T` (or `@T:value`) names a type `T` and attaches it as metadata to the surrounding value. Annotation resolution is type-name resolution against the schema chain only: `T` is looked up in the namespace populated by the chain (the active schema, its meta module, and so on transitively up to a pre-loaded root). `!!import` entries and local entries of the schema currently being authored are NOT part of the annotation namespace. To use a type as an annotation in a document or schema, that type must be reachable through the schema chain — typically meaning the type lives in `meta.tn1` (which chains to the meta-kernel) or another schema chained as an ancestor of the active schema. The result is then validated against `T`'s contract:
 
 - For `void`-targeted `T` (a type whose resolved body, after reference flattening, is `void` — such as `annotation` or `numeric`), the annotation form is `@T` with no colon and no value. Bare `@T` is shorthand for `@T:_`; the resolver fills the implicit `_` before validating against `T`'s parsing contract. The `void` atom (defined in meta-kernel and re-exported by core, see §12) admits the absent sentinel `_` (see §8) — presence is the information.
 - For any non-`void` `T`, the annotation form is `@T:value`, where `value` is a single data-value that conforms to `T`. `@doc:"User's full name"` validates the string against `doc`. `@confidence:0.95` validates the float against `confidence`. `@person:{first_name: john last_name: smith}` validates the record against `person`.
@@ -806,35 +805,26 @@ Two kinds of atoms, one representation: every atom in the type system — constr
 
 ## 9. Directives
 
-[TSON-DATA] §3.3 defines the directive names, their placements, and their cardinality. This document defines the directive operations:
+[TSON-DATA] §3.3 defines the directive set: four names — `id`, `schema`, `meta`, `import` — each legal only at fixed positions, with order and cardinality enforced by the grammar ([TSON-DATA] §7.4; §17.1). The set is closed: any other directive name, or a legal name outside its position, is a parse error. There is no directive registry, no name localisation, and no unknown-directive category. Earlier drafts defined a fifth operation, external inclusion (`!!include`); it is deleted from the series — inclusion is a reference (`!uri`) plus an application-level dereference policy, and nothing in TSON performs parse-time I/O ([TSON-DATA] §3.3, §9.3).
 
-| Operation | Canonical name | Form | Defined in |
-|-----------|----------------|------|------------|
-| Schema identification | `schema` | configuration | §9.1 |
-| Schema identity declaration | `id` | configuration | §9.1 |
-| Type-library import | `import` | configuration | §9.1 |
-| External inclusion | `include` | configuration | §9.1 |
+Type definitions are not a directive: each module declaration (`name => type-def`, §11.7) activates the type-definition grammar (§17.1) directly.
 
-Implementations MUST NOT introduce operations beyond those of [TSON-DATA] §3.3. Type definitions are not a directive: each module declaration (`name => type-def`, §11.7) activates the type-definition grammar (§17.1) directly. Per-directive multiplicity and coexistence constraints are given in §17.4.
+This document defines the directive *operations* — what each directive means to the resolver. Every directive value is a URL string; URLs are logical identifiers resolved through the schema library (§14), never fetch instructions.
 
-### 9.1 Document Directives
+| Operation | Directive | Placement ([TSON-DATA] §3.3) | Defined in |
+|-----------|-----------|------------------------------|------------|
+| Identity declaration | `!!id` | first header line; optional on data documents, mandatory on modules | §9.1 |
+| Schema binding | `!!schema` | data-document header; record field values; map entry values | §9.2 |
+| Meta binding | `!!meta` | module header, immediately after `!!id`; exactly once | §9.3 |
+| Type-library import | `!!import` | module header, after `!!meta`; repeatable | §9.4 |
 
-**`!!schema`** — Identifies the schema whose types are available for `!name` references in the value that follows. The directive value is a URL string identifying a published schema.
+### 9.1 The `!!id` Directive
 
-```
-!!schema:"http://example.com/people.tn1?sha256=c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
-!person { name: Alice age: 30 }
-```
+`!!id` declares the authoritative identity (URL) of a document — the URL other documents use to reference it. It connects the file's content to its logical name in the schema library (§14), and it anchors content addressing: the hash input for a document's content hash is every byte after the id line ([TSON-DATA] §2.2.1; §14.2).
 
-When a `!!schema` directive appears on a value, the referenced schema becomes the active scope for all `!name` type annotations within that value and its descendants. When the value ends, the scope reverts to the enclosing scope. Nested `!!schema` directives override the enclosing scope for their value.
+`!!id` is mandatory on schema modules, where it must be the first line: a module's identity is its published, hash-pinned URL, and kind dispatch requires the id line to precede `!!meta` ([TSON-DATA] §2.2). On data documents `!!id` is optional; a data document declares an identity when it participates in content addressing — a fixture, a golden file, a document referenced by hash from elsewhere.
 
-A document-level `!!schema` directive establishes the scope for the entire document. When used on a schema document (one containing type definitions), it identifies the meta-schema that governs the definitions. When used on a data document, it identifies the schema for type resolution.
-
-A document with no `!!schema` directive has no type vocabulary. Base type resolution ([TSON-DATA] §4) applies — unquoted tokens are resolved as null, boolean, integer, float, or string. Type annotations in such a document are limited to the built-in annotations defined in [TSON-DATA] §5 (e.g. `!uuid`, `!base64`, `!datetime`); any other type annotation is unresolved — the parser preserves it as a syntactic marker, but the resolver cannot validate it. Applications processing documents without `!!schema` SHOULD treat unresolved type annotations as informational.
-
-**`!!id`** — Declares the authoritative identity (URL) of a schema document. The `!!id` value is the URL that other documents use in their `!!schema` directives to reference this schema. It connects the file's content to its logical name in the schema library (§14).
-
-`!!id` is RECOMMENDED on all published schemas. When schemas are committed to version control alongside application code — a common and supported deployment pattern — the `!!id` directive is what connects the file on disk to the URL that data documents reference. Without `!!id`, the mapping from filename to schema URL is implicit and fragile; with it, any tool or implementation can register the schema under the correct URL by reading the file's own declaration.
+When schemas are committed to version control alongside application code — a common and supported deployment pattern — the `!!id` directive is what connects the file on disk to the URL that data documents reference. Without `!!id`, the mapping from filename to schema URL is implicit and fragile; with it, any tool or implementation can register the schema under the correct URL by reading the file's own declaration.
 
 ```
 !!id:"http://example.com/people.tn1"
@@ -846,11 +836,43 @@ person => { name: string  age: integer }
 
 An application loading schemas from local files registers each one in the schema library under the URL declared by its `!!id`. The schema's URL does not need to be fetchable — it is a globally unique identifier, not a network address.
 
-**`!!import`** — Imports type entries from an external schema module into the importing module. The directive value is a URL string identifying a published schema module.
+### 9.2 The `!!schema` Directive
 
-`!!import` appears only in the module header, after `!!meta` and before the first declaration ([TSON-DATA] §3.3). The directive loads the referenced module and makes its locally-defined entries available as if they were declared in the local module. Imported entries are available to all local entries (including for recursive references), and local entries may narrow or compose with imported types.
+`!!schema` identifies the schema whose types are available for `!name` references in the value it governs. The directive value is a URL string identifying a published schema.
 
-**Imports are shallow.** Only the entries defined in the imported schema's own map are imported — entries that the imported schema itself brought in via its own `!!import` directives are not transitively included. Each schema MUST explicitly import all the dependencies it needs.
+```
+!!schema:"http://example.com/people.tn1?sha256=c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
+!person { name: Alice age: 30 }
+```
+
+On a data document's header, `!!schema` binds the schema for the entire document. On a scoped value — a record field value or map entry value ([TSON-DATA] §2.3) — it binds the schema for that value alone: the referenced schema becomes the active scope for all `!name` type annotations within that value and its descendants, and when the value ends, the scope reverts to the enclosing scope. Nested scoped values override the enclosing scope for their value. Directives are not permitted before array elements ([TSON-DATA] §3.3); §11.6 discusses the consequences for heterogeneous collections.
+
+A scoped `!!schema` at a position whose type is constrained by the outer schema is a resolver error unless the outer type is permissive (`extern`, `value`, `unknown`, or a container thereof) — the outer schema must opt in to receiving foreign values at each such position. See §11.6 for the full rule.
+
+Schema modules do not carry `!!schema`: a module's governing contract is declared by `!!meta` (§9.3). The two directives bind the same relation — *validate me against X* — one rung apart on the schema ladder (§11.1).
+
+A document with no `!!schema` directive has no type vocabulary. Base type resolution ([TSON-DATA] §4) applies — unquoted tokens are resolved as null, boolean, integer, float, or string. Type annotations in such a document are limited to the built-in annotations defined in [TSON-DATA] §5 (e.g. `!uuid`, `!base64`, `!datetime`); any other type annotation is unresolved — the parser preserves it as a syntactic marker, but the resolver cannot validate it. Applications processing documents without `!!schema` SHOULD treat unresolved type annotations as informational.
+
+### 9.3 The `!!meta` Directive
+
+`!!meta` names a schema module's governing **meta module**: the contract the module's declarations are validated against. It appears exactly once, immediately after `!!id` ([TSON-DATA] §2.2, §3.3). Its position carries the document-kind dispatch bit — a header whose directive after `!!id` is `!!meta` is a schema module — so classification requires no value parsing.
+
+The `!!meta` target supplies two things to the module:
+
+- **The validation contract.** Each declaration resolves to a `type_definition` value (§13); the meta module's vocabulary — `type_definition`, `record`, `record_field`, the constructor families — defines what those values may be. A module is valid only if its resolved form conforms to its meta module.
+- **The structure namespace.** The `!!meta` chain provides the structural vocabulary the resolver uses to materialise type-definition output; its contribution to name resolution is defined in §11.3.
+
+The `!!meta` chain terminates at the meta-kernel, whose `!!meta` references its own URL. The self-reference is never resolved: the kernel and meta modules are pre-loaded (§11.5, §14.1), and the chain is closed by pre-loading, not resolution.
+
+User schemas normally chain to `meta.tn1`. Chaining to `meta-kernel.tn1` directly is a meta-programming case — an alternative type vocabulary replacing meta, or an extension of the meta layer itself (§12). The meta layer is the format's sanctioned extension point: new type vocabularies arrive as alternative or extended meta modules chaining to the kernel, never as grammar changes.
+
+### 9.4 The `!!import` Directive
+
+`!!import` imports type entries from an external schema module into the importing module. The directive value is a URL string identifying a published schema module.
+
+`!!import` appears only in the module header, after `!!meta` and before the first declaration ([TSON-DATA] §3.3). The directive loads the referenced module and makes its locally-declared entries available as if they were declared in the local module. Imported entries are available to all local declarations (including for recursive references), and local declarations may narrow or compose with imported types.
+
+**Imports are shallow.** Only the entries declared in the imported module's own body are imported — entries that the imported module itself brought in via its own `!!import` directives are not transitively included. Each module MUST explicitly import all the dependencies it needs.
 
 ```
 !!id:"http://example.com/patients.tn1"
@@ -861,40 +883,13 @@ An application loading schemas from local files registers each one in the schema
 patient => { name: string  dob: date  blood_type: blood_type }
 ```
 
-Here `string` and `date` come from the core library, `blood_type` from the domain library, and `patient` is a local definition. If `medical-types.tn1` itself imports `core.tn1`, those transitive entries are not included — only `blood_type` and any other entries defined directly in `medical-types.tn1` are available.
+Here `string` and `date` come from the core library, `blood_type` from the domain library, and `patient` is a local definition. If `medical-types.tn1` itself imports `core.tn1`, those transitive entries are not included — only `blood_type` and any other entries declared directly in `medical-types.tn1` are available.
 
-Multiple `!!import` directives are permitted and are loaded in declaration order. Each import adds its locally-defined entries to the accumulated type-name namespace (§11.3). If two imports define the same key, or if an import defines a key that also appears as a local entry in the following schema, the collision is a resolver error and the entire schema fails to load. Imports populate only the type-name namespace, so an import name that happens to match a name reachable through the `!!schema` chain is not a collision — the two live in separate namespaces.
+Multiple `!!import` directives are permitted and are loaded in declaration order. Each import adds its locally-declared entries to the accumulated type-name namespace (§11.3). If two imports declare the same name, or if an import declares a name that also appears as a local declaration in the importing module, the collision is a resolver error and the entire module fails to load. Imports populate only the type-name namespace, so an import name that happens to match a name reachable through the `!!meta` chain is not a collision — the two live in separate namespaces.
 
-Import cycles are permitted. Because imports are shallow, a cycle between two schemas does not blow up — each schema's own entries are a finite set, and only those entries cross the import. Two schemas that import each other and use any third-party type must each import that type independently.
+Import cycles are permitted. Because imports are shallow, a cycle between two modules does not blow up — each module's own entries are a finite set, and only those entries cross the import. Two modules that import each other and use any third-party type must each import that type independently.
 
 The imported schema MUST itself be a valid schema module. The imported module's own header directives are resolved independently to produce its type definitions, but only the entries declared in its own body are available for import.
-
-**`!!include`** — Replaces the value position with the contents of an external TSON file. The directive value is a URL string identifying a TSON document.
-
-`!!include` MUST be the only directive on the value, and the value that follows MUST be the absent sentinel `_`. The resolver loads the referenced TSON document and replaces the `_` with the document's core value. No translation or type resolution occurs — the included value is inserted as-is, preserving its original structure and any augmentation it carries.
-
-```
-{
-  defaults: !!include:"http://example.com/defaults.tn1" _
-  users: !!include:"http://example.com/users.tn1" _
-}
-```
-
-The `_` is required to make the inclusion point syntactically explicit. A `!!include` directive without a following `_`, or combined with other directives on the same value, is a parse error. The included document is a complete TSON document — its value may be any TSON value (record, array, scalar, etc.).
-
-**Schema scope does not propagate across inclusion boundaries.** The included value retains whatever schema context its source document declares. If the source document carries its own `!!schema` directive, type annotations within the included value resolve against that schema. If the source document has no `!!schema` directive, base type resolution ([TSON-DATA] §4) applies to the included value — type annotations are syntactically preserved but cannot be resolved, since base type resolution recognises only null, boolean, number, and string. The including document's schema is never consulted for content within the inclusion.
-
-**Inclusion is value substitution.** `!!include` parses and resolves the referenced document as a complete, independent unit. The document's resolved value replaces the `_` at the include site. Nothing other than the resolved value crosses the boundary:
-
-- **Schema scope** (per the rule above): the included document's schema scope governs interpretation of its own content; the including document's `!!schema` is not consulted for included content. Symmetrically, the included document's `!!schema` does not affect the including document.
-- **The included document's `!!id`.** Ignored at the inclusion point. `!!id` declares schema identity; the including document treats the inclusion as a value, not as a schema reference.
-- **Other directives in the included document.** Resolved during the included document's own resolution. They do not appear in the including document's output — the only thing that crosses is the resolved value.
-
-**Placement.** `!!include` produces a data value. It is valid wherever a data value is valid: as the value of a record field or map entry, as an array element, as the document's top-level value. It MUST NOT appear in the type-definition grammar (type-def is not a data-value position) — an `!!include` inside a type-def body is a parse error. Top-level use is structurally permitted but rarely useful: a document consisting solely of `!!include:"..." _` is just a redirect to the included file.
-
-**Typed-position restriction.** An `!!include` directive at a position whose type is constrained by the outer schema is a resolver error unless the outer type is one of the permissive types: `extern`, `value`, `unknown`, or a container thereof (e.g. `[extern]`, `map<string, value>`). The outer schema must opt in to receiving external content at each position where inclusion is permitted. This prevents the silent substitution of foreign-shaped values into specifically-typed slots. Applications wanting external content at a specific-typed field must restructure the outer schema to use a permissive type at that position. Schemaless outer documents have no type expectations and always permit `!!include`. Once the inclusion is permitted and the external document resolves, the substituted value is a host-language value at the outer position; host-language assignment rules handle any further compatibility concerns, but the TSON-level permissive-type check is the gatekeeper.
-
-**Directive conflict rules.** Per-directive multiplicity and coexistence constraints are enforced by the parser. See §17.4 for the complete table.
 
 
 ## 10. The Spectrum of Completeness
@@ -974,29 +969,30 @@ All parameters in the definition MUST be bound before instantiation. A type_defi
 
 A TSON document never resolves type annotations against its own definitions. This is the fundamental rule of schema-value separation: every type annotation (`!name`) in a document resolves against an external schema — the schema identified by the document's `!!schema` directive. The document may define new types (as declarations in a schema module), but those definitions cannot be used via `!` references within the same document. They exist only for consumers of the published schema.
 
-Inside a schema module, type names used in type-ref positions within the type-definition grammar resolve against the type-name namespace: local declarations and entries brought in by `!!import`, with name collisions rejected as errors (§9.1). Any entry can reference any other entry, including itself — enabling recursive type definitions. Structural forms produced by the type-definition grammar (`!record`, `!record_field`, `!enum`, etc. in resolver output) resolve against the structure namespace provided by the meta-schema identified by `!!schema`. The two namespaces are distinct and are described in full in §11.3. In data mode, `!name` type annotations resolve only against the type-name namespace of the schema identified by `!!schema`.
+Inside a schema module, type names used in type-ref positions within the type-definition grammar resolve against the type-name namespace: local declarations and entries brought in by `!!import`, with name collisions rejected as errors (§9.4). Any entry can reference any other entry, including itself — enabling recursive type definitions. Structural forms produced by the type-definition grammar (`!record`, `!record_field`, `!enum`, etc. in resolver output) resolve against the structure namespace provided by the meta-schema identified by `!!schema`. The two namespaces are distinct and are described in full in §11.3. In data mode, `!name` type annotations resolve only against the type-name namespace of the schema identified by `!!schema`.
 
-This rule has no exceptions. It applies to data documents, user schema documents, extended meta-schema documents, and the meta-schema itself.
+This rule has no exceptions. It applies to data documents, user schema modules, extended meta modules, and the meta layer itself.
 
 
 ### 11.1 The Resolution Chain
 
-Every TSON document that uses type annotations participates in a resolution chain. Each link in the chain is a document with a `!!schema` directive, and that schema is itself a document with its own `!!schema`:
+Every TSON document that uses type annotations participates in a resolution chain. Each link binds the same relation — *validate me against X* — with the directive of its document kind: a data document binds it with `!!schema`; a schema module binds it with `!!meta`:
 
 ```
 data document
   └─ !!schema → user schema
-                  └─ !!schema → meta-schema
-                                  └─ !!schema → itself (pre-loaded)
+                  └─ !!meta → meta-schema
+                                └─ !!meta → meta-kernel
+                                              └─ !!meta → itself (pre-loaded)
 ```
 
-At each level, the `!!schema` directive identifies the schema whose types are available for `!name` references within that document:
+At each level, the directive identifies the schema whose types govern the document:
 
 - A **data document** carries `!!schema` pointing to a user schema. Type annotations like `!person`, `!uuid`, and `!email` resolve against the types defined in that user schema.
 
-- A **user schema** carries `!!schema` pointing to the meta-schema, and `!!import` directives to bring in type library types. Type names used as type-refs within the type-definition grammar (e.g. `string`, `integer` in record field definitions) resolve against the user schema's type-name namespace — its local entries and imports, not the meta-schema chain (§11.3). The meta-schema provides the structural vocabulary (`record`, `array`, `enum`, etc.) that type-definition resolution produces. The user schema defines new types (`person`, `employee`, `api_response`) as map entries — those names are available only to documents that reference this schema via their own `!!schema` directive.
+- A **user schema** carries `!!meta` pointing to the meta-schema, and `!!import` directives to bring in type library types. Type names used as type-refs within the type-definition grammar (e.g. `string`, `integer` in record field definitions) resolve against the user schema's type-name namespace — its local declarations and imports, not the meta chain (§11.3). The meta-schema provides the structural vocabulary (`record`, `array`, `enum`, etc.) that type-definition resolution produces. The user schema defines new types (`person`, `employee`, `api_response`) as declarations — those names are available only to documents that reference this schema via their own `!!schema` directive.
 
-- The **meta-schema** carries `!!schema` pointing to its own URL. It defines its own core types (`integer`, `string`, `boolean`) directly for use in its own constraint-field definitions. The meta-schema's URL resolves to a pre-loaded Schema object in the schema library.
+- The **meta-schema** (`meta.tn1`) carries `!!meta` pointing to the meta-kernel, together with an `!!import` of the kernel for the kernel types its own constraint-field declarations use (§11.3.3, §12). The **meta-kernel** carries `!!meta` pointing to its own URL — it defines its own core types (`integer`, `string`, `boolean`) directly. Both resolve to pre-loaded Schema objects in the schema library; the self-reference at the root is closed by pre-loading, not resolution (§11.5).
 
 
 ### 11.2 Schema-Value Separation
@@ -1014,7 +1010,7 @@ A document with no `!!schema` directive has no type vocabulary. Base type resolu
 
 The directive architecture separates three layers:
 
-**Meta-schema** — Defines the structural vocabulary that the type-definition grammar produces: `type_definition`, `record`, `record_field`, `array`, `enum`, and so on. A schema's `!!schema` directive points to its meta-schema; when the resolver resolves a declaration body in that module, the body is interpreted against the meta-schema's vocabulary.
+**Meta-schema** — Defines the structural vocabulary that the type-definition grammar produces: `type_definition`, `record`, `record_field`, `array`, `enum`, and so on. A module's `!!meta` directive points to its meta module; when the resolver resolves a declaration body in that module, the body is interpreted against the meta module's vocabulary.
 
 **Type libraries** — Define specific types (`integer`, `string`, `boolean`, `float`, `decimal`, etc.) using the meta-schema's vocabulary. Type libraries are ordinary schemas. A schema author imports the library that matches their target platform via `!!import`.
 
@@ -1024,11 +1020,11 @@ Each schema has two independent namespaces active during resolution. They are us
 
 #### 11.3.1 The Structure Namespace
 
-The **structure namespace** provides the vocabulary produced by type-definition resolution. When a declaration body resolves, the resulting `type_definition` carries annotations like `!record`, `!record_field`, `!enum`, `!reference`. These are not written by the schema author — they are produced by the resolver to express the structure of the definition in the resolver output. They come from the meta-schema identified by `!!schema`, resolved through its chain.
+The **structure namespace** provides the vocabulary produced by type-definition resolution. When a declaration body resolves, the resulting `type_definition` carries annotations like `!record`, `!record_field`, `!enum`, `!reference`. These are not written by the schema author — they are produced by the resolver to express the structure of the definition in the resolver output. They come from the meta module identified by `!!meta`, resolved through its chain.
 
 Lookup for the structure namespace walks:
-1. Entries in the schema named by `!!schema`.
-2. Recursively, that schema's own `!!schema` chain.
+1. Entries in the meta module named by `!!meta`.
+2. Recursively, that module's own `!!meta` chain.
 
 The structure namespace is NOT consulted for user-written type references. It provides the kinds, constructors, and supporting types that the resolver uses to materialise type-definition output.
 
@@ -1041,7 +1037,7 @@ Lookup for the type-name namespace walks, in order:
 2. Local declarations of the current module.
 3. Entries brought in by `!!import` directives, in declaration order.
 
-The type-name namespace is NOT extended by the `!!schema` chain. Names available through `!!schema` are available for the structure positions only, not as type-refs.
+The type-name namespace is NOT extended by the `!!meta` chain. Names available through `!!meta` are available for the structure positions only, not as type-refs.
 
 Names from `!!import` directives must be disjoint — two imports defining the same name, or an import name matching a local entry, is a hard error. This is because imports are flat-merged into a single pool.
 
@@ -1049,27 +1045,27 @@ Names from `!!import` directives must be disjoint — two imports defining the s
 
 The separation answers a problem that arises in any language with a meta-schema: if every schema inherited its meta-schema's type names as ordinary references, user schemas chaining to meta would automatically see the kernel's `integer` without importing core. That would make the type library unnecessary for meta-derived schemas and violate the design principle that schemas declare their dependencies explicitly via `!!import`.
 
-The two-namespace model makes the dependency direction clean. A schema's `!!schema` brings in the structural vocabulary it needs to *build* type definitions. Its `!!import` brings in the type library it needs to *write* type definitions. The kernel's `integer` exists for the kernel's own constraint-field declarations (`integer_type.min: integer?`); it never leaks into application schemas that happen to chain through meta.
+The two-namespace model makes the dependency direction clean. A module's `!!meta` brings in the structural vocabulary it needs to *build* type definitions. Its `!!import` brings in the type library it needs to *write* type definitions. The kernel's `integer` exists for the kernel's own constraint-field declarations (`integer_type.min: integer?`); it never leaks into application schemas that happen to chain through meta.
 
-The meta layer is the canonical example. Meta's `!!schema` is meta-kernel, so meta's type-definition forms can use the kernel's constructors like `~atom &`. Meta also `!!import`s meta-kernel, which brings the kernel's type names (`type_name`, `uri`, `regex`, `integer`, `string`) into meta's type-name namespace so they can appear as field types in meta's own constructor definitions.
+The meta layer is the canonical example. Meta's `!!meta` is meta-kernel, so meta's type-definition forms can use the kernel's constructors like `~atom &`. Meta also `!!import`s meta-kernel, which brings the kernel's type names (`type_name`, `uri`, `regex`, `integer`, `string`) into meta's type-name namespace so they can appear as field types in meta's own constructor definitions.
 
 #### 11.3.4 Annotation Resolution
 
-Annotations are types but follow a different lookup rule than ordinary type-refs. An annotation `@name` or `@name:value` resolves through the **`!!schema` chain only** — neither `!!import` entries nor local entries of the schema being authored are part of the annotation namespace. The schema chain is the only path available for annotation resolution.
+Annotations are types but follow a different lookup rule than ordinary type-refs. An annotation `@name` or `@name:value` resolves through the **schema chain only** — neither `!!import` entries nor local entries of the module being authored are part of the annotation namespace. The schema chain is the only path available for annotation resolution.
 
-This is why `meta-kernel.tn1`'s `annotation => @annotation void` works: the kernel self-references via `!!schema:"...meta-kernel.tn1"`, and the kernel is pre-loaded into the library before any document — including the kernel file itself — is parsed. When the resolver encounters `@annotation`, it finds the pre-loaded `annotation` definition, not the entry currently being defined.
+This is why `meta-kernel.tn1`'s `annotation => @annotation void` works: the kernel self-references via `!!meta:"...meta-kernel.tn1"`, and the kernel is pre-loaded into the library before any document — including the kernel file itself — is parsed. When the resolver encounters `@annotation`, it finds the pre-loaded `annotation` definition, not the entry currently being defined.
 
 A consequence: types intended to be used as annotations must live in a schema reachable through the schema chain. Application-level annotation types (`@deprecated`, `@since`, `@lang`, etc.) are defined in `meta.tn1` so they are reachable from any schema chaining through meta. Defining a custom annotation in a user schema and trying to use it as `@my_annotation` within that same schema is a resolver error — `my_annotation` is a local entry, not in the chain.
 
 #### 11.3.5 Data Documents and Schema Layering
 
-A data document's `!!schema` points to a single user schema. Type annotations in the data (`!person`, `!uuid`) resolve against that user schema's type-name namespace — its local entries plus the entries it imports via `!!import`. The data document cannot reach types defined only in meta or meta-kernel through the user schema's `!!schema` chain.
+A data document's `!!schema` points to a single user schema. Type annotations in the data (`!person`, `!uuid`) resolve against that user schema's type-name namespace — its local entries plus the entries it imports via `!!import`. The data document cannot reach types defined only in meta or meta-kernel through the user schema's `!!meta` chain.
 
 This is intentional. A data document depends on the types its producer and consumer agreed on, and that agreement is the user schema. The layers above the user schema — the meta-schema that governs how the user schema was written — are implementation machinery, not part of the data contract. If a data document needs a core type like `uuid` or `datetime`, that type must be imported into the user schema so it appears in the user schema's type-name namespace.
 
 #### 11.3.6 Duplicate Names Across Layers
 
-A type name defined in both the meta-schema and a type library is not a conflict. Because the two namespaces are distinct, the kernel's `string` is not visible as a type-ref in core.tn1 — only core's locally-defined `string` is. User schemas importing core see core's `string`. The kernel's `string` is reachable only from schemas whose `!!schema` chain leads to the kernel's own namespace for structure resolution.
+A type name defined in both the meta-schema and a type library is not a conflict. Because the two namespaces are distinct, the kernel's `string` is not visible as a type-ref in core.tn1 — only core's locally-defined `string` is. User schemas importing core see core's `string`. The kernel's `string` is reachable only from modules whose `!!meta` chain leads to the kernel's own namespace for structure resolution.
 
 An extended meta-schema MAY `!!import` a type library. Name overlaps between the chain and imports do not collide because they populate different namespaces.
 
@@ -1085,15 +1081,15 @@ See §2.1 for the records-are-closed rule. Schema evolution is handled by publis
 
 ### 11.5 The Meta-Schema Bootstrap
 
-The resolution chain terminates at the meta-kernel. The kernel's `!!schema` directive references a URL that resolves to itself. This is not circular — it is a bootstrap.
+The resolution chain terminates at the meta-kernel. The kernel's `!!meta` directive references a URL that resolves to itself. This is not circular — it is a bootstrap.
 
 The kernel's types (`schema`, `record`, `record_field`, `integer`, `string`, `boolean`, and all other types defined in `meta-kernel.tn1`) are pre-loaded into the schema library by the implementation. They exist as in-memory structures before any document is parsed. When the kernel document is parsed, its type annotations resolve against these pre-loaded structures through the normal schema library lookup — the library receives the URL, finds the pre-loaded Schema object, and returns it.
 
-The meta schema (`meta.tn1`) is also pre-loaded. Its `!!schema` points at meta-kernel; its additional constructors (`binary`, `extern`, `unknown_type`, and the numeric/temporal/identifier/text constraint constructors) are likewise resolved against the pre-loaded kernel before being registered as pre-loaded entries themselves.
+The meta schema (`meta.tn1`) is also pre-loaded. Its `!!meta` points at meta-kernel; its additional constructors (`binary`, `extern`, `unknown_type`, and the numeric/temporal/identifier/text constraint constructors) are likewise resolved against the pre-loaded kernel before being registered as pre-loaded entries themselves.
 
 See §12 for the kernel's inline description and a narrative account of meta.
 
-The kernel defines its own core types (`integer`, `string`, `boolean`, etc.) directly so that its own constraint-field declarations (`integer_type.min: integer?`, `record_field.name: field_name`) can reference them locally. The kernel's local entries are what the `!!schema` chain delivers to chaining schemas as their structure namespace. These types are NOT automatically available as type-refs in chaining schemas — per §11.3, the chain populates the structure namespace, not the type-name namespace. Schemas that want `integer` or `string` available as type-refs import a type library that defines them (typically `core.tn1`).
+The kernel defines its own core types (`integer`, `string`, `boolean`, etc.) directly so that its own constraint-field declarations (`integer_type.min: integer?`, `record_field.name: field_name`) can reference them locally. The kernel's local entries are what the `!!meta` chain delivers to chaining modules as their structure namespace. These types are NOT automatically available as type-refs in chaining schemas — per §11.3, the chain populates the structure namespace, not the type-name namespace. Schemas that want `integer` or `string` available as type-refs import a type library that defines them (typically `core.tn1`).
 
 The kernel and meta documents are descriptions of the pre-loaded types, not the source of them. Parsing them validates that the document's description matches the implementation's in-memory model. If they disagree, the document is invalid — the in-memory model is authoritative.
 
@@ -1108,13 +1104,13 @@ Schema resolution proceeds in two passes per schema, with imports fully resolved
 
 **Imports run first.** When a schema has `!!import` directives, the imported schemas are fully resolved (recursive two-pass) before either pass on the importing schema begins. By the time Pass 1 collects local names, every imported name is already present in the type-name namespace. Collisions between imports and local entries surface at this point. The order is:
 
-1. For each `!!import` in declaration order: fully resolve the imported schema (recursive two-pass). Merge its local entries into the importing schema's accumulating type-name namespace. Collisions between imports are resolver errors (§9.1).
+1. For each `!!import` in declaration order: fully resolve the imported schema (recursive two-pass). Merge its local entries into the importing schema's accumulating type-name namespace. Collisions between imports are resolver errors (§9.4).
 2. Pass 1 for the importing schema: collect local entry names. Collision between a local name and an already-merged import is a resolver error.
 3. Pass 2 for the importing schema: resolve bodies against the populated namespace.
 
 **Forward references are permitted within a module.** A type definition may reference any other declaration in the same module, declared earlier or later. Module declarations form a mutually-visible namespace. The two-pass resolution model is what makes forward references work without backtracking.
 
-**Annotations resolve through the schema chain only** (§11.3.4) — not through the local Pass 1 namespace and not through imports. The bootstrap's pre-loaded kernel provides the annotation vocabulary for the kernel itself; user schemas reach annotation types through the `!!schema` chain.
+**Annotations resolve through the schema chain only** (§11.3.4) — not through the local Pass 1 namespace and not through imports. The bootstrap's pre-loaded kernel provides the annotation vocabulary for the kernel itself; user schemas reach annotation types through the schema chain.
 
 
 ### 11.6 Cross-Schema Type References
@@ -1125,7 +1121,7 @@ The schema chain is not the only mechanism for cross-schema references. A type d
 
 The companion type `unknown` (defined in `core.tn1`) is a sum instance with universe membership — it accepts any well-formed value of any type, with no constraint on the type's source. `unknown` is produced as `!unknown_type {}` — an empty instance of the `unknown_type` constructor defined in `meta.tn1`. `unknown` is the right tool when the parent schema has no contract at all on what the data will be; `extern` is the right tool when the parent schema knows the data belongs to a specific external schema but does not import it.
 
-At the data level, values matched by an `extern` field MUST carry their own `!!schema` directive identifying the external schema and a `!type` annotation identifying the type within it. Schema scope changes are always visible in the data, never implicit. When the parser encounters a `!!schema` directive on a value within a document, it pushes the new schema scope for that value. When the value ends, the scope reverts to the enclosing scope. This provides lexically scoped schema switching:
+At the data level, values matched by an `extern` field MUST carry their own `!!schema` directive identifying the external schema and a `!type` annotation identifying the type within it. Schema scope changes are always visible in the data, never implicit. When the parser encounters a `!!schema` directive on a scoped value within a document ([TSON-DATA] §2.3), it pushes the new schema scope for that value. When the value ends, the scope reverts to the enclosing scope. This provides lexically scoped schema switching:
 
 ```
 !!schema:"https://tson.io/2026/medical/patient.tn1?sha256=a4f2e8d1c3b5a7f9e2d4c6b8a0f1e3d5c7b9a2f4e6d8c0b3a5f7e9d1c4b6a8f0"
@@ -1158,7 +1154,7 @@ attachments: [extern]
 
 No new constructor is needed; `extern` composes naturally with the existing array type.
 
-**Typed-position restriction.** A nested `!!schema` directive at a position whose type is constrained by the outer schema is a resolver error unless the outer type is one of the permissive types: `extern`, `value`, `unknown`, or a container thereof (e.g. `[extern]`, `map<string, value>`). This is the same rule that governs `!!include` placement (§9.1). The outer schema must opt in to receiving foreign values at each position where schema switching is permitted. Without this rule, a `!!schema` directive could silently substitute a value of any shape into a specifically-typed slot, with the mismatch surfacing only at the host-language assignment boundary. The permissive-type requirement makes cross-schema acceptance authored intent, not accident. Schemaless outer documents have no type expectations and always permit nested `!!schema` directives.
+**Typed-position restriction.** A nested `!!schema` directive at a position whose type is constrained by the outer schema is a resolver error unless the outer type is one of the permissive types: `extern`, `value`, `unknown`, or a container thereof (e.g. `[extern]`, `map<string, value>`). The outer schema must opt in to receiving foreign values at each position where schema switching is permitted. Without this rule, a `!!schema` directive could silently substitute a value of any shape into a specifically-typed slot, with the mismatch surfacing only at the host-language assignment boundary. The permissive-type requirement makes cross-schema acceptance authored intent, not accident. Schemaless outer documents have no type expectations and always permit nested `!!schema` directives.
 
 
 ### 11.7 Module Structure
@@ -1250,7 +1246,7 @@ translations => map<string, string>
 lookup       => map<string, [integer; +]>
 ```
 
-**The `!schema` annotation and the `!!schema` directive.** The two share a name but serve distinct roles. The directive (`!!schema`) appears on data documents and identifies the external schema for type resolution (§9.1). The type annotation (`!schema`) asserts that a map value conforms to the `schema` type. The `!!` prefix is always a directive; the `!` prefix is always a type annotation.
+**The `!schema` annotation and the `!!schema` directive.** The two share a name but serve distinct roles. The directive (`!!schema`) appears on data documents and identifies the external schema for type resolution (§9.2). The type annotation (`!schema`) asserts that a map value conforms to the `schema` type. The `!!` prefix is always a directive; the `!` prefix is always a type annotation.
 
 **Annotation binding.** Annotations between `!!meta` and the first import bind to the module. An annotation immediately preceding a declaration's name binds to the declaration (§6). Annotations after `=>` and before the type-def bind to the type definition itself.
 
@@ -1259,9 +1255,9 @@ lookup       => map<string, [integer; +]>
 
 Two pre-loaded schemas form the meta-schema layer of TSON:
 
-- **`2026/m/meta-kernel.tn1`** — the self-referencing bootstrap layer. Its `!!id` and `!!schema` both reference its own URL — it bootstraps by defining its own core types directly without importing a type library. The kernel defines `top`, `atom`, `product`, `sum`, the `record` / `array` / `map` / `tuple` / `enum` / `choice` constructors, the `record_field` / `tuple_element` / `parameter` / `type_definition` / `schema` supporting records, and the minimal scalar vocabulary (`integer`, `string`, `uri`, `regex`, `boolean`, `unit`, `value`, `token`, `void`) needed for its own constraint-field declarations.
+- **`2026/m/meta-kernel.tn1`** — the self-referencing bootstrap layer. Its `!!id` and `!!meta` both reference its own URL — it bootstraps by defining its own core types directly without importing a type library. The kernel defines `top`, `atom`, `product`, `sum`, the `record` / `array` / `map` / `tuple` / `enum` / `choice` constructors, the `record_field` / `tuple_element` / `parameter` / `type_definition` / `schema` supporting records, and the minimal scalar vocabulary (`integer`, `string`, `uri`, `regex`, `boolean`, `unit`, `value`, `token`, `void`) needed for its own constraint-field declarations.
 
-- **`2026/m/meta.tn1`** — the canonical meta-schema, chained to by `!!schema` in user schemas. Built on top of the kernel; it adds the type constructors that the core type library (`core.tn1`) instantiates: `binary` with `binary_encoding`, `extern`, `unknown_type`, plus the constraint vocabularies for numeric (`real_type`, `decimal_type`, `rational_type`), temporal (`date_type`, `time_type`, `datetime_type`, `duration_type`), identifier (`uuid_type`), and text (`email_type`) atom families. Meta also hosts the application-level annotation types (`ordered`, `bounded`, `numeric`, `deprecated`, `since`, `todo`, `lang`) — annotation types must live in the schema chain to be usable as annotations (§6), and meta is the canonical location.
+- **`2026/m/meta.tn1`** — the canonical meta-schema, chained to by `!!meta` in user schemas. Built on top of the kernel; it adds the type constructors that the core type library (`core.tn1`) instantiates: `binary` with `binary_encoding`, `extern`, `unknown_type`, plus the constraint vocabularies for numeric (`real_type`, `decimal_type`, `rational_type`), temporal (`date_type`, `time_type`, `datetime_type`, `duration_type`), identifier (`uuid_type`), and text (`email_type`) atom families. Meta also hosts the application-level annotation types (`ordered`, `bounded`, `numeric`, `deprecated`, `since`, `todo`, `lang`) — annotation types must live in the schema chain to be usable as annotations (§6), and meta is the canonical location.
 
 Implementations MUST pre-load both. See §11.5 for the full bootstrap rule.
 
@@ -1279,7 +1275,7 @@ The kernel also defines `unit` — an atom constructor with no constraint vocabu
 
 The kernel additionally defines `annotation` (`@annotation void`) as the canonical void-targeted annotation. Core re-exports `void` under the same name so that schemas chaining only to core can target it; core also defines `complex` (`!unit {}`, a complex-number representation) as an additional unit-family entry. The `numeric` annotation (also `@annotation void`) lives in `meta.tn1` so it is reachable through the schema chain — annotation types must live in the chain to be usable as annotations (§6). Per §11.3, type-name references from a chaining schema resolve through that schema's type-name namespace (local + imports), so the kernel's `void` reaches a chaining schema only through an explicit import.
 
-The kernel's types are reachable from any schema that chains to it via `!!schema` for resolving the structural forms produced by the type-definition grammar. They are NOT automatically available as type-refs in chaining schemas — the `!!schema` chain populates the structure namespace, not the type-name namespace (§11.3). A chaining schema that wants these types as type-refs imports a type library that defines them (typically `core.tn1`).
+The kernel's types are reachable from any module that chains to it via `!!meta` for resolving the structural forms produced by the type-definition grammar. They are NOT automatically available as type-refs in chaining schemas — the `!!meta` chain populates the structure namespace, not the type-name namespace (§11.3). A chaining schema that wants these types as type-refs imports a type library that defines them (typically `core.tn1`).
 
 The normative source for both schemas is carried in the companion artifacts (§1.5): `meta-kernel.tn1` and `meta.tn1`, pinned by content hash at publication. Earlier drafts inlined the kernel source here; the artifact is now the single source, consistent with §11.5's rule that the pre-loaded in-memory model is authoritative and the documents are descriptions of it.
 
@@ -1387,7 +1383,7 @@ The `source` field names the constructor implied by the inline form; `kind` is i
 
 *Error messages.* Implementations SHOULD surface synthetic names in error messages alongside a reconstruction of the source form (e.g. "`[record_field; +]` at line 42, synthesized as `array#record_field#a7f3b2e8`") rather than the synthetic name alone. The synthetic name is a debugging handle; the source form is what the author wrote.
 
-*Cross-schema identity.* Synthetic types follow the same namespace rules as named types: they are synthesized in whichever schema first needs them, and chaining schemas reach them through their `!!schema` chain (for structure references) or via `!!import` (for type-name references). Because different schemas synthesize independently, the same source form appearing in two schemas may receive different synthetic names (and different hashes) — cross-schema identity of synthetic types is through named declarations or not at all.
+*Cross-schema identity.* Synthetic types follow the same namespace rules as named types: they are synthesized in whichever schema first needs them, and chaining modules reach them through their `!!meta` chain (for structure references) or via `!!import` (for type-name references). Because different schemas synthesize independently, the same source form appearing in two schemas may receive different synthetic names (and different hashes) — cross-schema identity of synthetic types is through named declarations or not at all.
 
 *Synthetic name collisions.* Users SHOULD NOT define schema entries whose names contain `#`. The `#`-bearing namespace is reserved by convention for resolver-synthesised entries (containers from inline forms, template instantiations per §5.1, choice synthesis). When the resolver attempts to synthesise an entry whose name matches a user-defined entry in the same schema (including imported entries), it MUST raise a resolver error at schema-load time. This applies regardless of whether the user's entry is structurally equivalent to what the resolver would synthesise — the early error gives clear feedback rather than silently relying on resolver-internal naming. Resolver output documents may carry `#`-bearing names (synthesised entries appear in the namespace); these are not user-defined and pose no collision risk on round-trip, since synthesis fires only for inline forms in source and a round-tripped document carries no inline forms.
 
@@ -1434,7 +1430,7 @@ Schema URLs in TSON are **logical identifiers**, not fetch instructions. A URL l
 
 ### 14.1 The Schema Library
 
-Every TSON implementation maintains a schema library. The library is a map from URL strings to resolved Schema objects. When the resolver encounters a `!!schema` or `!!import` directive, it looks up the URL in the library. If the URL is found, the corresponding Schema object is returned. If the URL is not found, the resolver reports an error — it does not attempt to fetch the URL.
+Every TSON implementation maintains a schema library. The library is a map from URL strings to resolved Schema objects. When the resolver encounters a `!!schema`, `!!meta`, or `!!import` directive, it looks up the URL in the library. If the URL is found, the corresponding Schema object is returned. If the URL is not found, the resolver reports an error — it does not attempt to fetch the URL.
 
 The library is populated through three mechanisms, in order of precedence:
 
@@ -1528,11 +1524,11 @@ TSON documents without a `!!schema` directive carry no type guarantees — only 
 
 ### 16.2 External References
 
-Schema URLs in `!!schema`, `!!import`, and `!!include` directives are logical identifiers resolved through the schema library (§14), not fetch instructions. The default resolution behaviour is local lookup — no network access occurs unless the application explicitly enables it.
+Schema URLs in `!!schema`, `!!meta`, and `!!import` directives are logical identifiers resolved through the schema library (§14), not fetch instructions. The default resolution behaviour is local lookup — no network access occurs unless the application explicitly enables it.
 
 Implementations that support optional schema fetching (§14.1) MUST treat it as an opt-in capability, disabled by default. When fetching is enabled, implementations SHOULD enforce the following controls:
 
-- **URL allowlists.** Restrict fetchable URLs to a set of approved domains or URL prefixes. The `!!schema` directive is particularly sensitive because it determines the type vocabulary for the document — a malicious URL could direct a parser to load an untrusted schema that redefines expected types.
+- **URL allowlists.** Restrict fetchable URLs to a set of approved domains or URL prefixes. The `!!schema` and `!!meta` directives are particularly sensitive because they determine the type vocabulary for the document — a malicious URL could direct a parser to load an untrusted schema that redefines expected types.
 - **Content hash verification.** Require content hashes on fetched schema URLs (`?sha256=...`) and reject schemas whose content does not match. This prevents both tampering and silent schema drift.
 - **Size limits.** Enforce maximum size limits on fetched content to prevent denial-of-service via oversized schemas.
 - **No recursive fetching.** A fetched schema's own `!!import` directives MUST NOT trigger further fetches. All transitive dependencies must be pre-registered or pre-fetched.
@@ -1543,7 +1539,7 @@ Production systems SHOULD pre-register all required schemas at application start
 
 ### 16.3 Directive Security
 
-Directives (`!!`) are a control channel that affects interpretation. Applications processing untrusted TSON input SHOULD restrict which directives are accepted. `!!import` is particularly sensitive because it affects the type vocabulary — production systems MAY restrict which import URLs are permitted.
+Directives (`!!`) are a control channel that affects interpretation. Applications processing untrusted TSON input SHOULD restrict which directives are accepted. `!!meta` and `!!import` are particularly sensitive because they select and extend the type vocabulary — production systems MAY restrict which meta and import URLs are permitted. See also [TSON-DATA] §9.3.
 
 
 ## 17. ABNF: The Module Grammar
@@ -1696,28 +1692,6 @@ The following rows extend the adjacency table of [TSON-DATA] §7.5 for the opera
 | `\|` | separator | choice variant | whitespace optional |
 | `;` | separator | array size spec | whitespace optional |
 | `=>` | separator | module declaration; data map entry | whitespace optional (compound token from lexer) |
-
-
-### 17.4 Directive Constraints
-
-The following per-directive constraints are enforced by the parser. In data documents, constraints apply per value — directives on nested scoped values are independent of the header, so a nested field value may carry its own `!!schema` regardless of what the document header declares ([TSON-DATA] §2.3).
-
-Every spec-defined directive has a typed input (the value that follows the directive name). The resolver validates inputs against the declared type and rejects mismatches as parse errors.
-
-| Directive    | Form            | Repeats | Exclusive | Input                                | Output            |
-|--------------|------------------|---------|-----------|--------------------------------------|-------------------|
-| `!!schema`   | configuration    | no      | no        | URL string                           | — (configuration) |
-| `!!id`       | configuration    | no      | no        | URL string                           | — (configuration) |
-| `!!import`   | configuration    | yes     | no        | URL string; declaration order significant | — (configuration) |
-| `!!include`  | configuration    | no      | yes       | URL string; followed value MUST be `_` | replaces value with included content |
-
-**Repeats** — whether the directive may appear more than once on the same value. Violations are parse errors.
-
-**Exclusive** — whether the directive MUST be the only directive on its value. `!!include` is exclusive because it replaces the value with external content, making sibling directives meaningless; it MUST appear in a `data-value` position, never inside a type-def body (the type-def grammar is not a data-value position). Non-exclusive directives (`!!schema`, `!!id`, `!!import`) may freely coexist with each other. Violations are parse errors.
-
-**Input** — the value the directive accepts. URL-string inputs MUST be quoted tokens resolving to valid URIs; non-string inputs to these directives are parse errors.
-
-**Output** — `!!include` replaces its value position with external content; the configuration directives affect interpretation rather than producing a value, so their output column is marked "—".
 
 
 ## 18. References
