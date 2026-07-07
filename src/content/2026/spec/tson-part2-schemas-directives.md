@@ -75,6 +75,17 @@ This document is published with four companion artifacts:
 The normative artifacts are pinned by content hash at publication. Per §11.5, implementations pre-load the kernel and meta-schema as in-memory structures; the artifact documents are descriptions of those structures, and the in-memory model is authoritative.
 
 
+### 1.6 Design Rationale
+
+Three design decisions recur throughout this document; their rationale is collected here so it is not re-derived.
+
+**One relation, two rungs.** `!!schema` and `!!meta` bind the same relation — *validate me against X* — at different rungs of the resolution ladder (§11.1): data → schema (optional), schema → meta (mandatory), meta → meta-kernel (bootstrap, closed by pre-loading). The name difference is not redundancy. It carries the document-kind dispatch bit — classification happens in the header, on the directive name alone, before any value is parsed ([TSON-DATA] §2.2) — and it marks the layer boundary the reader is crossing. The meta layer is the format's sanctioned extension point: new type vocabularies arrive as alternative or extended meta modules chaining to the meta-kernel, never as grammar changes. A design in which one directive name served both rungs would surrender either the no-value-parsing dispatch guarantee or the visible layer boundary; this one keeps both.
+
+**Nothing performs parse-time I/O.** Earlier drafts defined an inclusion directive (`!!include`) that spliced external content into a value position at parse time. It is deleted from the series. Parse-time inclusion is a well-worn attack vector — XML's external-entity mechanism (XXE) is the canonical precedent — and it buys nothing the format does not already have: inclusion is a reference (`!uri`) plus an application-level dereference policy, applied after parsing, under the application's control. The same stance covers schema resolution: `!!schema`, `!!meta`, and `!!import` URLs are logical identifiers resolved through a local library (§14), and fetching is an explicit, opt-in application capability ([TSON-DATA] §3.3, §9.3; §16.2).
+
+**Source modules are the schema; resolved form is derived.** A schema's published identity is its source module — the `.tn1` module document, hash-pinned via `!!id` ([TSON-DATA] §2.2.1). Resolution *derives* from it an in-memory resolved schema, which may optionally be serialized as a data document (resolver output, §13). The derived form contains information that is computed, not authored — `supertypes`, `subtypes`, synthesised entries, flattened references — and a document carrying such fields cannot prove them: read directly as a schema, a stale, corrupted, or maliciously altered derived document would silently change validation outcomes. The stratification therefore has teeth: schema URLs resolve to source modules, never to resolved-form documents (§9.2, §14.1), and resolved-form documents enter the schema library only through the explicit ingest path (§13), which does not take derived fields on trust.
+
+
 ## 2. Data Values Under a Schema
 
 [TSON-DATA] defines the syntax of data values and their schemaless interpretation. This section defines how an active schema changes that interpretation: type-annotation resolution (§2.1), atom parsing in place of base type resolution (§2.2), set semantics over array syntax (§2.3), extensions to the absent sentinel rules (§2.4), and resolver behaviours at typed positions (§2.5). A schema becomes active through the `!!schema` directive (§9.2).
@@ -805,7 +816,7 @@ Two kinds of atoms, one representation: every atom in the type system — constr
 
 ## 9. Directives
 
-[TSON-DATA] §3.3 defines the directive set: four names — `id`, `schema`, `meta`, `import` — each legal only at fixed positions, with order and cardinality enforced by the grammar ([TSON-DATA] §7.4; §17.1). The set is closed: any other directive name, or a legal name outside its position, is a parse error. There is no directive registry, no name localisation, and no unknown-directive category. Earlier drafts defined a fifth operation, external inclusion (`!!include`); it is deleted from the series — inclusion is a reference (`!uri`) plus an application-level dereference policy, and nothing in TSON performs parse-time I/O ([TSON-DATA] §3.3, §9.3).
+[TSON-DATA] §3.3 defines the directive set: four names — `id`, `schema`, `meta`, `import` — each legal only at fixed positions, with order and cardinality enforced by the grammar ([TSON-DATA] §7.4; §17.1). The set is closed: any other directive name, or a legal name outside its position, is a parse error. There is no directive registry, no name localisation, and no unknown-directive category. Earlier drafts defined a fifth operation, external inclusion (`!!include`); it is deleted from the series — inclusion is a reference (`!uri`) plus an application-level dereference policy, and nothing in TSON performs parse-time I/O ([TSON-DATA] §3.3, §9.3; rationale in §1.6).
 
 Type definitions are not a directive: each module declaration (`name => type-def`, §11.7) activates the type-definition grammar (§17.1) directly.
 
@@ -838,12 +849,14 @@ An application loading schemas from local files registers each one in the schema
 
 ### 9.2 The `!!schema` Directive
 
-`!!schema` identifies the schema whose types are available for `!name` references in the value it governs. The directive value is a URL string identifying a published schema.
+`!!schema` identifies the schema whose types are available for `!name` references in the value it governs. The directive value is a URL string identifying a published schema module.
 
 ```
 !!schema:"http://example.com/people.tn1?sha256=c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
 !person { name: Alice age: 30 }
 ```
+
+**The referent is a source module.** A `!!schema` URL resolves to a schema module — never to a resolved-schema data document. Resolver output (§13) carries resolver-derived fields (`supertypes`, `subtypes`) that cannot be verified from the document alone; a stale, corrupted, or maliciously altered derived document read as a schema would silently change validation outcomes. Resolved-form documents enter the schema library only through the explicit ingest path (§13). §14.1 states the enforcement rule; §1.6 the rationale.
 
 On a data document's header, `!!schema` binds the schema for the entire document. On a scoped value — a record field value or map entry value ([TSON-DATA] §2.3) — it binds the schema for that value alone: the referenced schema becomes the active scope for all `!name` type annotations within that value and its descendants, and when the value ends, the scope reverts to the enclosing scope. Nested scoped values override the enclosing scope for their value. Directives are not permitted before array elements ([TSON-DATA] §3.3); §11.6 discusses the consequences for heterogeneous collections.
 
@@ -1439,6 +1452,8 @@ The library is populated through three mechanisms, in order of precedence:
 **Registered schemas.** Applications register schemas in the library before parsing documents that reference them. Registration associates a URL with schema content and MAY occur from local files, embedded resources, or any application-specific source.
 
 **Fetched schemas (optional).** Implementations MAY support fetching schemas by URL as a convenience for development and exploration. Fetching MUST be explicitly enabled by the application — it is never the default behaviour. Fetched schemas are subject to the security constraints in §16.2. Production systems SHOULD NOT rely on runtime fetching; they SHOULD register all required schemas at startup.
+
+**Schema sources are modules.** Whenever the library is populated from a document — a registered local file, an embedded resource, or fetched content — that document MUST classify as a schema module ([TSON-DATA] §2.2). This applies to the targets of `!!schema`, `!!meta`, and `!!import` alike. A resolved-schema data document (resolver output, §13) is not a valid schema source: its resolver-derived fields (`supertypes`, `subtypes`, synthesised entries) cannot be verified against the document alone and may be stale, corrupted, or malicious, and the document is non-canonical and not hash-pinnable. An implementation MUST reject a data document supplied as the content of a schema URL, with a categorized diagnostic ([TSON-DATA] §8.1). Resolved-form documents MAY enter the library only through the explicit ingest path (§13), which does not take derived fields on trust.
 
 ### 14.2 Content Hash Verification
 
