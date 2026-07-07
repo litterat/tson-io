@@ -39,9 +39,9 @@ In addition to the principles of [TSON-DATA] §1.2, the schema layer is governed
 
 1. **Schema-value separation** — A document never references its own definitions via type annotations. Every type reference (`!name`) resolves against an external schema identified by the document's `!!schema` directive. A schema defines types; a data document uses them. See §11.
 
-2. **Unified representation** — The same syntax expresses fully abstract definitions, parameterized templates, and concrete data. There is no separate notation for schemas and data.
+2. **Purpose-built representation** — Schemas are declarations, not data. A schema module shares the data format's *lexicon* — the frozen lexer, its tokens, annotations, and directives — but has its own body grammar, selected by the document header ([TSON-DATA] §2.2; §17.1). Each document kind gets the grammar its job needs; the two meet only where a module genuinely embeds data (constructor-instantiation values and field-modifier values), and the coupling is one-directional. The *semantics* remain shared: a module resolves to an ordinary TSON value (a `schema` map, §11.7), and resolver output is an ordinary data document (§13).
 
-3. **Permanent stability** — The type-definition grammar, the meta-schema, the core type library, and the resolver output contract are frozen once published, on the same terms as [TSON-DATA] §1.2 principle 7. New types are added through new type libraries, not through changes to this document.
+3. **Permanent stability** — The module grammar, the meta-schema, the core type library, and the resolver output contract are frozen once published, on the same terms as [TSON-DATA] §1.2 principle 7. New types are added through new type libraries, not through changes to this document.
 
 
 ### 1.3 Conformance
@@ -79,7 +79,7 @@ The normative artifacts are pinned by content hash at publication. Per §11.5, i
 
 Three design decisions recur throughout this document; their rationale is collected here so it is not re-derived.
 
-**One relation, two rungs.** `!!schema` and `!!meta` bind the same relation — *validate me against X* — at different rungs of the resolution ladder (§11.1): data → schema (optional), schema → meta (mandatory), meta → meta-kernel (bootstrap, closed by pre-loading). The name difference is not redundancy. It carries the document-kind dispatch bit — classification happens in the header, on the directive name alone, before any value is parsed ([TSON-DATA] §2.2) — and it marks the layer boundary the reader is crossing. The meta layer is the format's sanctioned extension point: new type vocabularies arrive as alternative or extended meta modules chaining to the meta-kernel, never as grammar changes. A design in which one directive name served both rungs would surrender either the no-value-parsing dispatch guarantee or the visible layer boundary; this one keeps both.
+**One relation, two rungs.** `!!schema` and `!!meta` bind the same relation — *validate me against X* — at different rungs of the resolution ladder (§11.1): data → schema (optional), schema → meta (mandatory), meta → meta-kernel (bootstrap, closed by pre-loading). The name difference is not redundancy. It carries the document-kind dispatch bit — classification happens in the header, on the directive name alone, before any value is parsed ([TSON-DATA] §2.2) — and it marks the layer boundary the reader is crossing. The meta layer is the format's sanctioned extension point: new type vocabularies arrive as alternative or extended meta modules chaining to the meta-kernel, never as grammar changes. The ladder is a sequence of governing relations, not a resolution path: each document consults only its governing target's namespace, one hop (§11.3). A design in which one directive name served both rungs would surrender either the no-value-parsing dispatch guarantee or the visible layer boundary; this one keeps both.
 
 **Nothing performs parse-time I/O.** Earlier drafts defined an inclusion directive (`!!include`) that spliced external content into a value position at parse time. It is deleted from the series. Parse-time inclusion is a well-worn attack vector — XML's external-entity mechanism (XXE) is the canonical precedent — and it buys nothing the format does not already have: inclusion is a reference (`!uri`) plus an application-level dereference policy, applied after parsing, under the application's control. The same stance covers schema resolution: `!!schema`, `!!meta`, and `!!import` URLs are logical identifiers resolved through a local library (§14), and fetching is an explicit, opt-in application capability ([TSON-DATA] §3.3, §9.3; §16.2).
 
@@ -198,7 +198,7 @@ Value modifiers are restricted to scalar tokens — quoted or unquoted — cover
 - `~ _` (any field) — REQUIRED_DEFAULT with an absent default value is contradictory: a required field cannot fall back to not-being-filled.
 - `= _` on a REQUIRED field — REQUIRED_FIXED to absent is contradictory: a field cannot be required and fixed to not-being-present.
 
-Complex default or fixed values (arrays, records) are not supported inline; define a named value and reference it instead.
+Complex default or fixed values (arrays, records, maps) are not supported in v1: a modifier value is a single scalar token (§17.1). A named-value entry form (`name = value`) that would let modifiers reference structured values was considered and deliberately deferred — it requires a reference sigil in modifier position and is out of scope for this revision.
 
 **Eager resolution.** Default and fixed value tokens are resolved and validated at schema-load time, not deferred to per-validation. The token is parsed by the field's type — for typed fields by the atom's parser; for `value`-typed fields by [TSON-DATA] §4 base type resolution — and stored as the resolved host value. A default or fixed value that fails parsing or fails the type's constraints is a schema-load error, not a deferred validation error. This matches §15's eager-conversion rule for constraint-field values and applies uniformly to defaults and fixed values on all field types.
 
@@ -242,21 +242,20 @@ config => {
 }
 ```
 
-**Type name resolution.** In the type-definition grammar, type names used as type-refs (in field positions, type arguments, choice variants, composition targets, and narrowing sources) resolve against the type-name namespace — parameters of the enclosing definition, local declarations of the module, and entries brought in by `!!import` directives. See §11.3 for the full resolution order. Bare names always refer to types — there is no field-name shadowing of type names.
+**Type name resolution.** In the type-definition grammar, type names used as type-refs (in field positions, type arguments, choice variants, composition targets, and narrowing sources) resolve against the type-name namespace — parameters of the enclosing definition, local declarations of the module, and entries brought in by `!!import` directives. Instantiation and narrowing targets (the name after `!`), generic-application heads, and the implicit desugar targets of the sugar forms resolve differently — through the structure namespace supplied by the module's `!!meta` target; see §11.3.1 for the full resolution order, including the `!T` lookup rule. Bare names always refer to types — there is no field-name shadowing of type names.
 
 **Inline structural definitions — atom narrowings and bare records prohibited.** Schema authors MUST introduce atom narrowings and record types via named declarations; they MAY NOT appear inline in field-type, tuple-element, array element, choice variant, type-argument, or composition positions. The two prohibited forms:
 
 - `!decimal { min: -273.15 max: 10000 }` as a field type — atom narrowing.
 - `{ name: string }` as a field type — bare record.
 
-The atom-narrowing case is the more subtle of the two. The `!T { ... }` syntax has two distinct meanings depending on grammar context:
+The prohibition is not a parsing necessity. Under the document-kind split a module body is never parsed in data mode: `!decimal { min: 0 max: 100 }` in a type-def position has exactly one available reading (constructor application or instance narrowing, §3.3 — either way the braces are read against the constructor's constraint record), and `{ name: string }` has exactly one (a record's field list). Earlier drafts grounded this rule in grammar ambiguity between the data and type readings of identical surface shapes; that ambiguity dissolved when schema modules became their own document kind. The rule survives because of what a schema is for:
 
-- In **data mode**, `!T value` is a type annotation: `!T` tags the value with type `T`, and the value is whatever `T`'s atom contract parses. `!decimal 250.12` annotates the decimal value 250.12. `!decimal { ... }` would annotate a record (which is a type error since `decimal` is an atom, not a product).
-- In **type-definition mode**, `!T { ... }` is constructor application (§3.3). The brace-record is interpreted against `T`'s constructor record, not as data shaped by `T`. `!decimal { min: -273.15 max: 10000 }` interprets the inner record as `decimal_type`'s constraint vocabulary — `min` and `max` are fields of the *constructor* (the constraint record meta-core declares for `decimal_type`), not values of type `decimal`.
+**Names are the unit of meaning and reuse.** A narrowing exists to give a contract a name: `temperature`, not `!decimal { min: -273.15 max: 10000 }` repeated at each use site. An anonymous inline definition cannot be referenced, narrowed, composed with, annotated, or documented — and the same constraints written inline at three field positions are three definitions free to drift apart. A named declaration is written once and changed once.
 
-The two readings are categorically different operations using identical surface syntax. Permitting atom narrowings inline in field-type positions creates contexts where `!decimal { ... }` would have to be interpreted differently based on which grammar the parser thinks it is in. Requiring named definitions removes the ambiguity at the source: `!decimal { min: 0 max: 100 }` only ever appears as the body of a declaration, where the constructor-application reading is unambiguous.
+**Resolver output is made of names.** Every type the resolver produces is a named entry in the schema map (§13). The permitted inline forms are combinations of names — `[age]`, `map<string, score>`, `(email | phone)` — whose synthetic identity is derivable from the form itself (`array#age`, §13.1). An inline atom narrowing or bare record *defines new content* — constraint bindings, field lists — whose name is derivable from nothing; the resolver would have to invent identifiers for types the author could and should have named. The inline/named boundary is the reference/definition boundary: inline forms may combine existing named types, and anything that defines new structure must itself be named.
 
-Bare records such as `{ name: string }` are prohibited inline for the same family of reasons. The surface syntax is also valid in data mode (a record literal whose `name` field has the unquoted token value `string`); the type-mode reading requires the parser to know it is in the type-definition grammar to disambiguate. Named records make the intent explicit at the point of definition. The required form is:
+The required form is:
 
 ```
 person => { name: string }
@@ -264,11 +263,9 @@ person => { name: string }
 
 then `person` is referenced by name where needed.
 
-Inline forms with type-mode-exclusive syntax — array brackets `[T]` and `[T; +]`, type arguments `name<T>` and `map<K, V>`, choice parentheses `(A | B)` — remain permitted in field-type positions because their surface shape never appears in data values. Square brackets in data form arrays, but a `[T]` *in a type position* inside a type-def body is unambiguously a type expression because the surrounding grammar is the type-definition grammar, and the same shape carries no other meaning the reader could mistake it for. Angle brackets and choice parentheses are reserved exclusively for the type-definition grammar ([TSON-DATA] §7.2.5) — they have no data-mode reading at all. Constraint-bearing array forms like `[T; +]` synthesize a named container type per §14.
+The same boundary explains the permitted inline forms: array brackets `[T]` and `[T; +]`, type arguments `name<T>` and `map<K, V>`, and choice parentheses `(A | B)` apply the closed set of container and choice combinators to named types. They introduce no new contract content beyond the combinator itself — a size spec rides along as part of the container form and folds into the synthetic identity (§13.1) — so the resolver can materialise their entries mechanically without doing the author's naming for them. A useful corollary, rather than the ground: these shapes never occur in data values (angle brackets and choice parentheses are reserved special tokens, [TSON-DATA] §7.2.5), so a reader never has to ask which grammar they are in.
 
-Beyond avoiding ambiguity, named definitions are self-documenting, reusable, and produce cleaner resolver output than synthetic types derived from parent context.
-
-Implementations MAY warn on inline definitions that exceed a configurable nesting depth.
+Implementations MAY warn on permitted inline forms that exceed a configurable nesting depth.
 
 
 ### 3.2 Type Expressions
@@ -346,7 +343,7 @@ The angle-bracket syntax binds positional type arguments to a constructor's decl
 
 ### 3.3 Constructor Instantiation and Instance Narrowing
 
-Within the type-definition grammar, the `!` prefix marks construction of a type from a constructor. Two forms exist, with different semantics:
+Within the type-definition grammar, the `!` prefix marks construction of a type from a constructor. The name after `!` resolves per §11.3.1's lookup order: the type-name namespace first (an atom instance there makes the form an instance narrowing), then the structure namespace supplied by `!!meta` (where the entry must be a constructor). Two forms exist, with different semantics:
 
 **Instantiation — `!T { values }`.** Produces a constructor instance filled with specific values. The data-value after `!T` is interpreted against the constructor's record shape — the field list `T` declared as its narrowable vocabulary. This interpretation differs from the data-mode reading of `!T value`, where `!T` annotates a value parsed by `T`'s atom contract (e.g. `!decimal 250.12` annotates the decimal value 250.12). In type-def body position, `!T { ... }` interprets the brace-record as `T`'s constructor record (`min`, `max`, etc.), not as data shaped by `T`. See §3.1 for why this distinction motivates the rule that atom narrowings cannot appear inline.
 
@@ -676,12 +673,12 @@ Annotation placement in data values follows [TSON-DATA] §3.1; the resolver pres
 
 In module declarations, an annotation immediately preceding the declared name binds to the name. The convention `@doc:"..." name => {...}` annotates `name` (the `type_name` token at the declaration's name position), not the `type_definition` value. The resolver does not hoist annotations from the key to the value; if metadata about the type definition is intended, the annotation must follow `=>` on the value side: `name => @doc:"..." {...}`.
 
-**Annotations are types.** An annotation `@T` (or `@T:value`) names a type `T` and attaches it as metadata to the surrounding value. Annotation resolution is type-name resolution against the schema chain only: `T` is looked up in the namespace populated by the chain (the active schema, its meta module, and so on transitively up to a pre-loaded root). `!!import` entries and local entries of the schema currently being authored are NOT part of the annotation namespace. To use a type as an annotation in a document or schema, that type must be reachable through the schema chain — typically meaning the type lives in `meta.tn1` (which chains to the meta-kernel) or another schema chained as an ancestor of the active schema. The result is then validated against `T`'s contract:
+**Annotations are types.** An annotation `@T` (or `@T:value`) names a type `T` and attaches it as metadata to the surrounding value. Annotation resolution is one-hop resolution against the governing target's namespace — the `!!meta` target for a module, the `!!schema` target for a data document — its local declarations plus its imports (§11.3.4). No further rung of the ladder is walked. `!!import` entries and local entries of the schema currently being authored are NOT part of the annotation namespace. To use a type as an annotation in a document or schema, that type must be present in the governing target's namespace — for a module, typically meaning the type lives in `meta.tn1` or arrives through its kernel import; for a data document, in the user schema or its imports (core's `doc` re-export exists for exactly this) or another schema chained as an ancestor of the active schema. The result is then validated against `T`'s contract:
 
 - For `void`-targeted `T` (a type whose resolved body, after reference flattening, is `void` — such as `annotation` or `numeric`), the annotation form is `@T` with no colon and no value. Bare `@T` is shorthand for `@T:_`; the resolver fills the implicit `_` before validating against `T`'s parsing contract. The `void` atom (defined in meta-kernel and re-exported by core, see §12) admits the absent sentinel `_` (see §8) — presence is the information.
 - For any non-`void` `T`, the annotation form is `@T:value`, where `value` is a single data-value that conforms to `T`. `@doc:"User's full name"` validates the string against `doc`. `@confidence:0.95` validates the float against `confidence`. `@person:{first_name: john last_name: smith}` validates the record against `person`.
 
-Any type defined in the schema chain can be used as an annotation. There is no separate annotation namespace — annotations and types share names because an annotation *is* a typed metadata attachment. The chain-only restriction is what allows the kernel's `annotation => @annotation void` self-reference to work: meta-kernel is pre-loaded into the library, so when the resolver encounters `@annotation` it finds the pre-loaded `annotation` definition, not the entry currently being defined.
+Any type in the governing target's namespace can be used as an annotation. There is no separate annotation namespace — annotations and types share names because an annotation *is* a typed metadata attachment. The one-hop rule is what allows the kernel's `annotation => @annotation void` self-reference to work: the kernel's governing target is itself, and meta-kernel is pre-loaded into the library, so when the resolver encounters `@annotation` it finds the pre-loaded `annotation` definition, not the entry currently being defined.
 
 **The `@annotation` marker is advisory.** The `annotation` type, defined in meta-kernel as `@annotation void`, is a tooling hint: attaching `@annotation` to a type definition signals "this type is intended to be used as annotation metadata." Tools that surface "available annotations" filter by this marker to avoid enumerating every schema type. The marker carries no runtime force — a schema type without `@annotation` is no less usable as an annotation. A document writing `@person:{...}` against a `person` type without the `@annotation` marker is silently accepted; no warning, no error.
 
@@ -873,9 +870,9 @@ A document with no `!!schema` directive has no type vocabulary. Base type resolu
 The `!!meta` target supplies two things to the module:
 
 - **The validation contract.** Each declaration resolves to a `type_definition` value (§13); the meta module's vocabulary — `type_definition`, `record`, `record_field`, the constructor families — defines what those values may be. A module is valid only if its resolved form conforms to its meta module.
-- **The structure namespace.** The `!!meta` chain provides the structural vocabulary the resolver uses to materialise type-definition output; its contribution to name resolution is defined in §11.3.
+- **The structure namespace.** The `!!meta` target's namespace — its local declarations plus its imports — supplies the constructors the module builds with (instantiation targets like `!enum`, generic-application heads, and the desugar targets of the sugar forms) and the structural vocabulary the resolver uses to materialise type-definition output. Resolution is one hop; §11.3.1 defines the rule.
 
-The `!!meta` chain terminates at the meta-kernel, whose `!!meta` references its own URL. The self-reference is never resolved: the kernel and meta modules are pre-loaded (§11.5, §14.1), and the chain is closed by pre-loading, not resolution.
+The ladder of governing relations terminates at the meta-kernel, whose `!!meta` references its own URL — the kernel is governed by its own namespace. The self-reference is never resolved: the kernel and meta modules are pre-loaded (§11.5, §14.1), and the ladder is closed by pre-loading, not resolution.
 
 User schemas normally chain to `meta.tn1`. Chaining to `meta-kernel.tn1` directly is a meta-programming case — an alternative type vocabulary replacing meta, or an extension of the meta layer itself (§12). The meta layer is the format's sanctioned extension point: new type vocabularies arrive as alternative or extended meta modules chaining to the kernel, never as grammar changes.
 
@@ -898,7 +895,7 @@ patient => { name: string  dob: date  blood_type: blood_type }
 
 Here `string` and `date` come from the core library, `blood_type` from the domain library, and `patient` is a local definition. If `medical-types.tn1` itself imports `core.tn1`, those transitive entries are not included — only `blood_type` and any other entries declared directly in `medical-types.tn1` are available.
 
-Multiple `!!import` directives are permitted and are loaded in declaration order. Each import adds its locally-declared entries to the accumulated type-name namespace (§11.3). If two imports declare the same name, or if an import declares a name that also appears as a local declaration in the importing module, the collision is a resolver error and the entire module fails to load. Imports populate only the type-name namespace, so an import name that happens to match a name reachable through the `!!meta` chain is not a collision — the two live in separate namespaces.
+Multiple `!!import` directives are permitted and are loaded in declaration order. Each import adds its locally-declared entries to the accumulated type-name namespace (§11.3). If two imports declare the same name, or if an import declares a name that also appears as a local declaration in the importing module, the collision is a resolver error and the entire module fails to load. Imports populate only the type-name namespace, so an import name that happens to match a name in the structure namespace (§11.3.1) is not a collision — the two are consulted at different grammar positions, and the `!T` lookup order resolves the one position where both could apply.
 
 Import cycles are permitted. Because imports are shallow, a cycle between two modules does not blow up — each module's own entries are a finite set, and only those entries cross the import. Two modules that import each other and use any third-party type must each import that type independently.
 
@@ -987,9 +984,9 @@ Inside a schema module, type names used in type-ref positions within the type-de
 This rule has no exceptions. It applies to data documents, user schema modules, extended meta modules, and the meta layer itself.
 
 
-### 11.1 The Resolution Chain
+### 11.1 The Schema Ladder
 
-Every TSON document that uses type annotations participates in a resolution chain. Each link binds the same relation — *validate me against X* — with the directive of its document kind: a data document binds it with `!!schema`; a schema module binds it with `!!meta`:
+Every TSON document that uses type annotations sits on the **schema ladder** — the chain of governing relations. Each rung binds the same relation — *validate me against X* — with the directive of its document kind: a data document binds it with `!!schema`; a schema module binds it with `!!meta`:
 
 ```
 data document
@@ -1003,9 +1000,9 @@ At each level, the directive identifies the schema whose types govern the docume
 
 - A **data document** carries `!!schema` pointing to a user schema. Type annotations like `!person`, `!uuid`, and `!email` resolve against the types defined in that user schema.
 
-- A **user schema** carries `!!meta` pointing to the meta-schema, and `!!import` directives to bring in type library types. Type names used as type-refs within the type-definition grammar (e.g. `string`, `integer` in record field definitions) resolve against the user schema's type-name namespace — its local declarations and imports, not the meta chain (§11.3). The meta-schema provides the structural vocabulary (`record`, `array`, `enum`, etc.) that type-definition resolution produces. The user schema defines new types (`person`, `employee`, `api_response`) as declarations — those names are available only to documents that reference this schema via their own `!!schema` directive.
+- A **user schema** carries `!!meta` pointing to the meta-schema, and `!!import` directives to bring in type library types. Type names used as type-refs within the type-definition grammar (e.g. `string`, `integer` in record field definitions) resolve against the user schema's type-name namespace — its local declarations and imports, not the structure namespace (§11.3). The meta-schema provides the structural vocabulary (`record`, `array`, `enum`, etc.) that type-definition resolution produces. The user schema defines new types (`person`, `employee`, `api_response`) as declarations — those names are available only to documents that reference this schema via their own `!!schema` directive.
 
-- The **meta-schema** (`meta.tn1`) carries `!!meta` pointing to the meta-kernel, together with an `!!import` of the kernel for the kernel types its own constraint-field declarations use (§11.3.3, §12). The **meta-kernel** carries `!!meta` pointing to its own URL — it defines its own core types (`integer`, `string`, `boolean`) directly. Both resolve to pre-loaded Schema objects in the schema library; the self-reference at the root is closed by pre-loading, not resolution (§11.5).
+- The **meta-schema** (`meta.tn1`) carries `!!meta` pointing to the meta-kernel, together with an `!!import` of the kernel. The import is doubly load-bearing: it supplies the kernel types meta's own constraint-field declarations use, and — because resolution is one hop — it is what places the kernel's structural vocabulary (`enum`, `array`, `type_definition`, …) in meta's namespace, where every meta-governed module and its resolver output finds it (§11.3.1, §12). The **meta-kernel** carries `!!meta` pointing to its own URL — it defines its own core types (`integer`, `string`, `boolean`) directly. Both resolve to pre-loaded Schema objects in the schema library; the self-reference at the root is closed by pre-loading, not resolution (§11.5).
 
 
 ### 11.2 Schema-Value Separation
@@ -1023,64 +1020,75 @@ A document with no `!!schema` directive has no type vocabulary. Base type resolu
 
 The directive architecture separates three layers:
 
-**Meta-schema** — Defines the structural vocabulary that the type-definition grammar produces: `type_definition`, `record`, `record_field`, `array`, `enum`, and so on. A module's `!!meta` directive points to its meta module; when the resolver resolves a declaration body in that module, the body is interpreted against the meta module's vocabulary.
+**Meta-schema** — Defines the structural vocabulary that the type-definition grammar produces: `type_definition`, `record`, `record_field`, `array`, `enum`, and so on. A module's `!!meta` directive points to its meta module; the module's declarations are built with, and validated against, the meta module's vocabulary.
 
 **Type libraries** — Define specific types (`integer`, `string`, `boolean`, `float`, `decimal`, etc.) using the meta-schema's vocabulary. Type libraries are ordinary schemas. A schema author imports the library that matches their target platform via `!!import`.
 
 **Application schemas** — Import type libraries and define domain types on top of them.
 
-Each schema has two independent namespaces active during resolution. They are used at different positions in the grammar and have different lookup rules.
+Name resolution is built from one primitive. The **namespace of a module** is its local declarations plus the entries of its imports (§9.4) — nothing more. Every document has a **governing target**: a module's is its `!!meta` target; a data document's is its `!!schema` target. All resolution against the governing target is **one hop**: the target's namespace is consulted directly, and no further rung of the ladder (§11.1) is ever walked. Two namespaces are active when a module resolves, consulted at different grammar positions.
 
 #### 11.3.1 The Structure Namespace
 
-The **structure namespace** provides the vocabulary produced by type-definition resolution. When a declaration body resolves, the resulting `type_definition` carries annotations like `!record`, `!record_field`, `!enum`, `!reference`. These are not written by the schema author — they are produced by the resolver to express the structure of the definition in the resolver output. They come from the meta module identified by `!!meta`, resolved through its chain.
+The **structure namespace** of a module is the namespace of its `!!meta` target — that module's local declarations plus its imports. One hop. It supplies what the module *builds with*, and it is consulted at exactly the **constructor roles**:
 
-Lookup for the structure namespace walks:
-1. Entries in the meta module named by `!!meta`.
-2. Recursively, that module's own `!!meta` chain.
+- **Instantiation and narrowing targets** — the name after `!` (`!enum [...]`, `!integer_type {}`), subject to the lookup order below.
+- **Generic-application heads** — the name before `<` when the name is not otherwise in scope (`map<string, string>`, `set<string>`).
+- **The implicit desugar targets of the sugar forms** — `[T]` and `[T; n]` desugar to `array`, `[T, U]` to `tuple`, `(A | B)` to `choice` (§3.4).
 
-The structure namespace is NOT consulted for user-written type references. It provides the kinds, constructors, and supporting types that the resolver uses to materialise type-definition output.
+An entry consumed at a constructor role MUST be a constructor (`constructor: true`); resolving a non-constructor there is a resolver error. The structure namespace is never consulted for bare type-refs — a module governed by meta cannot write `field: enum` or reach the kernel's `integer` as a field type (§11.3.2).
+
+**Lookup order for `!T` targets.** The name after `!` resolves first against the type-name namespace (§11.3.2). If found and the entry is an atom instance, the form is an instance narrowing (§3.3); the constructor it retargets to is reached through the instance's own `source` field — never by name, so narrowing works even where the constructor is not name-visible. If found and the entry is a constructor, the form is constructor application (the meta-kernel's self-hosted case, where locals and the structure namespace coincide). If not found in the type-name namespace, the name resolves against the structure namespace and MUST be a constructor. A name found in neither namespace is an unresolved-type error.
+
+**Worked example.** A user schema with `!!meta:".../meta.tn1"` writes `status => !enum [DRAFT ACTIVE RETIRED]`. `enum` is not a local declaration and not imported; it resolves through the structure namespace — meta's namespace — where it is present because meta.tn1 imports the meta-kernel. The same import delivers `array`, `map`, `tuple`, and `choice` for the sugar forms. The shorthand desugars per §3.4 to `!enum { members: [DRAFT ACTIVE RETIRED] }`, validated against the constructor's record.
+
+**Import what you expose.** Because resolution is one hop, a meta module's namespace is the *complete* vocabulary it offers everything it governs: the constructors its modules author with, the contract their declarations are validated against, and the vocabulary their governed data documents — including resolver output (§13) — resolve annotations and type annotations against. A meta module MUST therefore import every module whose entries it intends to expose. This is why `meta.tn1` imports the meta-kernel: the import serves meta's own field types (§11.3.3) *and* is the delivery mechanism for the kernel's structural vocabulary to every meta-governed module. An extended meta module that chains to the kernel but omits the import does not half-work — its governed schemas lose `!enum` and the sugar forms immediately and diagnosably.
 
 #### 11.3.2 The Type-Name Namespace
 
-The **type-name namespace** provides the names a schema author can use as type-refs in their own definitions. When a field is written as `street: string`, the name `string` resolves against this namespace. When a type-def body references another type by name (`vip => customer & { ... }`), `customer` resolves against this namespace.
+The **type-name namespace** provides the names a schema author can use as type-refs in their own definitions — what *fills* the structures. When a field is written as `street: string`, the name `string` resolves against this namespace. When a type-def body references another type by name (`vip => customer & { ... }`), `customer` resolves against this namespace.
 
 Lookup for the type-name namespace walks, in order:
 1. Parameters of the enclosing definition (§5).
 2. Local declarations of the current module.
 3. Entries brought in by `!!import` directives, in declaration order.
 
-The type-name namespace is NOT extended by the `!!meta` chain. Names available through `!!meta` are available for the structure positions only, not as type-refs.
+The type-name namespace is NOT extended by the structure namespace. Names available through `!!meta` are available at constructor roles only, never as type-refs — this is the reason application schemas import core: the types that fill record fields (`string`, `integer`, `uuid`) must come from the module's own namespace.
 
 Names from `!!import` directives must be disjoint — two imports defining the same name, or an import name matching a local entry, is a hard error. This is because imports are flat-merged into a single pool.
 
 #### 11.3.3 Why Two Namespaces
 
-The separation answers a problem that arises in any language with a meta-schema: if every schema inherited its meta-schema's type names as ordinary references, user schemas chaining to meta would automatically see the kernel's `integer` without importing core. That would make the type library unnecessary for meta-derived schemas and violate the design principle that schemas declare their dependencies explicitly via `!!import`.
+The separation answers a problem that arises in any language with a meta-schema: if the governing target's namespace backed every type position, user schemas governed by meta would automatically see the kernel's `integer` and `string` as field types without importing core. That would make the type library unnecessary for meta-governed schemas, violate the design principle that schemas declare their dependencies explicitly via `!!import`, and create silent shadowing between the kernel's entries and core's identically-named ones.
 
-The two-namespace model makes the dependency direction clean. A module's `!!meta` brings in the structural vocabulary it needs to *build* type definitions. Its `!!import` brings in the type library it needs to *write* type definitions. The kernel's `integer` exists for the kernel's own constraint-field declarations (`integer_type.min: integer?`); it never leaks into application schemas that happen to chain through meta.
+The two-namespace model makes the dependency direction clean. A module's `!!meta` supplies the structures it *builds with*; its `!!import` supplies the types that *fill* them. The kernel's `integer` exists for the kernel's own constraint-field declarations (`integer_type.min: integer?`); it reaches other modules only through an explicit `!!import` of the kernel — as meta does — never by governance.
 
-The meta layer is the canonical example. Meta's `!!meta` is meta-kernel, so meta's type-definition forms can use the kernel's constructors like `~atom &`. Meta also `!!import`s meta-kernel, which brings the kernel's type names (`type_name`, `uri`, `regex`, `integer`, `string`) into meta's type-name namespace so they can appear as field types in meta's own constructor definitions.
+The meta layer exercises both mechanisms and illustrates the boundary. Meta's governing target is the kernel, so meta reaches `!enum` (in `ordered => @annotation !enum [NONE PARTIAL TOTAL]`) and the `[...]` sugar through the structure namespace. Meta's *type-refs* — the base kinds `atom` and `sum` it composes with, the mixin `atom_specification`, and the field types `integer?`, `regex?`, `uri` in its constructor definitions — come through its `!!import` of the kernel. Composition operands are type-refs, not constructor roles: composing with `~atom &` or `~string_type &` requires the operand in the type-name namespace, which is exactly why defining *new* constructors demands a deliberate kernel import. Ordinary schemas use constructors; only meta-programming defines them.
 
 #### 11.3.4 Annotation Resolution
 
-Annotations are types but follow a different lookup rule than ordinary type-refs. An annotation `@name` or `@name:value` resolves through the **schema chain only** — neither `!!import` entries nor local entries of the module being authored are part of the annotation namespace. The schema chain is the only path available for annotation resolution.
+An annotation `@name` or `@name:value` resolves against the **governing target's namespace** — the `!!meta` target for a module, the `!!schema` target for a data document — one hop, locals plus imports. Neither the local declarations of the document being authored nor any further rung of the ladder participates.
 
-This is why `meta-kernel.tn1`'s `annotation => @annotation void` works: the kernel self-references via `!!meta:"...meta-kernel.tn1"`, and the kernel is pre-loaded into the library before any document — including the kernel file itself — is parsed. When the resolver encounters `@annotation`, it finds the pre-loaded `annotation` definition, not the entry currently being defined.
+This is why `meta-kernel.tn1`'s `annotation => @annotation void` works: the kernel's governing target is itself, and the kernel is pre-loaded into the library before any document — including the kernel file itself — is parsed. When the resolver encounters `@annotation`, it finds the pre-loaded `annotation` definition, not the entry currently being defined.
 
-A consequence: types intended to be used as annotations must live in a schema reachable through the schema chain. Application-level annotation types (`@deprecated`, `@since`, `@lang`, etc.) are defined in `meta.tn1` so they are reachable from any schema chaining through meta. Defining a custom annotation in a user schema and trying to use it as `@my_annotation` within that same schema is a resolver error — `my_annotation` is a local entry, not in the chain.
+The one-hop rule determines where annotation types must live:
+
+- **Annotations for modules** live in the meta layer. `meta.tn1` declares `deprecated`, `since`, `todo`, `lang`, `ordered`, `bounded`, and `numeric` locally, and carries the kernel's `doc`, `documentation`, and `alias` through its kernel import — so every meta-governed module can use all of them.
+- **Annotations for data documents** live in the governing user schema's namespace. Core re-exports `doc`, `documentation`, `annotation`, and `alias` precisely so that data documents governed by core-importing schemas can write `@doc`. An annotation type declared locally in a user schema is usable by that schema's *data documents* (one hop from them) — but not within the declaring module itself, whose governing target is meta. Module-level custom annotations therefore require an extended meta module; data-level custom annotations require only a declaration in the user schema.
 
 #### 11.3.5 Data Documents and Schema Layering
 
-A data document's `!!schema` points to a single user schema. Type annotations in the data (`!person`, `!uuid`) resolve against that user schema's type-name namespace — its local entries plus the entries it imports via `!!import`. The data document cannot reach types defined only in meta or meta-kernel through the user schema's `!!meta` chain.
+A data document's `!!schema` points to a single user schema, and that schema's namespace — its local declarations plus its imports, one hop — is the document's entire vocabulary. Type annotations in the data (`!person`, `!uuid`) resolve against it; annotations (`@doc`) resolve against it (§11.3.4). Nothing else is reachable.
 
-This is intentional. A data document depends on the types its producer and consumer agreed on, and that agreement is the user schema. The layers above the user schema — the meta-schema that governs how the user schema was written — are implementation machinery, not part of the data contract. If a data document needs a core type like `uuid` or `datetime`, that type must be imported into the user schema so it appears in the user schema's type-name namespace.
+This is intentional. A data document depends on the types its producer and consumer agreed on, and that agreement is the user schema. The layers above the user schema — the meta module that governs how the user schema was written — are implementation machinery, not part of the data contract. If a data document needs a core type like `uuid` or `datetime`, that type must be imported into the user schema so it appears in the user schema's namespace.
+
+A consequence with teeth: the structural vocabulary is invisible from ordinary data. `!enum`, `!record`, and `!type_definition` are not names in an application schema's namespace, so a data document governed by one cannot annotate with them — an attempt is an unresolved-type error, not a misuse to detect. Ordinary data documents therefore cannot even express resolved-schema structure; only a data document governed by a meta module (resolver output, §13) can, because the meta module's namespace carries that vocabulary through its kernel import. This pairs with §14.1's rule that resolved-form documents are never schema sources: the namespace model and the referent rule enforce the same stratification from opposite ends.
 
 #### 11.3.6 Duplicate Names Across Layers
 
-A type name defined in both the meta-schema and a type library is not a conflict. Because the two namespaces are distinct, the kernel's `string` is not visible as a type-ref in core.tn1 — only core's locally-defined `string` is. User schemas importing core see core's `string`. The kernel's `string` is reachable only from modules whose `!!meta` chain leads to the kernel's own namespace for structure resolution.
+A type name defined in both the meta-schema and a type library is not a conflict. Because the two namespaces are distinct, the kernel's `string` is not visible as a type-ref in a meta-governed module — only an imported `string` (core's) is, and core's `string` is a fresh definition, not a view of the kernel's. The kernel's own `string` reaches other modules only through an explicit `!!import` of the kernel.
 
-An extended meta-schema MAY `!!import` a type library. Name overlaps between the chain and imports do not collide because they populate different namespaces.
+A name spelled the same in a module's type-name namespace and in its structure namespace does not collide — the two are consulted at different grammar positions, and the `!T` lookup order (§11.3.1) resolves the one position where both could apply, with the type-name namespace taking precedence. An extended meta module MAY `!!import` a type library; overlaps between its governing namespace and its imports follow the same rules.
 
 
 ### 11.4 Schema Evolution
@@ -1094,7 +1102,7 @@ See §2.1 for the records-are-closed rule. Schema evolution is handled by publis
 
 ### 11.5 The Meta-Schema Bootstrap
 
-The resolution chain terminates at the meta-kernel. The kernel's `!!meta` directive references a URL that resolves to itself. This is not circular — it is a bootstrap.
+The ladder of governing relations terminates at the meta-kernel. The kernel's `!!meta` directive references a URL that resolves to itself — the kernel is governed by its own namespace. This is not circular — it is a bootstrap.
 
 The kernel's types (`schema`, `record`, `record_field`, `integer`, `string`, `boolean`, and all other types defined in `meta-kernel.tn1`) are pre-loaded into the schema library by the implementation. They exist as in-memory structures before any document is parsed. When the kernel document is parsed, its type annotations resolve against these pre-loaded structures through the normal schema library lookup — the library receives the URL, finds the pre-loaded Schema object, and returns it.
 
@@ -1102,7 +1110,7 @@ The meta schema (`meta.tn1`) is also pre-loaded. Its `!!meta` points at meta-ker
 
 See §12 for the kernel's inline description and a narrative account of meta.
 
-The kernel defines its own core types (`integer`, `string`, `boolean`, etc.) directly so that its own constraint-field declarations (`integer_type.min: integer?`, `record_field.name: field_name`) can reference them locally. The kernel's local entries are what the `!!meta` chain delivers to chaining modules as their structure namespace. These types are NOT automatically available as type-refs in chaining schemas — per §11.3, the chain populates the structure namespace, not the type-name namespace. Schemas that want `integer` or `string` available as type-refs import a type library that defines them (typically `core.tn1`).
+The kernel defines its own core types (`integer`, `string`, `boolean`, etc.) directly so that its own constraint-field declarations (`integer_type.min: integer?`, `record_field.name: field_name`) can reference them locally. The kernel's local entries are the structure namespace of every module the kernel directly governs — meta itself, and any alternative meta module; modules governed by meta receive the same vocabulary one hop away, through meta's kernel import (§11.3.1). These types are NOT automatically available as type-refs in governed schemas — per §11.3, the structure namespace populates the structure namespace, not the type-name namespace. Schemas that want `integer` or `string` available as type-refs import a type library that defines them (typically `core.tn1`).
 
 The kernel and meta documents are descriptions of the pre-loaded types, not the source of them. Parsing them validates that the document's description matches the implementation's in-memory model. If they disagree, the document is invalid — the in-memory model is authoritative.
 
@@ -1123,12 +1131,12 @@ Schema resolution proceeds in two passes per schema, with imports fully resolved
 
 **Forward references are permitted within a module.** A type definition may reference any other declaration in the same module, declared earlier or later. Module declarations form a mutually-visible namespace. The two-pass resolution model is what makes forward references work without backtracking.
 
-**Annotations resolve through the schema chain only** (§11.3.4) — not through the local Pass 1 namespace and not through imports. The bootstrap's pre-loaded kernel provides the annotation vocabulary for the kernel itself; user schemas reach annotation types through the schema chain.
+**Annotations resolve against the governing target's namespace** (§11.3.4) — not through the resolving module's local Pass 1 namespace and not through its own imports. The bootstrap's pre-loaded kernel provides the annotation vocabulary for the kernel itself (its governing target is itself); every other document finds annotation types one hop away, in its governing target's namespace.
 
 
 ### 11.6 Cross-Schema Type References
 
-The schema chain is not the only mechanism for cross-schema references. A type definition may reference types from a different schema through the `extern` constructor (defined in `meta.tn1`). An `extern` type carries a `schema` field (a URL identifying the external schema) and an optional `types` field (a list of permitted type references from that schema). The schema library resolves the URL to a Schema object and looks up named types within it. When `types` is absent, any type from the external schema is accepted; when present, only the listed types are accepted.
+Governance is not the only mechanism for cross-schema references. A type definition may reference types from a different schema through the `extern` constructor (defined in `meta.tn1`). An `extern` type carries a `schema` field (a URL identifying the external schema) and an optional `types` field (a list of permitted type references from that schema). The schema library resolves the URL to a Schema object and looks up named types within it. When `types` is absent, any type from the external schema is accepted; when present, only the listed types are accepted.
 
 `extern` is a sum constructor — its membership is the set of types defined in the named schema (optionally narrowed by `types`). It joins `choice` and `unknown_type` in the family of sum-shaped constructors. Where `choice` enumerates variants explicitly, `extern` defers to an external schema for the variant set.
 
@@ -1286,9 +1294,9 @@ The kernel also defines `unit` — an atom constructor with no constraint vocabu
 - `token` — admits NFC-normalised lexemes. Used for identifier types (`type_name`, `field_name`, `param_name`) and enum members.
 - `void` — the unit type of absence: admits the absent sentinel `_` (and the token `null` as an equivalent spelling, normalised to `_`; see §8). Used as the target type for bare annotations like `@annotation` and `@numeric` (see §6).
 
-The kernel additionally defines `annotation` (`@annotation void`) as the canonical void-targeted annotation. Core re-exports `void` under the same name so that schemas chaining only to core can target it; core also defines `complex` (`!unit {}`, a complex-number representation) as an additional unit-family entry. The `numeric` annotation (also `@annotation void`) lives in `meta.tn1` so it is reachable through the schema chain — annotation types must live in the chain to be usable as annotations (§6). Per §11.3, type-name references from a chaining schema resolve through that schema's type-name namespace (local + imports), so the kernel's `void` reaches a chaining schema only through an explicit import.
+The kernel additionally defines `annotation` (`@annotation void`) as the canonical void-targeted annotation. Core re-exports `void` under the same name so that schemas importing core can target it; core also defines `complex` (`!unit {}`, a complex-number representation) as an additional unit-family entry. The `numeric` annotation (also `@annotation void`) lives in `meta.tn1` so it is reachable through the schema chain — annotation types must live in the chain to be usable as annotations (§6). Per §11.3, type-name references from a chaining schema resolve through that schema's type-name namespace (local + imports), so the kernel's `void` reaches a chaining schema only through an explicit import.
 
-The kernel's types are reachable from any module that chains to it via `!!meta` for resolving the structural forms produced by the type-definition grammar. They are NOT automatically available as type-refs in chaining schemas — the `!!meta` chain populates the structure namespace, not the type-name namespace (§11.3). A chaining schema that wants these types as type-refs imports a type library that defines them (typically `core.tn1`).
+The kernel's types serve as the structure namespace for the modules the kernel directly governs, and reach meta-governed modules through meta's kernel import (§11.3.1). They are NOT automatically available as type-refs in governed modules — the structure namespace is consulted at constructor roles only, never for field types (§11.3.2). A chaining schema that wants these types as type-refs imports a type library that defines them (typically `core.tn1`).
 
 The normative source for both schemas is carried in the companion artifacts (§1.5): `meta-kernel.tn1` and `meta.tn1`, pinned by content hash at publication. Earlier drafts inlined the kernel source here; the artifact is now the single source, consistent with §11.5's rule that the pre-loaded in-memory model is authoritative and the documents are descriptions of it.
 
@@ -1396,7 +1404,7 @@ The `source` field names the constructor implied by the inline form; `kind` is i
 
 *Error messages.* Implementations SHOULD surface synthetic names in error messages alongside a reconstruction of the source form (e.g. "`[record_field; +]` at line 42, synthesized as `array#record_field#a7f3b2e8`") rather than the synthetic name alone. The synthetic name is a debugging handle; the source form is what the author wrote.
 
-*Cross-schema identity.* Synthetic types follow the same namespace rules as named types: they are synthesized in whichever schema first needs them, and chaining modules reach them through their `!!meta` chain (for structure references) or via `!!import` (for type-name references). Because different schemas synthesize independently, the same source form appearing in two schemas may receive different synthetic names (and different hashes) — cross-schema identity of synthetic types is through named declarations or not at all.
+*Cross-schema identity.* Synthetic types follow the same namespace rules as named types: they are synthesized in whichever schema first needs them, and other modules reach them via `!!import` like any named entry (structure-namespace visibility applies only to constructors, which synthetics never are). Because different schemas synthesize independently, the same source form appearing in two schemas may receive different synthetic names (and different hashes) — cross-schema identity of synthetic types is through named declarations or not at all.
 
 *Synthetic name collisions.* Users SHOULD NOT define schema entries whose names contain `#`. The `#`-bearing namespace is reserved by convention for resolver-synthesised entries (containers from inline forms, template instantiations per §5.1, choice synthesis). When the resolver attempts to synthesise an entry whose name matches a user-defined entry in the same schema (including imported entries), it MUST raise a resolver error at schema-load time. This applies regardless of whether the user's entry is structurally equivalent to what the resolver would synthesise — the early error gives clear feedback rather than silently relying on resolver-internal naming. Resolver output documents may carry `#`-bearing names (synthesised entries appear in the namespace); these are not user-defined and pose no collision risk on round-trip, since synthesis fires only for inline forms in source and a round-tripped document carries no inline forms.
 
