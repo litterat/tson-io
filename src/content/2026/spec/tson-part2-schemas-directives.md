@@ -1477,19 +1477,13 @@ The library is populated through three mechanisms, in order of precedence:
 
 **Schema sources are modules.** Whenever the library is populated from a document — a registered local file, an embedded resource, or fetched content — that document MUST classify as a schema module ([TSON-DATA] §2.2). This applies to the targets of `!!schema`, `!!meta`, and `!!import` alike. A resolved-schema data document (resolver output, §13) is not a valid schema source: its resolver-derived fields (`supertypes`, `subtypes`, synthesised entries) cannot be verified against the document alone and may be stale, corrupted, or malicious, and the document is non-canonical and not hash-pinnable. An implementation MUST reject a data document supplied as the content of a schema URL, with a categorized diagnostic ([TSON-DATA] §8.1). Resolved-form documents MAY enter the library only through the explicit ingest path (§13), which does not take derived fields on trust.
 
-### 14.2 Content Hash Verification
+### 14.2 Hash-Pinned References
 
-Schema URLs MAY include a content hash as a query parameter to provide integrity assurance — confirming that the schema has not been modified since the URL was authored. The query parameter name identifies the hash algorithm: `?sha256=...` for SHA-256. This specification defines `sha256` as the default algorithm. Implementations MAY support additional algorithms using their own parameter names (e.g. `?blake3=...`, `?sha512=...`).
+The hash-parameter URI convention — the algorithm-named query parameter, lowercase full-length hex, the identity-versus-verification split, and the mismatch rule — is defined in [TSON-DATA] §2.2.1 and applies to every TSON document. This section defines how the schema library applies it.
 
-Hash values are encoded as lowercase hexadecimal. Schemas referenced with a content hash query parameter (`?sha256=...` or any future hash algorithm) MUST be stored and transmitted as UTF-8. A schema in UTF-16 or UTF-32 referenced with a content hash is a resolver error — the hash cannot be verified against a non-UTF-8 byte sequence without re-encoding, and re-encoding defeats the integrity guarantee.
+Library keys are **stripped identities**: a reference's identity is its URL with hash parameters removed ([TSON-DATA] §2.2.1), so a plain URL and its hash-pinned form name the same library entry — the pinned form additionally demands verification. When a hashed reference resolves, the implementation MUST verify the library's content against the declared hash before use; a mismatch is a resolver error ([TSON-DATA] §8.1), and the library MUST NOT silently substitute mismatched content. When registration supplies a document whose declared `!!id` itself carries a hash, the implementation SHOULD verify at registration time — failing fast at entry rather than at first reference.
 
-Schemas without a content hash MAY use any of the encodings permitted by [TSON-DATA] §7.1. The encoding choice in that case affects only storage and transmission; without a hash, no cross-encoding verification is performed.
-
-The hash is computed on the schema document's raw UTF-8 bytes as stored or transmitted, with one exclusion: if the document's first line is a `!!id` directive, that line (including its terminating newline) MUST be excluded from the hash input. This allows a schema to carry a content hash within its own `!!id` without a circular dependency. No other normalization, whitespace stripping, or transformation is performed — schemas are immutable, so the byte content is stable. The full hash MUST be provided; truncation MUST NOT be used — a truncated hash is a resolver error.
-
-When a content hash is present, the implementation SHOULD verify that the schema content in the library matches the declared hash. A content hash mismatch — where the library contains a schema at the base URL but the hash does not match — is a resolver error. The implementation MUST NOT silently use a schema whose content does not match the declared hash.
-
-When no content hash is present, the URL is resolved against the library without integrity verification. This is appropriate for development but NOT RECOMMENDED for production data interchange.
+When no content hash is present, the URL resolves against the library without integrity verification. This is appropriate for development but NOT RECOMMENDED for production data interchange. References that cross a trust boundary SHOULD be hash-pinned: a module's `!!meta` and `!!import` values pin its contract and dependencies; a data document's `!!schema` pins its vocabulary. Pinning composes into the verification chain of [TSON-DATA] §2.2.1 — a consumer holding a single hashed reference can verify a document together with its schema, that schema's meta module, and the kernel.
 
 Examples:
 
@@ -1511,7 +1505,7 @@ A schema declaring its own hash in `!!id` (first line excluded from hash input):
 
 ### 14.3 URL Identity
 
-Two schema references are considered identical if and only if their URL strings are byte-for-byte identical after removing any query parameters used for content hashing. This means `https://tson.io/2026/m/core.tn1` and `https://tson.io/2026/m/core.tn1?sha256=9f86d0...` reference the same schema (with the latter additionally requiring hash verification). URL normalization (case folding, path resolution, percent-encoding) MUST NOT be performed — URLs MUST be compared as literal strings.
+Reference identity is defined by [TSON-DATA] §2.2.1: two references are identical if and only if their URLs are byte-for-byte identical after removing hash query parameters, with no URL normalization of any kind. The library applies this as its key rule — `https://tson.io/2026/m/core.tn1` and `https://tson.io/2026/m/core.tn1?sha256=9f86d0...` resolve to the same entry (the latter additionally requiring verification, §14.2) — while spelling variants that a web stack would normalize (scheme case, trailing slashes, percent-encoding) are *different identities* here. The identity-agreement rule of §14.1 completes the picture: the URL a document declares in `!!id` is the URL it is registered under, stripped of hash parameters.
 
 
 ## 15. Atom Token Parsing
