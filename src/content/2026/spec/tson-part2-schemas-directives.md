@@ -46,11 +46,15 @@ In addition to the principles of [TSON-DATA] §1.2, the schema layer is governed
 
 ### 1.3 Conformance
 
-A **conforming TSON schema processor** conforms to [TSON-DATA] and additionally implements the type-definition grammar (§3–§8, §17), the directive operations (§9), schema resolution (§11, §14), the resolver output contract (§13), atom token parsing (§15), and validation. Such a processor:
+[TSON-DATA] §1.5 defines the series' two conformance classes. **Class 1** (data-format processor) is defined there in full and implements nothing from this document — its sole schema-layer obligation is to reject schema modules with a categorized diagnostic. This document defines **Class 2**.
+
+A **Class 2 processor** (schema-aware processor) conforms to [TSON-DATA] and additionally implements the module grammar (§3–§8, §17), the directive operations (§9), name resolution and the schema library (§11, §14), module compilation and resolver output (§13), atom token parsing (§15), and validation. Such a processor:
 
 - MUST pre-load the meta-kernel and meta-schema (§11.5, §14.1) and SHOULD pre-load the core type library;
 - MUST resolve type annotations through the active schema when one is in scope, and MUST NOT apply the [TSON-DATA] §5 built-in vocabulary in schema scope (§2.1);
-- MUST produce resolver output conforming to the `type_definition` contract (§13), including computed `supertypes` and `subtypes`;
+- MUST produce, for every valid module, a resolved schema conforming to the `type_definition` contract (§13) — `subtypes` computed, `supertypes` computed from source (§12). Serializing the resolved schema as a data document is OPTIONAL; output, when produced, MUST conform to §13's serialization contract;
+- MAY implement ingest of resolver output (§13, §14.1); an implementation that does MUST apply §12's derived-field treatment and §14.1's source rules;
+- MUST enforce the identity-agreement rule (§14.1) and verify hash-pinned references per [TSON-DATA] §2.2.1 (§14.2);
 - MUST report errors in the categories and phrasings of [TSON-DATA] §8.1.
 
 
@@ -112,6 +116,10 @@ translations => map<text, text>
 ```
 
 Then in data: `!int_list [1 2 4 8 32]`, `!translations { en => Hello fr => Bonjour }`.
+
+**Validation follows what the name is.** In a data document, `!T value` asserts that the value conforms to `T`, and what conformance means is determined by `T`'s own definition, one level down. An **atom instance** validates a single token by its parsing contract (§15): `!uint8 42`, never `!uint8 { ... }` — a record is not an atom value. A **product** validates a record against its field list; a **choice** validates any conforming variant. A **constructor** is a record-shaped type — its declaration composes a constraint-field record (§8) — so it validates a record against that field vocabulary: `!integer_type { min: 0  max: 255 }` is a record conforming to `integer_type`'s fields, receiving exactly the record validation any product gets. Field vocabulary and field types are checked like any record; family coherence between bindings (e.g. `min ≤ max`) is a compilation and ingest concern (§12, §13), not data validation.
+
+There is **no construction in data**. Construction — `!C { bindings }` producing a new type — is a module-grammar operation (§3.3); the same surface shape in a data document is a record that *describes* constraints, which is precisely what resolver output stores in `type_definition.body` (§13). The two category errors are symmetric: a constructor never types its family's atom values (`!integer_type 42` is a type error — `42` is not a record; the value type is the instance, `!integer 42`), and an instance never types records (`!uint8 { min: 0 }` is a type error — the constraint vocabulary belongs to the constructor, one level up).
 
 **Schema values.** The type annotation `!schema` marks a map as a schema value. This is a regular type annotation — `schema` is a type defined in the meta-kernel as `map<type_name, type_definition>`. A schema module's body is written as a braced map of declarations without the `!schema` annotation (§11.7) — the document kind and `!!meta` already identify it — and it *resolves to* a `schema` value: the map is visible in the syntax and authoritative in the semantics. The `!schema` annotation appears on data documents that carry resolved schema structure, most notably resolver output (§13). See §11 for schema resolution rules and §11.7 for module structure.
 
@@ -764,7 +772,7 @@ set => <T> ~array<T> {
 }
 ```
 
-The `~` prefix is the constructor marker. It sets `constructor: true` in the resolver output's `type_definition` record. Constructors MUST NOT be instantiated directly in data — only their narrowings and instances can.
+The `~` prefix is the constructor marker. It sets `constructor: true` in the resolver output's `type_definition` record. There is no construction in data: `!C { bindings }` produces a new type only in the module grammar. In a data document a constructor name is an ordinary record-shaped type — `!integer_type { min: 0 max: 255 }` validates the record against the constructor's constraint fields (§2.1) without creating anything — and a constructor never types its family's atom values (`!integer_type 42` is a type error; values are typed by instances and narrowings, `!integer 42`, `!uint8 42`).
 
 Constructors may declare type parameters using `<T>` (or `<K, V>` etc.) immediately after the `=>` declaration operator. Parameter names are scoped to the constructor's body and may appear in field positions wherever a type-ref is expected. References to a parameterized constructor MUST supply matching type arguments via `<>`. See §5 for full parameter semantics.
 
@@ -1279,7 +1287,7 @@ lookup       => map<text, [integer; +]>
 
 **The `!schema` annotation and the `!!schema` directive.** The two share a name but serve distinct roles. The directive (`!!schema`) appears on data documents and identifies the external schema for type resolution (§9.2). The type annotation (`!schema`) asserts that a map value conforms to the `schema` type. The `!!` prefix is always a directive; the `!` prefix is always a type annotation.
 
-**Annotation binding.** Annotations immediately before the opening brace bind to the module — the header directives themselves carry no annotations ([TSON-DATA] §7.4 gives them no annotation slot). Inside the braces, an annotation immediately preceding a declaration's name binds to the declaration (§6), and annotations after `=>` and before the type-def bind to the type definition itself.
+**Annotation binding.** Annotations immediately before the opening brace bind to the module — the header directives themselves carry no annotations ([TSON-DATA] §7.4 gives them no annotation slot). Inside the braces the data-map convention applies unchanged ([TSON-DATA] §3.1): an annotation immediately preceding a declaration's name binds to the key — the name itself (§6) — and annotations after `=>` and before the type-def bind to the type definition. Resolver output preserves the placement: key-side annotations appear key-side on the output map entry; value-side annotations appear on the `!type_definition` value (§13).
 
 
 ## 12. Core Meta-Schema
@@ -1582,7 +1590,7 @@ This section defines the schema-module body grammar — the second of the two bo
 
 The module header — the optional `!!id`, the `!!meta`, and any `!!import` directives — is defined entirely by [TSON-DATA]'s grammar (§2.2, §7.4). This document defines the module body: `schema-map`, the annotated, braced declaration map that [TSON-DATA]'s `module-doc` production delegates here. `annotation`, `separator`, and `data-value` are imported from the [TSON-DATA] §7.4 grammar; `data-value` appears at exactly two points — instance values and field-modifier values — and the coupling is one-directional: nothing in the data grammar depends on these productions.
 
-A `schema-map` deliberately copies the shape of [TSON-DATA]'s `map` production: the module body *is* a map to the developer, as it is to the resolver (§11.7). Unlike a data map it requires at least one entry — an empty schema has no purpose, so `{}` at module-body position is a parse error. An entry is called a **declaration** throughout this document. Annotations before the opening brace bind to the module; annotations at the head of an entry bind to the declaration; annotations after `=>` bind to the type definition (§6, §11.7).
+A `schema-map` deliberately copies the shape of [TSON-DATA]'s `map` production: the module body *is* a map to the developer, as it is to the resolver (§11.7). Unlike a data map it requires at least one entry — an empty schema has no purpose, so `{}` at module-body position is a parse error. An entry is called a **declaration** throughout this document. Annotations before the opening brace bind to the module (the schema-map value); annotations at the head of an entry bind to the key — the declared name — exactly as in a data map; annotations after `=>` bind to the type definition (§6, §11.7).
 
 ```
 ; ── Schema Map (module body) ──────────────────────────────
@@ -1673,7 +1681,8 @@ The `paren-type` production produces choice types. Choices require at least two 
 ```
 ; module body (after the header):
 ;   @              → annotation; before "{" it binds to the module,
-;                    inside the braces to the following declaration
+;                    inside the braces to the entry key (name) or,
+;                    after "=>", to the type definition
 ;   {              → schema map opens
 ;   name =>        → declaration (two-token lookahead)
 ;   }              → schema map closes; end of module

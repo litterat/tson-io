@@ -986,7 +986,7 @@ Errors fall into four categories corresponding to the processing layers. The cat
 
 Implementations MUST include source position (line, column, and byte offset) in all error reports, SHOULD include expected-vs-found information for token and structural mismatches, and SHOULD continue processing after an error to report multiple issues in a single pass.
 
-**Module diagnostics.** A Class 1 processor encountering `!!meta` in the header MUST report the document as a TSON schema module that this processor does not support (§1.5) — a categorized diagnostic, not a generic unexpected-token error. Additionally, when a data document's root value is a token followed by an unexpected `=>`, the processor SHOULD note that the input resembles a schema module missing its `!!meta` directive.
+**Module diagnostics.** A Class 1 processor encountering `!!meta` in the header MUST report the document as a TSON schema module that this processor does not support (§1.5) — a categorized diagnostic, not a generic unexpected-token error.
 
 
 ## 9. Security Considerations
