@@ -113,7 +113,7 @@ translations => map<string, string>
 
 Then in data: `!int_list [1 2 4 8 32]`, `!translations { en => Hello fr => Bonjour }`.
 
-**Schema values.** The type annotation `!schema` marks a map as a schema value. This is a regular type annotation — `schema` is a type defined in the meta-kernel as `map<type_name, type_definition>`. Schema modules are not written as `!schema` maps: a module is a flat sequence of declarations (§11.7) that *resolves to* a `schema` value — the map lives in the semantics, not the syntax. The `!schema` annotation appears on data documents that carry resolved schema structure, most notably resolver output (§13). See §11 for schema resolution rules and §11.7 for module structure.
+**Schema values.** The type annotation `!schema` marks a map as a schema value. This is a regular type annotation — `schema` is a type defined in the meta-kernel as `map<type_name, type_definition>`. A schema module's body is written as a braced map of declarations without the `!schema` annotation (§11.7) — the document kind and `!!meta` already identify it — and it *resolves to* a `schema` value: the map is visible in the syntax and authoritative in the semantics. The `!schema` annotation appears on data documents that carry resolved schema structure, most notably resolver output (§13). See §11 for schema resolution rules and §11.7 for module structure.
 
 
 ### 2.2 Atom Parsing Replaces Base Type Resolution
@@ -825,7 +825,7 @@ This document defines the directive *operations* — what each directive means t
 
 | Operation | Directive | Placement ([TSON-DATA] §3.3) | Defined in |
 |-----------|-----------|------------------------------|------------|
-| Identity declaration | `!!id` | first header line; optional on data documents, mandatory on modules | §9.1 |
+| Identity declaration | `!!id` | first header line, either kind; optional in the grammar — required for published modules (§9.1) | §9.1 |
 | Schema binding | `!!schema` | data-document header; record field values; map entry values | §9.2 |
 | Meta binding | `!!meta` | module header, immediately after `!!id`; exactly once | §9.3 |
 | Type-library import | `!!import` | module header, after `!!meta`; repeatable | §9.4 |
@@ -834,7 +834,7 @@ This document defines the directive *operations* — what each directive means t
 
 `!!id` declares the authoritative identity (URL) of a document — the URL other documents use to reference it. It connects the file's content to its logical name in the schema library (§14), and it anchors content addressing: the hash input for a document's content hash is every byte after the id line ([TSON-DATA] §2.2.1; §14.2).
 
-`!!id` is mandatory on schema modules, where it must be the first line: a module's identity is its published, hash-pinned URL, and kind dispatch requires the id line to precede `!!meta` ([TSON-DATA] §2.2). On data documents `!!id` is optional; a data document declares an identity when it participates in content addressing — a fixture, a golden file, a document referenced by hash from elsewhere.
+`!!id` is optional in the grammar for both document kinds and, when present, must be the first line ([TSON-DATA] §2.2). For schema modules it is required by policy, not grammar: **publishing a module — registering it under its own name for reference by other documents, or pinning it by content hash — REQUIRES `!!id`.** An id-less module is a development artifact; it may be registered under an application-supplied URL (§14.1) but has no published identity and cannot be hash-pinned. On data documents `!!id` appears when the document participates in content addressing — a fixture, a golden file, a document referenced by hash from elsewhere.
 
 When schemas are committed to version control alongside application code — a common and supported deployment pattern — the `!!id` directive is what connects the file on disk to the URL that data documents reference. Without `!!id`, the mapping from filename to schema URL is implicit and fragile; with it, any tool or implementation can register the schema under the correct URL by reading the file's own declaration.
 
@@ -842,8 +842,9 @@ When schemas are committed to version control alongside application code — a c
 !!id:"http://example.com/people.tn1"
 !!meta:"https://tson.io/2026/m/meta.tn1"
 !!import:"https://tson.io/2026/m/core.tn1"
-
-person => { name: string  age: integer }
+{
+  person => { name: string  age: integer }
+}
 ```
 
 An application loading schemas from local files registers each one in the schema library under the URL declared by its `!!id`. The schema's URL does not need to be fetchable — it is a globally unique identifier, not a network address.
@@ -869,7 +870,7 @@ A document with no `!!schema` directive has no type vocabulary. Base type resolu
 
 ### 9.3 The `!!meta` Directive
 
-`!!meta` names a schema module's governing **meta module**: the contract the module's declarations are validated against. It appears exactly once, immediately after `!!id` ([TSON-DATA] §2.2, §3.3). Its position carries the document-kind dispatch bit — a header whose directive after `!!id` is `!!meta` is a schema module — so classification requires no value parsing.
+`!!meta` names a schema module's governing **meta module**: the contract the module's declarations are validated against. It appears exactly once, as the first directive after the optional `!!id` ([TSON-DATA] §2.2, §3.3). Its position carries the document-kind dispatch bit — a header whose first directive, or first after `!!id`, is `!!meta` is a schema module — so classification requires no value parsing.
 
 The `!!meta` target supplies two things to the module:
 
@@ -884,7 +885,7 @@ User schemas normally chain to `meta.tn1`. Chaining to `meta-kernel.tn1` directl
 
 `!!import` imports type entries from an external schema module into the importing module. The directive value is a URL string identifying a published schema module.
 
-`!!import` appears only in the module header, after `!!meta` and before the first declaration ([TSON-DATA] §3.3). The directive loads the referenced module and makes its locally-declared entries available as if they were declared in the local module. Imported entries are available to all local declarations (including for recursive references), and local declarations may narrow or compose with imported types.
+`!!import` appears only in the module header, after `!!meta` and before the schema map ([TSON-DATA] §3.3, §7.4). The directive loads the referenced module and makes its locally-declared entries available as if they were declared in the local module. Imported entries are available to all local declarations (including for recursive references), and local declarations may narrow or compose with imported types.
 
 **Imports are shallow.** Only the entries declared in the imported module's own body are imported — entries that the imported module itself brought in via its own `!!import` directives are not transitively included. Each module MUST explicitly import all the dependencies it needs.
 
@@ -893,8 +894,9 @@ User schemas normally chain to `meta.tn1`. Chaining to `meta-kernel.tn1` directl
 !!meta:"https://tson.io/2026/m/meta.tn1"
 !!import:"https://tson.io/2026/m/core.tn1"
 !!import:"http://example.com/medical-types.tn1"
-
-patient => { name: string  dob: date  blood_type: blood_type }
+{
+  patient => { name: string  dob: date  blood_type: blood_type }
+}
 ```
 
 Here `string` and `date` come from the core library, `blood_type` from the domain library, and `patient` is a local definition. If `medical-types.tn1` itself imports `core.tn1`, those transitive entries are not included — only `blood_type` and any other entries declared directly in `medical-types.tn1` are available.
@@ -1184,21 +1186,25 @@ No new constructor is needed; `extern` composes naturally with the existing arra
 
 ### 11.7 Module Structure
 
-A schema module is a flat sequence of declarations behind a fixed-shape header. The header carries the module's identity (`!!id`, mandatory, on the first line), its governing meta module (`!!meta`, mandatory, exactly once), annotations that bind to the module, and its dependencies (`!!import`, repeatable, declaration order significant). Header order and cardinality are grammar productions, not conventions ([TSON-DATA] §2.2, §3.3; §17.1):
+A schema module is a fixed-shape header followed by a braced map of declarations — the **schema map**. The header carries the module's identity (`!!id`, first line; optional in the grammar, required for publication and hash-pinning, §9.1), its governing meta module (`!!meta`, mandatory, exactly once), and its dependencies (`!!import`, repeatable, declaration order significant); annotations that bind to the module sit after the header, immediately before the opening brace. Header order and cardinality are grammar productions, not conventions ([TSON-DATA] §2.2, §3.3; §17.1):
 
 ```
 !!id:"http://example.com/people.tn1"
 !!meta:"https://tson.io/2026/m/meta.tn1"
 !!import:"https://tson.io/2026/m/core.tn1"
-
-person => { name: string  age: integer }
-employee => person & { department: string }
-status => !enum [ACTIVE INACTIVE SUSPENDED]
+@doc:"Minimal example schema."
+{
+  person => { name: string  age: integer }
+  employee => person & { department: string }
+  status => !enum [ACTIVE INACTIVE SUSPENDED]
+}
 ```
+
+Entries are separated like data-map entries — whitespace or a comma ([TSON-DATA] §2.4) — and the map MUST contain at least one entry (§17.1).
 
 The `!!meta` directive identifies the meta module governing this module's declarations. The `!!import` directive merges the type library's entries (`string`, `integer`, etc.) into the module's type-name namespace (§11.3). Each declaration binds a type name to a type definition with the `=>` operator — a compound token the frozen lexer already emits; the module grammar introduces no reserved words.
 
-**A module resolves to a map.** A schema is *semantically* a map: the module resolves to a value of the kernel's `schema` type, `map<type_name, type_definition>` (§12, §13). The map is not written in module source — no braces enclose the declarations — because enclosing map syntax did no parsing, semantic, or signaling work once modules became their own document kind. The map moved from the syntax to the semantics. The `!schema` type annotation consequently never appears in module source; it marks *data* representations of resolved schema structure, most notably resolver output (§13).
+**A module's body is a map — in syntax and in semantics.** The braced body makes the map visible: a schema *is* a map, and the module resolves to a value of the kernel's `schema` type, `map<type_name, type_definition>` (§12, §13). The braces are not decoration; they carry the module's annotation anchor. TSON's one binding convention is that annotations precede the value they bind to ([TSON-DATA] §3.1), and the schema map is the value the module-level annotations bind to — `@doc:"..." { ... }` binds to the module by the same rule that binds a data document's root annotations to its root value. (An earlier revision deleted the enclosing braces on the grounds that they did no work; restoring them is deliberate — without a body value there is no boundary between module annotations and the first declaration's.) What the braces do *not* carry is a type annotation: the `!schema` type-ref never appears in module source — the document kind and `!!meta` already say what the body is — and `!schema` marks *data* representations of resolved schema structure, most notably resolver output (§13). The symmetry is exact: source `@doc:"..." { name => type-def }` compiles to output `@doc:"..." !schema { name => !type_definition { ... } }` — the same shape, one rung down the ladder.
 
 **Declaration forms.** The right-hand side of a declaration takes one of the following forms, defined in §3–§8 and mapped to resolver output in §13.
 
@@ -1273,7 +1279,7 @@ lookup       => map<string, [integer; +]>
 
 **The `!schema` annotation and the `!!schema` directive.** The two share a name but serve distinct roles. The directive (`!!schema`) appears on data documents and identifies the external schema for type resolution (§9.2). The type annotation (`!schema`) asserts that a map value conforms to the `schema` type. The `!!` prefix is always a directive; the `!` prefix is always a type annotation.
 
-**Annotation binding.** Annotations between `!!meta` and the first import bind to the module. An annotation immediately preceding a declaration's name binds to the declaration (§6). Annotations after `=>` and before the type-def bind to the type definition itself.
+**Annotation binding.** Annotations immediately before the opening brace bind to the module — the header directives themselves carry no annotations ([TSON-DATA] §7.4 gives them no annotation slot). Inside the braces, an annotation immediately preceding a declaration's name binds to the declaration (§6), and annotations after `=>` and before the type-def bind to the type definition itself.
 
 
 ## 12. Core Meta-Schema
@@ -1467,6 +1473,8 @@ The library is populated through three mechanisms, in order of precedence:
 
 **Fetched schemas (optional).** Implementations MAY support fetching schemas by URL as a convenience for development and exploration. Fetching MUST be explicitly enabled by the application — it is never the default behaviour. Fetched schemas are subject to the security constraints in §16.2. Production systems SHOULD NOT rely on runtime fetching; they SHOULD register all required schemas at startup.
 
+**Identity agreement.** Registration under a URL that differs from the content's declared `!!id` is an error — the library MUST reject it as identity confusion. Content with no `!!id` MAY be registered under an application-supplied URL (a development-mode convenience, §9.1); content with an `!!id` is registered under that URL and no other.
+
 **Schema sources are modules.** Whenever the library is populated from a document — a registered local file, an embedded resource, or fetched content — that document MUST classify as a schema module ([TSON-DATA] §2.2). This applies to the targets of `!!schema`, `!!meta`, and `!!import` alike. A resolved-schema data document (resolver output, §13) is not a valid schema source: its resolver-derived fields (`supertypes`, `subtypes`, synthesised entries) cannot be verified against the document alone and may be stale, corrupted, or malicious, and the document is non-canonical and not hash-pinnable. An implementation MUST reject a data document supplied as the content of a schema URL, with a categorized diagnostic ([TSON-DATA] §8.1). Resolved-form documents MAY enter the library only through the explicit ingest path (§13), which does not take derived fields on trust.
 
 ### 14.2 Content Hash Verification
@@ -1496,8 +1504,9 @@ A schema declaring its own hash in `!!id` (first line excluded from hash input):
 ```
 !!id:"http://example.com/people.tn1?sha256=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
 !!meta:"https://tson.io/2026/m/meta.tn1"
-
-person => { name: string  age: integer }
+{
+  person => { name: string  age: integer }
+}
 ```
 
 ### 14.3 URL Identity
@@ -1577,18 +1586,18 @@ This section defines the schema-module body grammar — the second of the two bo
 
 ### 17.1 The Module Grammar
 
-A document classified as a schema module ([TSON-DATA] §2.2) parses its body with the productions below, following the header's mandatory `!!id` ([TSON-DATA] §7.4). The `meta-directive` and `import-directive` tokens are those of [TSON-DATA] §3.3; `annotation` and `data-value` are imported from the [TSON-DATA] §7.4 grammar. `data-value` appears at exactly two points — instance values and field-modifier values — and the coupling is one-directional: nothing in the data grammar depends on these productions.
+The module header — the optional `!!id`, the `!!meta`, and any `!!import` directives — is defined entirely by [TSON-DATA]'s grammar (§2.2, §7.4). This document defines the module body: `schema-map`, the annotated, braced declaration map that [TSON-DATA]'s `module-doc` production delegates here. `annotation`, `separator`, and `data-value` are imported from the [TSON-DATA] §7.4 grammar; `data-value` appears at exactly two points — instance values and field-modifier values — and the coupling is one-directional: nothing in the data grammar depends on these productions.
+
+A `schema-map` deliberately copies the shape of [TSON-DATA]'s `map` production: the module body *is* a map to the developer, as it is to the resolver (§11.7). Unlike a data map it requires at least one entry — an empty schema has no purpose, so `{}` at module-body position is a parse error. An entry is called a **declaration** throughout this document. Annotations before the opening brace bind to the module; annotations at the head of an entry bind to the declaration; annotations after `=>` bind to the type definition (§6, §11.7).
 
 ```
-; ── Module ────────────────────────────────────────────────
+; ── Schema Map (module body) ──────────────────────────────
 
-module-content = meta-directive ws anns
-                 *( import-directive ws )
-                 *( anns declaration ws )
+schema-map       = *( annotation ws ) "{" ws schema-map-entry
+                   *( separator schema-map-entry ) ws "}"
 
-declaration    = type-name ws "=>" ws type-def
-
-anns           = *( annotation ws )
+schema-map-entry = *( annotation ws ) type-name ws "=>" ws
+                   *( annotation ws ) type-def
 
 ; ── Type Definition (declaration right-hand side) ─────────
 
@@ -1668,10 +1677,12 @@ The `paren-type` production produces choice types. Choices require at least two 
 ### 17.2 Disambiguation Summary
 
 ```
-; module top level (after the header):
-;   @              → annotation (binds per §6/§11.7)
+; module body (after the header):
+;   @              → annotation; before "{" it binds to the module,
+;                    inside the braces to the following declaration
+;   {              → schema map opens
 ;   name =>        → declaration (two-token lookahead)
-;   end of input   → module complete
+;   }              → schema map closes; end of module
 ;   anything else  → parse error
 ;
 ; type-def position (after =>):
@@ -1695,16 +1706,18 @@ The `paren-type` production produces choice types. Choices require at least two 
 ;   [type ; spec    → array with size constraint
 ;   [type ]         → unconstrained array
 ;
-; declaration boundary (top-level resync): after a bare type-ref
-; in type-def position, one/two-token lookahead decides:
+; declaration boundary (resync): after a bare type-ref in
+; type-def position, one/two-token lookahead decides:
 ;   {              → narrowing body of the current type-def
 ;   <              → type arguments of the current type-ref
 ;   &              → composition continues the current type-def
+;   ","            → current declaration complete
 ;   name "=>"      → current declaration complete; a new one begins
+;   "}"            → current declaration complete; map closes
 ;   name (other)   → parse error
 ```
 
-Each case in the type-def block is decided by one-token lookahead at the start of the production; in array-def, the choice between tuple, sized array, and unconstrained array is made by one-token lookahead **after the complete preceding `field-type`**. A `field-type` can itself be nested (`(email | phone)<context>?`), but its own grammar is unambiguous and parses without backtracking via the type-def disambiguation above. The module top level requires at most two tokens of lookahead (a name followed by `=>`) to detect a declaration boundary; the parser resyncs at `name =>` and never backtracks. No backtracking is required at any level, including the top level.
+Each case in the type-def block is decided by one-token lookahead at the start of the production; in array-def, the choice between tuple, sized array, and unconstrained array is made by one-token lookahead **after the complete preceding `field-type`**. A `field-type` can itself be nested (`(email | phone)<context>?`), but its own grammar is unambiguous and parses without backtracking via the type-def disambiguation above. The module body requires at most two tokens of lookahead (a name followed by `=>`) to detect a declaration boundary; a `,` or the closing `}` decides in one. The parser never backtracks at any level, including the module body.
 
 
 ### 17.3 Adjacency Rules

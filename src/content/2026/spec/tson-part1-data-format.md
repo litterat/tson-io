@@ -136,19 +136,20 @@ The two header directives name the document and bind its schema, and the field-l
 A TSON document is the outermost structure: a **header** followed by a body. The header is a fixed sequence of directives — names, order, and cardinality are enforced by the grammar (§3.3, §7.4) — and it determines the document kind:
 
 ```
-document   = ws ( data-doc / module-doc )
+document   = ws [ id-directive ws ] ( data-doc / module-doc )
 
-data-doc   = [ id-directive ws ] [ schema-directive ws ] data-value ws
-module-doc = id-directive ws module-content
-           ; module-content begins with the meta-directive and is
-           ; defined normatively in [TSON-SCHEMA]
+data-doc   = [ schema-directive ws ] data-value ws
+module-doc = meta-directive ws *( import-directive ws ) schema-map ws
+           ; schema-map — the module's annotated, braced declaration
+           ; map — is defined normatively in [TSON-SCHEMA]
 
 id-directive     = "!!" "id"     ":" quoted-token
 schema-directive = "!!" "schema" ":" quoted-token
 meta-directive   = "!!" "meta"   ":" quoted-token
+import-directive = "!!" "import" ":" quoted-token
 ```
 
-**Kind dispatch.** A parser consumes the `!!id` directive if present; if the next token is the directive `!!meta`, the document is a **schema module** and its remaining grammar is defined by [TSON-SCHEMA] — otherwise it is a **data document**, defined by this document. Classification therefore requires at most two directives of lookahead, no value parsing, and no backtracking. A `!!meta` directive without a preceding `!!id` is a parse error: schema modules are always identified. A Class 1 processor rejects module documents with a categorized diagnostic (§1.5, §8.1).
+**Kind dispatch.** A parser consumes the `!!id` directive if present; if the next token is the directive `!!meta`, the document is a **schema module** — its header continues with any `!!import` directives, per the grammar above, and its body is a `schema-map`, defined normatively in [TSON-SCHEMA] — otherwise it is a **data document**, defined by this document. Classification therefore requires at most two directives of lookahead, no value parsing, and no backtracking. `!!id` is optional in the grammar for both kinds; publication and hash-pinning of a module require it ([TSON-SCHEMA]). A Class 1 processor rejects module documents with a categorized diagnostic (§1.5, §8.1).
 
 Header directives are properties of the document, not of the body's root value. The root value of a data document is an ordinary data value: it carries annotations and a type annotation like any other value — a type annotation preceding the root core value identifies the expected type of the document's contained value — but never directives. A document with an empty header and no augmentation is simply a value.
 
@@ -163,9 +164,9 @@ _
 #### 2.2.1 Identity and Content Addressing
 
 
-The `!!id` directive names the document: its argument is a URI identifying the document as a published artifact. In data documents `!!id` is optional; in schema modules it is mandatory (§2.2). Identity gives diagnostics, imports, and registries a stable way to refer to the document independent of its storage location.
+The `!!id` directive names the document: its argument is a URI identifying the document as a published artifact. `!!id` is optional in the grammar for both document kinds (§2.2). Publishing a module — registering it for reference by other documents under its own name, or pinning it by content hash — requires it ([TSON-SCHEMA]); an id-less module is a development artifact. Identity gives diagnostics, imports, and registries a stable way to refer to the document independent of its storage location.
 
-When the identifying URI carries a content hash (the URI convention is defined in [TSON-SCHEMA]), the document is **content-addressed** and immutable: any change to its bytes changes its identity. A content-addressed document MUST place the `id-directive` at the very start of the document, followed by a line terminator, and MUST be encoded in UTF-8. The hash input is every byte after that line terminator — the id line is excluded so that a document can state its own identity without the circularity of hashing its own hash.
+When the identifying URI carries a content hash (the URI convention is defined in [TSON-SCHEMA]), the document is **content-addressed** and immutable: any change to its bytes changes its identity. A content-addressed document MUST place the `id-directive` at the very start of the document, followed by a line terminator, and MUST be encoded in UTF-8. The hash input is every byte after that line terminator — the id line is excluded so that a document can state its own identity without the circularity of hashing its own hash. A document with no id line may still be hashed by a consumer; the hash input is then the entire document.
 
 Content addressing composes. A data document may reference its schema by hashed URI, that schema its meta-schema, and so on to the pre-loaded bootstrap ([TSON-SCHEMA]), so a consumer holding a single identifier can verify the integrity of a document together with its entire contract chain — a Merkle-style dependency graph in the manner of content-addressed stores. Ordering, consensus, and mutability policy are application concerns outside this series.
 
@@ -374,12 +375,12 @@ Unlike an annotation, a directive is not strippable metadata: it affects how the
 
 | Name | Kind | Placement | Argument | Operation |
 |---|---|---|---|---|
-| `id` | both | Header; first line; optional in data documents, mandatory in modules | URI | Names the document (§2.2.1). The id line is excluded from content hashing. |
+| `id` | both | Header; first line; optional in the grammar — publishing a module requires it ([TSON-SCHEMA]) | URI | Names the document (§2.2.1). The id line is excluded from content hashing. |
 | `schema` | data | Header, at most once; field values; map entry values | URI | Binds the schema governing the document or value in scope. |
-| `meta` | module | Module header; exactly once, immediately after `id` | URI | Binds the meta-schema governing the module's declarations. |
+| `meta` | module | Module header; exactly once, first directive after the optional `id` | URI | Binds the meta-schema governing the module's declarations. |
 | `import` | module | Module header; after `meta`; repeatable | URI | Imports the named module's declarations. |
 
-Placements for `id` and `schema` are normative in this document; the `id` operation is defined in §2.2.1; the `schema`, `meta`, and `import` operations — and the module-side placements — are normative in [TSON-SCHEMA]. This document uses `meta` only for kind dispatch (§2.2).
+Placements for all four names are enforced by this document's grammar (§2.2, §7.4); the `id` operation is defined in §2.2.1; the `schema`, `meta`, and `import` operations — and the module body's `schema-map` production — are normative in [TSON-SCHEMA]. This document uses `meta` only for kind dispatch (§2.2).
 
 Any other directive name, and any of these names outside its placement, is a parse error. There is no unknown-directive category and no directive extension mechanism: new capability arrives through the type system, not through the grammar (§1.2). Directive names on the wire are always the canonical names above; localized presentation is a tooling concern outside this series.
 
@@ -833,25 +834,26 @@ HEXDIG        = ; 0-9 / A-F / a-f
 The parser consumes the token stream and produces a document tree. The `document` rule dispatches on the header (§2.2); values use two rules: `scoped-value` (record field values, map entry values) and `data-value` (everywhere a value occurs). Adjacency requirements that ABNF concatenation cannot express are enforced via source-position comparison; see §7.5.
 
 ```
-document        = ws ( data-doc / module-doc )
+document        = ws [ id-directive ws ] ( data-doc / module-doc )
 
-data-doc        = [ id-directive ws ] [ schema-directive ws ]
-                  data-value ws
-module-doc      = id-directive ws module-content
-                ; module-content begins with meta-directive and is
-                ; defined in [TSON-SCHEMA]; a Class 1 processor
-                ; rejects module documents (§1.5, §8.1).
+data-doc        = [ schema-directive ws ] data-value ws
+module-doc      = meta-directive ws *( import-directive ws )
+                  schema-map ws
+                ; schema-map — the module's annotated, braced
+                ; declaration map — is defined in [TSON-SCHEMA];
+                ; a Class 1 processor rejects module documents
+                ; (§1.5, §8.1).
 
 id-directive     = "!!" "id"     ":" quoted-token
 schema-directive = "!!" "schema" ":" quoted-token
 meta-directive   = "!!" "meta"   ":" quoted-token
+import-directive = "!!" "import" ":" quoted-token
                 ; ":" MUST be adjacent to the directive name (§7.5).
                 ; "!!" whose name is not followed by an adjacent ":"
                 ; is a parse error (§1.3). String literals match
                 ; exact characters (§7.3): directive names are
-                ; case-sensitive. Any other directive name —
-                ; including module-side "import" outside a module
-                ; header — is a parse error (§3.3).
+                ; case-sensitive. Any other directive name is a
+                ; parse error (§3.3).
 
 data-value      = *annotation [type-ref] core-value
 

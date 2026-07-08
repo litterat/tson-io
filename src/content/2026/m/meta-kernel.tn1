@@ -1,251 +1,248 @@
 !!id:"http://tson.io/2026/m/meta-kernel.tn1"
+!!meta:"http://tson.io/2026/m/meta-kernel.tn1"
 @doc:"""
   TSON meta-kernel — self-referencing bootstrap layer (2026 Revision 32 draft).
 
-  The root of the schema chain, written in the Part 2 module grammar:
-  declarations follow the header directly, one `name => definition`
-  entry per type, and the module resolves to the kernel's own `schema`
-  type (`map<type_name, type_definition>`).
+  The root of the schema ladder, written in the Part 2 module grammar:
+  a braced schema map of `name => definition` declarations, one entry
+  per type, resolving to the kernel's own `schema` type
+  (`map<type_name, type_definition>`).
 
   The `!!meta` directive names this file itself — the one deliberate
   circularity in the series, closed by pre-loading rather than by
   resolution: implementations ship the kernel's resolved structure,
   and this document describes it.
   """
-!!meta:"http://tson.io/2026/m/meta-kernel.tn1"
+{
+  @doc:"Base kinds. `top` is the structural root; every type in the schema IS-A `top`."
+  top       => {}
+  atom      => top & {}
+  product   => top & {
+    access_pattern: product_access_type
+    size_type:      product_size_type
+  }
+  sum       => top & {}
+  reference => top & {
+    target: type_name
+  }
 
-@doc:"Base kinds. `top` is the structural root; every type in the schema IS-A `top`."
-top       => {}
-atom      => top & {}
-product   => top & {
-  access_pattern: product_access_type
-  size_type:      product_size_type
+  @doc:"""
+    Unit atom constructor. An atom with no constraint vocabulary — the
+    atom equivalent of the empty record `{}` for products. Its instances
+    (`value`, `token`, `void` in the kernel; `complex` in core) are
+    opaque atoms distinguished by name and prose-level parsing contract,
+    not by schema shape.
+    """
+  unit => ~atom & {}
+
+  @doc:"""
+    Escape hatch primitive. Instance of the unit atom constructor. The
+    result of base type resolution (§8) applied to a source token, with
+    no further interpretation by the TSON type system. value-typed
+    fields receive whatever §8 produces — null, boolean, integer, float,
+    or string — and the host runtime is responsible for type-checking
+    values at use site against the field's semantic role. value carries
+    no constraint vocabulary and is not narrowable.
+
+    Used for record_field.value (the type of fixed/default values, which
+    must be the field's declared type — a dependency the schema language
+    does not express directly) and for constraint vocabulary fields in
+    meta whose constrained atom is not defined in meta-kernel or meta
+    (real_type.min, decimal_type.min, etc.).
+    """
+  value => !unit {}
+
+  @doc:"""
+    Lexical token primitive. Instance of the unit atom constructor. The
+    canonical NFC-normalised form of a source lexeme — for unquoted
+    lexemes the lexer normalises (§3.4); for quoted lexemes appearing
+    in identifier positions the resolver normalises (§3.2.1). Identity
+    comparison is by canonical form; tokens are whitespace-free by
+    construction because the lexer terminates tokens on whitespace.
+
+    token is not used in data and exists so the kernel can describe
+    lexical identifiers (type names, field names, parameter names) and
+    enum members honestly. It is not currently re-exported in core (no
+    core-level type targets it directly), unlike `void` which is
+    re-exported because annotations in core need it. The
+    implementation-internal constraints on what constitutes a
+    well-formed token are fixed by the grammar; no constraint vocabulary
+    is needed at the type level.
+    """
+  token => !unit {}
+
+  @doc:"""
+    Void primitive. Instance of the unit atom constructor whose
+    parsing contract admits only the absent sentinel `_`. The host
+    value is absent. void is the target type for bare annotations
+    (`@T` with no value); the resolver fills the implicit `_` and
+    validates against this contract. See §5.4.
+
+    Re-exported in core under the same name so that core-only schemas
+    can target it.
+    """
+  void => !unit {}
+
+  @doc:"Internal scalar types for constraint fields."
+  boolean => !enum [true false]
+
+  @doc:"""
+    Integer constraint vocabulary. Atom constructor whose instance,
+    `integer`, is the kernel's arbitrary-precision integer. Field
+    types reference `integer` directly; the mutual reference closes
+    via the kernel's standard local-name lookup. The constructor reaches
+    meta directly (the kernel is meta's governing namespace) and reaches
+    meta-governed modules through meta's kernel import — one hop in each
+    case. The `integer` instance reaches meta via that same import; core
+    defines its own.
+
+    The `pattern` field, when present, is matched against the integer's
+    canonical decimal string representation (signed, no leading zeros
+    other than for zero itself, no underscore separators). It does not
+    apply to alternative representations the source document may have
+    used (hex, binary, separators).
+    """
+  integer_type => ~atom & {
+    min:          integer?
+    max:          integer?
+    multiple_of:  integer?
+    pattern:      regex?
+  }
+
+  integer => !integer_type {}
+
+  @doc:"""
+    Text constraint vocabulary. Atom constructor whose instance,
+    `text`, is the kernel's Unicode code point sequence type.
+    """
+  text_type => ~atom & {
+    min_length:  integer?
+    max_length:  integer?
+    length:      integer?
+    pattern:     regex?
+  }
+
+  text => !text_type {}
+
+  @doc:"Mixin record contributing the `spec` field to specification-bound atoms."
+  atom_specification => { spec: uri }
+
+  @doc:"""
+    URI constraint vocabulary. Composes with the text_type
+    constructor to inherit its record shape (length and pattern fields)
+    plus the atom_specification mixin's spec field plus uri-specific
+    fields. The composition draws shape directly from the constructor
+    rather than going through the text instance.
+    """
+  uri_type => ~text_type & atom_specification & {
+    spec:    = "https://www.rfc-editor.org/rfc/rfc3986"
+    scheme:  text?
+  }
+
+  uri => !uri_type {}
+
+  @doc:"Regex constraint vocabulary. Same shape pattern as uri_type, pinned to I-Regexp."
+  regex_type => ~text_type & atom_specification & {
+    spec: = "https://www.rfc-editor.org/rfc/rfc9485"
+  }
+
+  regex => !regex_type {}
+
+  @doc:"Identifier types — distinct lexical roles referencing the token primitive."
+  type_name  => token
+  field_name => token
+  param_name => token
+
+  @doc:"Type parameter declaration."
+  parameter => {
+    name: param_name
+  }
+
+  @doc:"Internal enumerations."
+  product_access_type => !enum [INDEX NAMED]
+  product_size_type   => !enum [FIXED VARIABLE]
+  field_state         => !enum [REQUIRED REQUIRED_DEFAULT REQUIRED_FIXED
+                                       OPTIONAL OPTIONAL_FIXED]
+  element_state       => !enum [REQUIRED OPTIONAL]
+  type_kind           => !enum [ATOM PRODUCT SUM REFERENCE]
+
+  @doc:"Annotation type markers."
+  annotation    => @annotation void
+  documentation => @annotation text
+  doc           => @annotation documentation
+  alias         => @annotation text
+
+  @doc:"Supporting records."
+  record_field => {
+    name:   field_name
+    type:   type_name
+    state:  field_state ~ REQUIRED
+    value:  value?
+  }
+
+  tuple_element => {
+    element_type: type_name
+    state:        element_state ~ REQUIRED
+  }
+
+  @doc:"Constructors — ~ marks type factories."
+  record => ~product & {
+    access_pattern:  product_access_type = NAMED
+    size_type:       product_size_type = FIXED
+    fields:          [record_field]
+    supertypes:      [type_name]?
+  }
+
+  array => <T> ~product & {
+    access_pattern:  product_access_type = INDEX
+    size_type:       product_size_type = VARIABLE
+    element_type:    T
+    state:           element_state ~ REQUIRED
+    unordered:       boolean ~ false
+    unique_items:    boolean ~ false
+    min_items:       integer?
+    max_items:       integer?
+  }
+
+  set => <T> ~array<T> {
+    state:        = REQUIRED
+    unordered:    = true
+    unique_items: = true
+  }
+
+  map => <K, V> ~product & {
+    access_pattern:  product_access_type = NAMED
+    size_type:       product_size_type = VARIABLE
+    key_type:        K
+    value_type:      V
+    min_items:       integer?
+    max_items:       integer?
+  }
+
+  tuple => ~product & {
+    access_pattern:  product_access_type = INDEX
+    size_type:       product_size_type = FIXED
+    elements:        [tuple_element]
+  }
+
+  enum => ~atom & {
+    members: set<token>
+  }
+
+  choice => ~sum & {
+    variants: [type_name]
+  }
+
+  @doc:"Resolver output."
+  type_definition => {
+    source:       type_name?
+    kind:         type_kind
+    parameters:   [parameter]?
+    constructor:  boolean ~ false
+    supertypes:   [type_name]?
+    subtypes:     [type_name]?
+    body:         top
+  }
+
+  schema => map<type_name, type_definition>
 }
-sum       => top & {}
-reference => top & {
-  target: type_name
-}
-
-@doc:"""
-  Unit atom constructor. An atom with no constraint vocabulary — the
-  atom equivalent of the empty record `{}` for products. Its instances
-  (`value`, `token`, `void` in the kernel; `complex` in core) are
-  opaque atoms distinguished by name and prose-level parsing contract,
-  not by schema shape.
-  """
-unit => ~atom & {}
-
-@doc:"""
-  Escape hatch primitive. Instance of the unit atom constructor. The
-  result of base type resolution (§8) applied to a source token, with
-  no further interpretation by the TSON type system. value-typed
-  fields receive whatever §8 produces — null, boolean, integer, float,
-  or string — and the host runtime is responsible for type-checking
-  values at use site against the field's semantic role. value carries
-  no constraint vocabulary and is not narrowable.
-
-  Used for record_field.value (the type of fixed/default values, which
-  must be the field's declared type — a dependency the schema language
-  does not express directly) and for constraint vocabulary fields in
-  meta whose constrained atom is not defined in meta-kernel or meta
-  (real_type.min, decimal_type.min, etc.).
-  """
-value => !unit {}
-
-@doc:"""
-  Lexical token primitive. Instance of the unit atom constructor. The
-  canonical NFC-normalised form of a source lexeme — for unquoted
-  lexemes the lexer normalises (§3.4); for quoted lexemes appearing
-  in identifier positions the resolver normalises (§3.2.1). Identity
-  comparison is by canonical form; tokens are whitespace-free by
-  construction because the lexer terminates tokens on whitespace.
-
-  token is not used in data and exists so the kernel can describe
-  lexical identifiers (type names, field names, parameter names) and
-  enum members honestly. It is not currently re-exported in core (no
-  core-level type targets it directly), unlike `void` which is
-  re-exported because annotations in core need it. The
-  implementation-internal constraints on what constitutes a
-  well-formed token are fixed by the grammar; no constraint vocabulary
-  is needed at the type level.
-  """
-token => !unit {}
-
-@doc:"""
-  Void primitive. Instance of the unit atom constructor whose
-  parsing contract admits only the absent sentinel `_`. The host
-  value is absent. void is the target type for bare annotations
-  (`@T` with no value); the resolver fills the implicit `_` and
-  validates against this contract. See §5.4.
-
-  Re-exported in core under the same name so that core-only schemas
-  can target it.
-  """
-void => !unit {}
-
-@doc:"Internal scalar types for constraint fields."
-boolean => !enum [true false]
-
-@doc:"""
-  Integer constraint vocabulary. Atom constructor whose instance,
-  `integer`, is the kernel's arbitrary-precision integer. Field
-  types reference `integer` directly; the mutual reference closes
-  via the kernel's standard local-name lookup. Available to meta and
-  core through the schema chain.
-
-  The `pattern` field, when present, is matched against the integer's
-  canonical decimal string representation (signed, no leading zeros
-  other than for zero itself, no underscore separators). It does not
-  apply to alternative representations the source document may have
-  used (hex, binary, separators).
-  """
-integer_type => ~atom & {
-  min:          integer?
-  max:          integer?
-  multiple_of:  integer?
-  pattern:      regex?
-}
-
-integer => !integer_type {}
-
-@doc:"""
-  Text constraint vocabulary. Atom constructor whose instance,
-  `text`, is the kernel's Unicode code point sequence type.
-  """
-text_type => ~atom & {
-  min_length:  integer?
-  max_length:  integer?
-  length:      integer?
-  pattern:     regex?
-}
-
-text => !text_type {}
-
-@doc:"Mixin record contributing the `spec` field to specification-bound atoms."
-atom_specification => { spec: uri }
-
-@doc:"""
-  URI constraint vocabulary. Composes with the text_type
-  constructor to inherit its record shape (length and pattern fields)
-  plus the atom_specification mixin's spec field plus uri-specific
-  fields. The composition draws shape directly from the constructor
-  rather than going through the text instance.
-  """
-uri_type => ~text_type & atom_specification & {
-  spec:    = "https://www.rfc-editor.org/rfc/rfc3986"
-  scheme:  text?
-}
-
-uri => !uri_type {}
-
-@doc:"Regex constraint vocabulary. Same shape pattern as uri_type, pinned to I-Regexp."
-regex_type => ~text_type & atom_specification & {
-  spec: = "https://www.rfc-editor.org/rfc/rfc9485"
-}
-
-regex => !regex_type {}
-
-@doc:"Identifier types — distinct lexical roles referencing the token primitive."
-type_name  => token
-field_name => token
-param_name => token
-
-@doc:"Type parameter declaration."
-parameter => {
-  name: param_name
-}
-
-@doc:"Internal enumerations."
-product_access_type => !enum [INDEX NAMED]
-product_size_type   => !enum [FIXED VARIABLE]
-field_state         => !enum [REQUIRED REQUIRED_DEFAULT REQUIRED_FIXED
-                                     OPTIONAL OPTIONAL_FIXED]
-element_state       => !enum [REQUIRED OPTIONAL]
-type_kind           => !enum [ATOM PRODUCT SUM REFERENCE]
-
-@doc:"Annotation type markers."
-annotation    => @annotation void
-documentation => @annotation text
-doc           => @annotation documentation
-alias         => @annotation text
-
-@doc:"Supporting records."
-record_field => {
-  name:   field_name
-  type:   type_name
-  state:  field_state ~ REQUIRED
-  value:  value?
-}
-
-tuple_element => {
-  element_type: type_name
-  state:        element_state ~ REQUIRED
-}
-
-@doc:"Constructors — ~ marks type factories."
-record => ~product & {
-  access_pattern:  product_access_type = NAMED
-  size_type:       product_size_type = FIXED
-  fields:          [record_field]
-  supertypes:      [type_name]?
-}
-
-
-array => <T> ~product & {
-  access_pattern:  product_access_type = INDEX
-  size_type:       product_size_type = VARIABLE
-  element_type:    T
-  state:           element_state ~ REQUIRED
-  unordered:       boolean ~ false
-  unique_items:    boolean ~ false
-  min_items:       integer?
-  max_items:       integer?
-}
-
-
-set => <T> ~array<T> {
-  state:        = REQUIRED
-  unordered:    = true
-  unique_items: = true
-}
-
-
-map => <K, V> ~product & {
-  access_pattern:  product_access_type = NAMED
-  size_type:       product_size_type = VARIABLE
-  key_type:        K
-  value_type:      V
-  min_items:       integer?
-  max_items:       integer?
-}
-
-
-tuple => ~product & {
-  access_pattern:  product_access_type = INDEX
-  size_type:       product_size_type = FIXED
-  elements:        [tuple_element]
-}
-
-
-enum => ~atom & {
-  members: set<token>
-}
-
-
-choice => ~sum & {
-  variants: [type_name]
-}
-
-@doc:"Resolver output."
-type_definition => {
-  source:       type_name?
-  kind:         type_kind
-  parameters:   [parameter]?
-  constructor:  boolean ~ false
-  supertypes:   [type_name]?
-  subtypes:     [type_name]?
-  body:         top
-}
-
-
-schema => map<type_name, type_definition>

@@ -1,4 +1,6 @@
 !!id:"http://tson.io/2026/m/meta.tn1"
+!!meta:"http://tson.io/2026/m/meta-kernel.tn1"
+!!import:"http://tson.io/2026/m/meta-kernel.tn1"
 @doc:"""
   TSON meta-schema — 2026 Revision 32 draft.
 
@@ -30,9 +32,9 @@
 
   Plus annotation types — `ordered`, `bounded`, `numeric`,
   `deprecated`, `since`, `todo`, `lang`. Annotation types must
-  reside in the schema chain (per §5.4); placing them in meta makes
-  them reachable from core and from any user schema chaining
-  through meta.
+  reside in the governing module's namespace (per §5.4); placing them
+  in meta makes them reachable from core and from every module that
+  meta governs.
 
   Constructors that bind to a governing specification compose with
   the kernel's atom_specification mixin and pin the spec field with
@@ -41,128 +43,128 @@
   Constraint fields whose values are of the constrained atom's family
   use the kernel's `value` escape hatch where the constrained atom is
   not defined in meta-kernel or meta. Where the type is integer, the
-  field uses `integer?` directly (available through the schema chain).
+  field uses `integer?` directly (available through this module's
+  kernel import).
   """
-!!meta:"http://tson.io/2026/m/meta-kernel.tn1"
-!!import:"http://tson.io/2026/m/meta-kernel.tn1"
+{
+  @doc:"Binary encoding formats per RFC 4648."
+  binary_encoding => !enum [BASE64 BASE64URL BASE32 HEX]
 
-@doc:"Binary encoding formats per RFC 4648."
-binary_encoding => !enum [BASE64 BASE64URL BASE32 HEX]
+  @doc:"Binary data constructor."
+  binary => ~atom & {
+    encoding:    binary_encoding
+    min_length:  integer?
+    max_length:  integer?
+  }
 
-@doc:"Binary data constructor."
-binary => ~atom & {
-  encoding:    binary_encoding
-  min_length:  integer?
-  max_length:  integer?
+  @doc:"""
+    Constructor for sum types whose members belong to a named external
+    schema. When `types` is absent, any type from the schema is
+    accepted. When present, only the listed types are accepted.
+    """
+  extern => ~sum & {
+    schema: uri
+    types:  [type_name]?
+  }
+
+  @doc:"""
+    Unknown sum constructor. An empty sum whose instance, `unknown`,
+    accepts any well-formed value of any type. Membership is the
+    universe of types. Distinct from absent and from the unit type.
+    """
+  unknown_type => ~sum & {}
+
+  @doc:"Real constraint vocabulary. Instance is `real` in core."
+  real_type => ~atom & {
+    min:             value?
+    max:             value?
+    allow_nan:       boolean?
+    allow_infinity:  boolean?
+    pattern:         regex?
+  }
+
+  @doc:"Decimal constraint vocabulary. Instance is `decimal` in core."
+  decimal_type => ~atom & {
+    min:              value?
+    max:              value?
+    total_digits:     integer?
+    fraction_digits:  integer?
+    pattern:          regex?
+  }
+
+  @doc:"Rational constraint vocabulary. Instance is `rational` in core."
+  rational_type => ~atom & {
+    min:              value?
+    max:              value?
+    max_denominator:  integer?
+  }
+
+  @doc:"Date constraint vocabulary. Instance is `date` in core."
+  date_type => ~atom & atom_specification & {
+    spec:     = "https://www.rfc-editor.org/rfc/rfc3339"
+    min:      value?
+    max:      value?
+    pattern:  regex?
+  }
+
+  @doc:"Time constraint vocabulary. Instance is `time` in core."
+  time_type => ~atom & atom_specification & {
+    spec:              = "https://www.rfc-editor.org/rfc/rfc3339"
+    min:               value?
+    max:               value?
+    precision:         integer?
+    require_timezone:  boolean?
+    pattern:           regex?
+  }
+
+  @doc:"Datetime constraint vocabulary. Instance is `datetime` in core."
+  datetime_type => ~atom & atom_specification & {
+    spec:              = "https://www.rfc-editor.org/rfc/rfc3339"
+    min:               value?
+    max:               value?
+    precision:         integer?
+    require_timezone:  boolean?
+    pattern:           regex?
+  }
+
+  @doc:"Duration constraint vocabulary. Instance is `duration` in core."
+  duration_type => ~atom & atom_specification & {
+    spec:     = "https://www.iso.org/standard/70907.html"
+    min:      value?
+    max:      value?
+    pattern:  regex?
+  }
+
+  @doc:"UUID constraint vocabulary. Instance is `uuid` in core."
+  uuid_type => ~atom & atom_specification & {
+    spec:     = "https://www.rfc-editor.org/rfc/rfc9562"
+    version:  integer?
+    pattern:  regex?
+  }
+
+  @doc:"Email constraint vocabulary. Instance is `email` in core."
+  email_type => ~text_type & atom_specification & {
+    spec: = "https://www.rfc-editor.org/rfc/rfc5322"
+  }
+
+  @doc:"Ordering classification (ISO/IEC 11404 / XSD fundamental facet)."
+  ordered => @annotation !enum [NONE PARTIAL TOTAL]
+
+  @doc:"Boundedness annotation."
+  bounded => @annotation boolean
+
+  @doc:"Numeric type marker annotation."
+  numeric => @annotation void
+
+  @doc:"Marks a definition or field as deprecated."
+  deprecated => @annotation text
+
+  @doc:"Records when a definition or field was introduced."
+  since => @annotation text
+
+  @doc:"Marks incomplete work requiring attention."
+  todo => @annotation text
+
+  @doc:"BCP 47 language tag (RFC 5646)."
+  lang => @annotation text
 }
-
-@doc:"""
-  Constructor for sum types whose members belong to a named external
-  schema. When `types` is absent, any type from the schema is
-  accepted. When present, only the listed types are accepted.
-  """
-extern => ~sum & {
-  schema: uri
-  types:  [type_name]?
-}
-
-@doc:"""
-  Unknown sum constructor. An empty sum whose instance, `unknown`,
-  accepts any well-formed value of any type. Membership is the
-  universe of types. Distinct from absent and from the unit type.
-  """
-unknown_type => ~sum & {}
-
-@doc:"Real constraint vocabulary. Instance is `real` in core."
-real_type => ~atom & {
-  min:             value?
-  max:             value?
-  allow_nan:       boolean?
-  allow_infinity:  boolean?
-  pattern:         regex?
-}
-
-@doc:"Decimal constraint vocabulary. Instance is `decimal` in core."
-decimal_type => ~atom & {
-  min:              value?
-  max:              value?
-  total_digits:     integer?
-  fraction_digits:  integer?
-  pattern:          regex?
-}
-
-@doc:"Rational constraint vocabulary. Instance is `rational` in core."
-rational_type => ~atom & {
-  min:              value?
-  max:              value?
-  max_denominator:  integer?
-}
-
-@doc:"Date constraint vocabulary. Instance is `date` in core."
-date_type => ~atom & atom_specification & {
-  spec:     = "https://www.rfc-editor.org/rfc/rfc3339"
-  min:      value?
-  max:      value?
-  pattern:  regex?
-}
-
-@doc:"Time constraint vocabulary. Instance is `time` in core."
-time_type => ~atom & atom_specification & {
-  spec:              = "https://www.rfc-editor.org/rfc/rfc3339"
-  min:               value?
-  max:               value?
-  precision:         integer?
-  require_timezone:  boolean?
-  pattern:           regex?
-}
-
-@doc:"Datetime constraint vocabulary. Instance is `datetime` in core."
-datetime_type => ~atom & atom_specification & {
-  spec:              = "https://www.rfc-editor.org/rfc/rfc3339"
-  min:               value?
-  max:               value?
-  precision:         integer?
-  require_timezone:  boolean?
-  pattern:           regex?
-}
-
-@doc:"Duration constraint vocabulary. Instance is `duration` in core."
-duration_type => ~atom & atom_specification & {
-  spec:     = "https://www.iso.org/standard/70907.html"
-  min:      value?
-  max:      value?
-  pattern:  regex?
-}
-
-@doc:"UUID constraint vocabulary. Instance is `uuid` in core."
-uuid_type => ~atom & atom_specification & {
-  spec:     = "https://www.rfc-editor.org/rfc/rfc9562"
-  version:  integer?
-  pattern:  regex?
-}
-
-@doc:"Email constraint vocabulary. Instance is `email` in core."
-email_type => ~text_type & atom_specification & {
-  spec: = "https://www.rfc-editor.org/rfc/rfc5322"
-}
-
-@doc:"Ordering classification (ISO/IEC 11404 / XSD fundamental facet)."
-ordered => @annotation !enum [NONE PARTIAL TOTAL]
-
-@doc:"Boundedness annotation."
-bounded => @annotation boolean
-
-@doc:"Numeric type marker annotation."
-numeric => @annotation void
-
-@doc:"Marks a definition or field as deprecated."
-deprecated => @annotation text
-
-@doc:"Records when a definition or field was introduced."
-since => @annotation text
-
-@doc:"Marks incomplete work requiring attention."
-todo => @annotation text
-
-@doc:"BCP 47 language tag (RFC 5646)."
-lang => @annotation text
