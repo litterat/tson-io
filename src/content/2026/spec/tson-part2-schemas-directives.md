@@ -108,7 +108,7 @@ A document with no `!!schema` directive has no type vocabulary: base type resolu
 ```
 int_list => [integer]
 scores => [integer; +]
-translations => map<string, string>
+translations => map<text, text>
 ```
 
 Then in data: `!int_list [1 2 4 8 32]`, `!translations { en => Hello fr => Bonjour }`.
@@ -136,7 +136,7 @@ A **set** is an unordered collection of unique values. Sets are not a distinct g
 **Applicability.** These rules apply uniformly to every set-typed position, including:
 
 - The kernel's `enum.members: set<token>` — duplicate enum members are silently deduped (with a warning recommended); element order is implementation-defined.
-- User-defined set-typed fields — `tags: set<string>` follows the same rules.
+- User-defined set-typed fields — `tags: set<text>` follows the same rules.
 - Set values produced by the positional fill rule (§3.4) when a constructor's single REQUIRED field is set-typed.
 
 **No absent semantics.** An absent element at a set-typed position is rejected because sets carry `state: REQUIRED` per the `set` constructor's pinned values (§8).
@@ -206,11 +206,11 @@ Examples within a record definition:
 
 ```
 config => {
-  host:   string
+  host:   text
   port:   integer ~ 8080
   debug:  boolean = false
-  label:  string?
-  format: string? = json
+  label:  text?
+  format: text? = json
 }
 ```
 
@@ -233,11 +233,11 @@ The `?` suffix marks optionality. In a type expression, `?` after the base type 
 
 ```
 config => {
-  tags:     [string; +]
-  aliases:  [string]?
-  notes:    [string?]
-  labels:   [string?; ..10]?
-  metadata: map<string, integer?>?
+  tags:     [text; +]
+  aliases:  [text]?
+  notes:    [text?]
+  labels:   [text?; ..10]?
+  metadata: map<text, integer?>?
   retries:  integer ~ 3
 }
 ```
@@ -247,18 +247,18 @@ config => {
 **Inline structural definitions — atom narrowings and bare records prohibited.** Schema authors MUST introduce atom narrowings and record types via named declarations; they MAY NOT appear inline in field-type, tuple-element, array element, choice variant, type-argument, or composition positions. The two prohibited forms:
 
 - `!decimal { min: -273.15 max: 10000 }` as a field type — atom narrowing.
-- `{ name: string }` as a field type — bare record.
+- `{ name: text }` as a field type — bare record.
 
-The prohibition is not a parsing necessity. Under the document-kind split a module body is never parsed in data mode: `!decimal { min: 0 max: 100 }` in a type-def position has exactly one available reading (constructor application or instance narrowing, §3.3 — either way the braces are read against the constructor's constraint record), and `{ name: string }` has exactly one (a record's field list). Earlier drafts grounded this rule in grammar ambiguity between the data and type readings of identical surface shapes; that ambiguity dissolved when schema modules became their own document kind. The rule survives because of what a schema is for:
+The prohibition is not a parsing necessity. Under the document-kind split a module body is never parsed in data mode: `!decimal { min: 0 max: 100 }` in a type-def position has exactly one available reading (constructor application or instance narrowing, §3.3 — either way the braces are read against the constructor's constraint record), and `{ name: text }` has exactly one (a record's field list). Earlier drafts grounded this rule in grammar ambiguity between the data and type readings of identical surface shapes; that ambiguity dissolved when schema modules became their own document kind. The rule survives because of what a schema is for:
 
 **Names are the unit of meaning and reuse.** A narrowing exists to give a contract a name: `temperature`, not `!decimal { min: -273.15 max: 10000 }` repeated at each use site. An anonymous inline definition cannot be referenced, narrowed, composed with, annotated, or documented — and the same constraints written inline at three field positions are three definitions free to drift apart. A named declaration is written once and changed once.
 
-**Resolver output is made of names.** Every type the resolver produces is a named entry in the schema map (§13). The permitted inline forms are combinations of names — `[age]`, `map<string, score>`, `(email | phone)` — whose synthetic identity is derivable from the form itself (`array#age`, §13.1). An inline atom narrowing or bare record *defines new content* — constraint bindings, field lists — whose name is derivable from nothing; the resolver would have to invent identifiers for types the author could and should have named. The inline/named boundary is the reference/definition boundary: inline forms may combine existing named types, and anything that defines new structure must itself be named.
+**Resolver output is made of names.** Every type the resolver produces is a named entry in the schema map (§13). The permitted inline forms are combinations of names — `[age]`, `map<text, score>`, `(email | phone)` — whose synthetic identity is derivable from the form itself (`array#age`, §13.1). An inline atom narrowing or bare record *defines new content* — constraint bindings, field lists — whose name is derivable from nothing; the resolver would have to invent identifiers for types the author could and should have named. The inline/named boundary is the reference/definition boundary: inline forms may combine existing named types, and anything that defines new structure must itself be named.
 
 The required form is:
 
 ```
-person => { name: string }
+person => { name: text }
 ```
 
 then `person` is referenced by name where needed.
@@ -274,14 +274,14 @@ Inside the type-definition grammar, type expressions support arrays, tuples, opt
 
 ```
 config => {
-  tags:     [string]                array of strings
+  tags:     [text]                array of text values
   scores:   [integer; +]           non-empty array (one or more)
-  matrix:   [float; 9]             exactly 9 floats
+  matrix:   [real; 9]             exactly 9 real values
   batch:    [order; 1..100]        between 1 and 100
-  aliases:  [string]?              optional field, array of strings
-  meta:     map<string, integer>   typed map
-  point:    [float, float]         tuple (two floats)
-  sparse:   [string, string?]      tuple with optional second position
+  aliases:  [text]?              optional field, array of text values
+  meta:     map<text, integer>   typed map
+  point:    [real, real]          tuple (two real values)
+  sparse:   [text, text?]      tuple with optional second position
   contact:  (email | phone)        choice type
 }
 ```
@@ -289,14 +289,14 @@ config => {
 **Array types** use `[type]` with an optional size specifier after `;`:
 
 ```
-[string]             any size
-[string?]            any size, absent elements permitted
-[string; +]          one or more
-[string; 5]          exactly 5
-[string?; 5]         exactly 5, absent elements permitted
-[string; 1..100]     1 to 100
-[string; 1..]        at least 1
-[string; ..10]       at most 10
+[text]             any size
+[text?]            any size, absent elements permitted
+[text; +]          one or more
+[text; 5]          exactly 5
+[text?; 5]         exactly 5, absent elements permitted
+[text; 1..100]     1 to 100
+[text; 1..]        at least 1
+[text; ..10]       at most 10
 ```
 
 The size specifier is a single unquoted token in the parser grammar (`size-spec = unquoted-token`). The resolver interprets the token as one of six forms: `+` (one or more, equivalent to `1..`), `N` (exactly N), `N..M` (bounded range), `N..` (at least N), `..M` (at most M), or absent (unconstrained). N and M are non-negative decimal integers without leading zeros. When both N and M are present, N MUST be less than M. For exactly N elements, use the `N` form directly. The resolver MUST reject any token in a size-spec position that does not match the pattern `^(\+|(0|[1-9]\d*)(\.\.(0|[1-9]\d*)?)?|\.\.(0|[1-9]\d*))$`. A size specifier of `0..` is equivalent to an unconstrained array.
@@ -308,21 +308,21 @@ The `set` constructor narrows `array` and pins `state: = REQUIRED` — absence h
 **Tuple types** use `[type, type, ...]` with comma or whitespace separation between individually typed positions:
 
 ```
-[float, float]               two floats
-[string integer boolean?]    three positions, third optional
+[real, real]                 two real values
+[text integer boolean?]    three positions, third optional
 ```
 
-A tuple requires at least two element type expressions. When the parser encounters two or more type-refs separated by whitespace or comma inside brackets, the result is always a tuple. A semicolon after a single type-ref introduces a size specifier for an array. A single type-ref with no semicolon is an unconstrained array. The separator character (whitespace/comma vs semicolon) is the disambiguating signal. A single type in brackets (`[string]`) MUST be interpreted as an unconstrained array, not a one-element tuple. `[string,]` is a parse error — trailing separators are not permitted anywhere (see [TSON-DATA] §2.4).
+A tuple requires at least two element type expressions. When the parser encounters two or more type-refs separated by whitespace or comma inside brackets, the result is always a tuple. A semicolon after a single type-ref introduces a size specifier for an array. A single type-ref with no semicolon is an unconstrained array. The separator character (whitespace/comma vs semicolon) is the disambiguating signal. A single type in brackets (`[text]`) MUST be interpreted as an unconstrained array, not a one-element tuple. `[text,]` is a parse error — trailing separators are not permitted anywhere (see [TSON-DATA] §2.4).
 
 Tuple positions support only REQUIRED and OPTIONAL states; defaults and fixed values are not available for tuple elements. Tuples and arrays share the `element_state` enumeration in the meta-schema — it has just two members, reflecting the narrower vocabulary available to positional containers compared to record fields (which support five states via `field_state`).
 
-Tuples are fixed-length: every position MUST be present in the data. An OPTIONAL position may carry the absent sentinel `_` to indicate explicit absence at that slot, but the slot itself MUST appear. A tuple value with fewer elements than the tuple type's position count is a validation error, regardless of whether the missing positions are OPTIONAL. For example, given the type `[string, string?]`:
+Tuples are fixed-length: every position MUST be present in the data. An OPTIONAL position may carry the absent sentinel `_` to indicate explicit absence at that slot, but the slot itself MUST appear. A tuple value with fewer elements than the tuple type's position count is a validation error, regardless of whether the missing positions are OPTIONAL. For example, given the type `[text, text?]`:
 
 - `[a, b]` — valid (both positions filled with values).
 - `[a, _]` — valid (second position explicitly absent).
 - `[a]` — validation error (tuple type has two positions; data has one).
 
-Authors who want trailing-optional semantics should use a 1-or-more-element array `[string; +]` rather than a tuple.
+Authors who want trailing-optional semantics should use a 1-or-more-element array `[text; +]` rather than a tuple.
 
 **Choice types** use `(type | type | ...)`:
 
@@ -333,12 +333,12 @@ Authors who want trailing-optional semantics should use a 1-or-more-element arra
 **Type arguments** use `name<type, type>`:
 
 ```
-map<string, integer>         typed map (binds K, V parameters)
-set<string>                  typed set (binds T parameter)
-array<string>                explicit array form
+map<text, integer>         typed map (binds K, V parameters)
+set<text>                  typed set (binds T parameter)
+array<text>                explicit array form
 ```
 
-The angle-bracket syntax binds positional type arguments to a constructor's declared type parameters (see §5 for parameter declarations). The argument count MUST match the constructor's parameter count. Type arguments are themselves type references and may be parameterized recursively (`map<string, array<integer>>`). Bare references to a parameterized type without binding its parameters (e.g. `map` with no `<>`) are resolver errors — parameter binding is mandatory at every use site.
+The angle-bracket syntax binds positional type arguments to a constructor's declared type parameters (see §5 for parameter declarations). The argument count MUST match the constructor's parameter count. Type arguments are themselves type references and may be parameterized recursively (`map<text, array<integer>>`). Bare references to a parameterized type without binding its parameters (e.g. `map` with no `<>`) are resolver errors — parameter binding is mandatory at every use site.
 
 
 ### 3.3 Constructor Instantiation and Instance Narrowing
@@ -353,7 +353,7 @@ A constructor's kind is determined at definition time by the base kind (`atom`, 
 
 ```
 integer  => !integer_type {}
-string   => !string_type {}
+text   => !text_type {}
 boolean  => !enum [true false]
 base64   => !binary BASE64
 ```
@@ -364,7 +364,7 @@ base64   => !binary BASE64
 
 ```
 uint8             => !integer { min: 0  max: 255 }
-non_empty_string  => !string { min_length: 1 }
+non_empty_text  => !text { min_length: 1 }
 positive_integer  => !integer { min: 1 }
 ```
 
@@ -410,7 +410,7 @@ where `C` names a constructor and `bindings` is a record literal filling the con
 ```
 !enum [true false]              →  !enum { members: [true false] }
 !binary BASE64                  →  !binary { encoding: BASE64 }
-!array string                   →  !array { element_type: string }
+!array text                   →  !array { element_type: text }
 ```
 
 REQUIRED_DEFAULT, REQUIRED_FIXED, and OPTIONAL fields do not count toward the single-REQUIRED rule. The positional form is invalid when the constructor has zero, two, or more REQUIRED fields — the resolver MUST reject such uses with a clear error message.
@@ -421,13 +421,13 @@ REQUIRED_DEFAULT, REQUIRED_FIXED, and OPTIONAL fields do not count toward the si
 
 ```
 !integer { min: 0  max: 255 }   →  !integer_type { min: 0  max: 255 }
-!string { min_length: 1 }       →  !string_type { min_length: 1 }
+!text { min_length: 1 }       →  !text_type { min_length: 1 }
 !decimal { min: 0  max: 100 }   →  !decimal_type { min: 0  max: 100 }
 ```
 
 The resolver recognises this case by checking `C.constructor`: if `false`, `C` is an instance and the retarget follows `C.source`. The resulting type records `source: C.source` and `supertypes: [C]` — instance narrowing establishes IS-A with the narrowed instance (§3.3), unlike construction which transfers only kind.
 
-**End state.** After desugaring, every type-def body in resolver output is `!C { bindings }` where `C` is a constructor and `bindings` is a record literal supplying values for the constructor's REQUIRED fields that are not pinned by REQUIRED_FIXED or covered by REQUIRED_DEFAULT. Pinned and default values come from the constructor itself and do not appear in the binding record; OPTIONAL fields appear only when the source provides a value. Positional forms are always expanded to their record-literal equivalent — `!array string` becomes `!array { element_type: string }` — and inline type expressions and instance narrowings are fully desugared. The surface abbreviations exist only in source text.
+**End state.** After desugaring, every type-def body in resolver output is `!C { bindings }` where `C` is a constructor and `bindings` is a record literal supplying values for the constructor's REQUIRED fields that are not pinned by REQUIRED_FIXED or covered by REQUIRED_DEFAULT. Pinned and default values come from the constructor itself and do not appear in the binding record; OPTIONAL fields appear only when the source provides a value. Positional forms are always expanded to their record-literal equivalent — `!array text` becomes `!array { element_type: text }` — and inline type expressions and instance narrowings are fully desugared. The surface abbreviations exist only in source text.
 
 **Named definitions required.** The instance form (`!T { values }`) and the empty constructor instantiation (`!T {}`) are valid only as the top-level body of a declaration — they cannot appear inline in field-type, tuple position, array element, choice variant, type-argument, or composition positions. See §3.1 for the rationale. A constrained atom such as `!decimal { min: -273.15 max: 10000 }` must be introduced with its own declaration and referenced by name:
 
@@ -453,7 +453,7 @@ Narrowing copies an existing definition and refines it by binding parameters or 
 Narrowing is expressed by providing a source type name followed by a record body, without `&`:
 
 ```
-person => { name: string  age: integer }
+person => { name: text  age: integer }
 
 elder => person { age: age }
 
@@ -522,35 +522,35 @@ Supertype composition (`&`) and narrowing (source type without `&`) serve differ
 Example:
 
 ```
-address => { street: string  city: string  postcode: string }
-contact => { name: string  email: string }
-customer => address & contact & { loyalty_tier: string }
+address => { street: text  city: text  postcode: text }
+contact => { name: text  email: text }
+customer => address & contact & { loyalty_tier: text }
 
-config => { host: string  port: integer  debug: boolean }
+config => { host: text  port: integer  debug: boolean }
 production => config { host: = "prod.example.com"  debug: = false }
 ```
 
 **Supertype field conflicts.** When multiple supertypes are combined via `&`, each supertype contributes its fields to the composed type. The supertypes MUST contribute disjoint field sets — a field name appearing in more than one supertype path is a resolver error, including diamond cases where the field traces back to the same originating type through both paths. Even when the source is structurally identical, the composed record has only one slot per field name and cannot meaningfully take a value from "both paths."
 
-If two types genuinely need to share a field, the schema author must factor the shared field into a direct supertype of the composed type, not into a common ancestor reached through two intermediate supertypes. For example, given `identifiable => { id: uuid }` and intermediates `named => identifiable & { name: string }` and `versioned => identifiable & { version: integer }`, a composition `artifact => named & versioned & { ... }` is a resolver error: `id` reaches `artifact` through both `named` and `versioned`. The fix is to remove `identifiable` from the intermediates and compose it directly: `named => { name: string }`, `versioned => { version: integer }`, `artifact => identifiable & named & versioned & { ... }`. Now `id` enters only through the direct `identifiable` composition; `named` and `versioned` are pure mixins for their own fields.
+If two types genuinely need to share a field, the schema author must factor the shared field into a direct supertype of the composed type, not into a common ancestor reached through two intermediate supertypes. For example, given `identifiable => { id: uuid }` and intermediates `named => identifiable & { name: text }` and `versioned => identifiable & { version: integer }`, a composition `artifact => named & versioned & { ... }` is a resolver error: `id` reaches `artifact` through both `named` and `versioned`. The fix is to remove `identifiable` from the intermediates and compose it directly: `named => { name: text }`, `versioned => { version: integer }`, `artifact => identifiable & named & versioned & { ... }`. Now `id` enters only through the direct `identifiable` composition; `named` and `versioned` are pure mixins for their own fields.
 
 The trailing `& { ... }` body may tighten inherited fields (following the narrowing state transition table in §4.1) or add new fields. Fields in the body that do not exist in any supertype are new fields. Fields in the body that match an inherited field name are tightening refinements and must follow the narrowing rules.
 
 **Field ordering.** Supertypes contribute fields in left-to-right order as listed in the `&` composition. Each supertype's own fields appear in their declared order. Body fields that tighten inherited fields replace them in place — the inherited slot is preserved, only its state and value are updated. Body fields that do not match any inherited field are new fields, appended after all inherited fields.
 
-**Constructor marker is independent of supertypes.** The `~` marker at the start of a type-def body is the sole signal for `constructor: true` in resolver output. A composition like `uri_type => ~string_type & atom_specification & { ... }` is a constructor because of the leading `~`, not because `string_type` is itself a constructor. Without the `~`, the same composition would produce a non-constructor type even though one of its supertypes is a constructor. Constructorness is a property of the definition, not inherited through IS-A.
+**Constructor marker is independent of supertypes.** The `~` marker at the start of a type-def body is the sole signal for `constructor: true` in resolver output. A composition like `uri_type => ~text_type & atom_specification & { ... }` is a constructor because of the leading `~`, not because `text_type` is itself a constructor. Without the `~`, the same composition would produce a non-constructor type even though one of its supertypes is a constructor. Constructorness is a property of the definition, not inherited through IS-A.
 
 Example combining a constructor supertype, a non-constructor mixin, and a tightening body:
 
 ```
 atom_specification => { spec: uri }
-uri_type => ~string_type & atom_specification & {
+uri_type => ~text_type & atom_specification & {
   spec:    = "https://www.rfc-editor.org/rfc/rfc3986"
-  scheme:  string?
+  scheme:  text?
 }
 ```
 
-`uri_type` is a constructor (`~`), IS-A `string_type` and `atom_specification` directly. Its fields, in order: `string_type`'s four constraint fields (`min_length`, `max_length`, `length`, `pattern`), `atom_specification`'s one field (`spec`) — tightened in place by the body to `REQUIRED_FIXED` with the RFC 3986 URL — and `uri_type`'s new `scheme` field.
+`uri_type` is a constructor (`~`), IS-A `text_type` and `atom_specification` directly. Its fields, in order: `text_type`'s four constraint fields (`min_length`, `max_length`, `length`, `pattern`), `atom_specification`'s one field (`spec`) — tightened in place by the body to `REQUIRED_FIXED` with the RFC 3986 URL — and `uri_type`'s new `scheme` field.
 
 **Composition and narrowing accept parameterized type references.** Both `&` composition and bare-source narrowing operate on type-refs, which may carry type arguments. A narrowing of a parameterized type must re-declare its open parameters in its own `<>` slot (see §5 for partial application). Composing with a parameterized supertype works the same way: `vip => <T> customer & box<T> & { ... }` declares `vip` as parameterized over `T`, with `T` flowing through to the `box` supertype's parameter slot.
 
@@ -564,7 +564,7 @@ Subtraction is expressed by writing `field: _` (bare `_`, no type-ref, no modifi
 ```
 account_public => account & { password: _ }                       ; remove one field
 account_minimal => account & { password: _  internal_id: _ }       ; remove multiple
-account_view => account & { password: _  email: string ~ "n/a" }   ; mix with tightening
+account_view => account & { password: _  email: text ~ "n/a" }   ; mix with tightening
 account_combined => account & contact & { password: _ }            ; multi-source
 account_via_narrowing => account { password: _ }                   ; narrowing form
 ```
@@ -609,7 +609,7 @@ pair      => <T, U> { first: T  second: U }
 box       => <T> { contents: T  count: integer }
 ```
 
-`container<string>`, `pair<string, integer>`, and `box<float>` are concrete types. Bare `container` or `pair` references (without `<>`) are resolver errors.
+`container<text>`, `pair<text, integer>`, and `box<real>` are concrete types. Bare `container` or `pair` references (without `<>`) are resolver errors.
 
 **Parameter scoping.** Parameters are local to the type definition that declares them. Within the body, parameter names take precedence over the schema namespace. Parameter names do not escape, do not compose across `&`, and two definitions can independently use the same parameter name without collision. When the resolver encounters a name in a type position, it walks scope outward: parameters of the enclosing definition first, then the schema namespace. The first match wins.
 
@@ -617,14 +617,14 @@ box       => <T> { contents: T  count: integer }
 
 ```
 homogeneous_pair => <T> { first: T  second: T }
-transformation   => <T> { input: T  output: T  function: string }
+transformation   => <T> { input: T  output: T  function: text }
 ```
 
-When `homogeneous_pair<string>` is referenced, both `first` and `second` resolve to `string`. There is no need for a separate "linking" mechanism — sharing a name is the link.
+When `homogeneous_pair<text>` is referenced, both `first` and `second` resolve to `text`. There is no need for a separate "linking" mechanism — sharing a name is the link.
 
 **Templates are not directly instantiable.** A `type_definition` with a non-empty parameter list cannot validate data. Attempting to use a template as a type annotation in data is a resolver error. Templates exist only to be referenced, with arguments, from other type definitions or from concrete data type annotations.
 
-**Substitution.** Eager. When the resolver sees a parameterized reference like `container<string>`, it produces a fully-substituted `type_definition` in resolver output. Resolver output contains the template alongside its substituted instances; consumers can distinguish templates by inspecting their `parameters` field.
+**Substitution.** Eager. When the resolver sees a parameterized reference like `container<text>`, it produces a fully-substituted `type_definition` in resolver output. Resolver output contains the template alongside its substituted instances; consumers can distinguish templates by inspecting their `parameters` field.
 
 **Fully-bound references.** When all of a template's parameters are bound to concrete types at a use site, the result is a fully-applied reference — a named type that resolves to the substituted form. These are type references (kind: REFERENCE), not narrowings:
 
@@ -644,10 +644,10 @@ user_list_response  => api_response<[user]>
 **Partial application — parameter re-declaration.** When a narrowing of a parameterized type leaves some parameters open, it MUST re-declare those open parameters in its own `<>` slot. Implicit inheritance — where a narrowing tacitly inherits its parent's parameters — is not permitted. Every parameter has a visible declaration site.
 
 ```
-stringly_keyed_map => <V> map<string, V>
+text_keyed_map => <V> map<text, V>
 ```
 
-`stringly_keyed_map` is itself a template, parameterized by V, that binds K to `string` in its body. The chain composes: `stringly_keyed_map<integer>` resolves to `map<string, integer>` after both substitution layers.
+`text_keyed_map` is itself a template, parameterized by V, that binds K to `text` in its body. The chain composes: `text_keyed_map<integer>` resolves to `map<text, integer>` after both substitution layers.
 
 The `_` token is not valid in field-type positions — see the absent sentinel position table in §2.4. Authors expressing "type to be filled later" use parameters; empty records use `{}`.
 
@@ -657,14 +657,14 @@ The `_` token is not valid in field-type positions — see the absent sentinel p
 Types may reference themselves. Recursive structures are valid:
 
 ```
-node => { value: string  children: [node] }
+node => { value: text  children: [node] }
 tree => { root: node  depth: integer? }
 linked_list => <T> { value: T  next: linked_list<T>? }
 ```
 
 The resolver MUST detect and handle cycles in type references. A self-referential type is complete as long as the recursive reference is through an optional field or a variable-length container (array, set, map). A required direct self-reference (`item => { inner: item }`) creates an infinitely nested structure that MUST NOT be instantiated — the resolver SHOULD warn about such definitions. Parameterized recursive types compose normally: `linked_list<integer>` is a valid concrete type whose `next` field carries another `linked_list<integer>`.
 
-**Recursive template materialisation.** When a parameterized type is referenced with concrete arguments (e.g. `linked_list<integer>`), the resolver materialises it as a single named entry in the schema namespace, named per §13.1's synthetic naming convention (`linked_list<integer>` → `linked_list#integer`). Recursive references within the body resolve to that name — `linked_list<integer>`'s `next: linked_list<integer>?` field references `linked_list#integer`, not an inlined recursive substitution. This produces one entry per unique `(template, argument-tuple)` pair, deduplicated by structural equivalence of the arguments. The same model applies to non-recursive templates: `box<integer>` and `box<string>` are two distinct entries, `box#integer` and `box#string`.
+**Recursive template materialisation.** When a parameterized type is referenced with concrete arguments (e.g. `linked_list<integer>`), the resolver materialises it as a single named entry in the schema namespace, named per §13.1's synthetic naming convention (`linked_list<integer>` → `linked_list#integer`). Recursive references within the body resolve to that name — `linked_list<integer>`'s `next: linked_list<integer>?` field references `linked_list#integer`, not an inlined recursive substitution. This produces one entry per unique `(template, argument-tuple)` pair, deduplicated by structural equivalence of the arguments. The same model applies to non-recursive templates: `box<integer>` and `box<text>` are two distinct entries, `box#integer` and `box#text`.
 
 
 ## 6. Annotations as Types
@@ -680,13 +680,13 @@ In module declarations, an annotation immediately preceding the declared name bi
 **Annotations are types.** An annotation `@T` (or `@T:value`) names a type `T` and attaches it as metadata to the surrounding value. Annotation resolution is one-hop resolution against the governing target's namespace — the `!!meta` target for a module, the `!!schema` target for a data document — its local declarations plus its imports (§11.3.4). No further rung of the ladder is walked. `!!import` entries and local entries of the schema currently being authored are NOT part of the annotation namespace. To use a type as an annotation in a document or schema, that type must be present in the governing target's namespace — for a module, typically meaning the type lives in `meta.tn1` or arrives through its kernel import; for a data document, in the user schema or its imports (core's `doc` re-export exists for exactly this) or another schema chained as an ancestor of the active schema. The result is then validated against `T`'s contract:
 
 - For `void`-targeted `T` (a type whose resolved body, after reference flattening, is `void` — such as `annotation` or `numeric`), the annotation form is `@T` with no colon and no value. Bare `@T` is shorthand for `@T:_`; the resolver fills the implicit `_` before validating against `T`'s parsing contract. The `void` atom (defined in meta-kernel and re-exported by core, see §12) admits the absent sentinel `_` (see §8) — presence is the information.
-- For any non-`void` `T`, the annotation form is `@T:value`, where `value` is a single data-value that conforms to `T`. `@doc:"User's full name"` validates the string against `doc`. `@confidence:0.95` validates the float against `confidence`. `@person:{first_name: john last_name: smith}` validates the record against `person`.
+- For any non-`void` `T`, the annotation form is `@T:value`, where `value` is a single data-value that conforms to `T`. `@doc:"User's full name"` validates the text against `doc`. `@confidence:0.95` validates the float against `confidence`. `@person:{first_name: john last_name: smith}` validates the record against `person`.
 
 Any type in the governing target's namespace can be used as an annotation. There is no separate annotation namespace — annotations and types share names because an annotation *is* a typed metadata attachment. The one-hop rule is what allows the kernel's `annotation => @annotation void` self-reference to work: the kernel's governing target is itself, and meta-kernel is pre-loaded into the library, so when the resolver encounters `@annotation` it finds the pre-loaded `annotation` definition, not the entry currently being defined.
 
 **The `@annotation` marker is advisory.** The `annotation` type, defined in meta-kernel as `@annotation void`, is a tooling hint: attaching `@annotation` to a type definition signals "this type is intended to be used as annotation metadata." Tools that surface "available annotations" filter by this marker to avoid enumerating every schema type. The marker carries no runtime force — a schema type without `@annotation` is no less usable as an annotation. A document writing `@person:{...}` against a `person` type without the `@annotation` marker is silently accepted; no warning, no error.
 
-**Resolver-attached annotations.** Some annotations are not written by the schema author but are attached by the resolver during type resolution. The most common example is `@alias` (defined in `core.tn1`): when a reference is flattened in resolver output, the resolver attaches `@alias:name` to the resolved type, naming the source-level alias used at the reference site. A field declared as `f: email` where `email => string` resolves to a type-ref pointing at `string` with `@alias:email` attached. This preserves the source-level intent (the author wrote `email`, not `string`) while keeping the validation graph minimal. See §13.2 for the reference flattening rule. Resolver-attached annotations follow the same resolution rules as user-written ones — the resolver attaches `@alias` because `string` is the right type for that metadata, not because of any privileged status.
+**Resolver-attached annotations.** Some annotations are not written by the schema author but are attached by the resolver during type resolution. The most common example is `@alias` (defined in `core.tn1`): when a reference is flattened in resolver output, the resolver attaches `@alias:name` to the resolved type, naming the source-level alias used at the reference site. A field declared as `f: email` where `email => text` resolves to a type-ref pointing at `text` with `@alias:email` attached. This preserves the source-level intent (the author wrote `email`, not `text`) while keeping the validation graph minimal. See §13.2 for the reference flattening rule. Resolver-attached annotations follow the same resolution rules as user-written ones — the resolver attaches `@alias` because `text` is the right type for that metadata, not because of any privileged status.
 
 
 ```
@@ -722,7 +722,7 @@ The choice type name is then used like any other type name in field definitions:
 contact_method => (email | phone | address)
 
 person => {
-  name: string
+  name: text
   contact: contact_method
   backup: contact_method?
   history: [contact_method; +]
@@ -792,7 +792,7 @@ Constructor narrowing differs from regular narrowing: fixed values CAN be replac
 
 **Constraint-vocabulary atom constructors.** Atom families whose instances can be narrowed with constraint values (min/max, length, pattern, etc.) are defined as pairs: a constructor carrying the constraint vocabulary and a canonical empty instance. The constructor composes with `atom` via `~atom & {...}` and lists the family's narrowable fields as an ordinary record body. The instance is produced with `!<constructor> {}`, an empty construction that records `source: <constructor>` but establishes no IS-A relationship with it (construction transfers kind, not supertypes).
 
-Meta defines this pattern for the types it needs internally: `integer_type` / `integer`, `string_type` / `string`, `uri_type` / `uri`, `regex_type` / `regex`. Meta-core adds the numeric, temporal, identifier, and text constructors: `real_type` / `real`, `decimal_type` / `decimal`, `rational_type` / `rational`, `date_type` / `date`, `time_type` / `time`, `datetime_type` / `datetime`, `duration_type` / `duration`, `uuid_type` / `uuid`, `email_type` / `email`. Spec-bound constructors additionally compose with the `atom_specification` mixin and pin their `spec` field to the governing specification URL.
+Meta defines this pattern for the types it needs internally: `integer_type` / `integer`, `text_type` / `text`, `uri_type` / `uri`, `regex_type` / `regex`. Meta-core adds the numeric, temporal, identifier, and text constructors: `real_type` / `real`, `decimal_type` / `decimal`, `rational_type` / `rational`, `date_type` / `date`, `time_type` / `time`, `datetime_type` / `datetime`, `duration_type` / `duration`, `uuid_type` / `uuid`, `email_type` / `email`. Spec-bound constructors additionally compose with the `atom_specification` mixin and pin their `spec` field to the governing specification URL.
 
 Narrowings of these atoms use the instance form: `uint8 => !integer { min: 0  max: 255 }`. This narrows the `integer` instance, producing a new type with `source: integer_type`, `supertypes: [integer]`, and a body `!integer_type { min: 0 max: 255 }`. Instance narrowing establishes IS-A with the narrowed parent; the new type can be narrowed further.
 
@@ -843,7 +843,7 @@ When schemas are committed to version control alongside application code — a c
 !!meta:"https://tson.io/2026/m/meta.tn1"
 !!import:"https://tson.io/2026/m/core.tn1"
 {
-  person => { name: string  age: integer }
+  person => { name: text  age: integer }
 }
 ```
 
@@ -895,11 +895,11 @@ User schemas normally chain to `meta.tn1`. Chaining to `meta-kernel.tn1` directl
 !!import:"https://tson.io/2026/m/core.tn1"
 !!import:"http://example.com/medical-types.tn1"
 {
-  patient => { name: string  dob: date  blood_type: blood_type }
+  patient => { name: text  dob: date  blood_type: blood_type }
 }
 ```
 
-Here `string` and `date` come from the core library, `blood_type` from the domain library, and `patient` is a local definition. If `medical-types.tn1` itself imports `core.tn1`, those transitive entries are not included — only `blood_type` and any other entries declared directly in `medical-types.tn1` are available.
+Here `text` and `date` come from the core library, `blood_type` from the domain library, and `patient` is a local definition. If `medical-types.tn1` itself imports `core.tn1`, those transitive entries are not included — only `blood_type` and any other entries declared directly in `medical-types.tn1` are available.
 
 Multiple `!!import` directives are permitted and are loaded in declaration order. Each import adds its locally-declared entries to the accumulated type-name namespace (§11.3). If two imports declare the same name, or if an import declares a name that also appears as a local declaration in the importing module, the collision is a resolver error and the entire module fails to load. Imports populate only the type-name namespace, so an import name that happens to match a name in the structure namespace (§11.3.1) is not a collision — the two are consulted at different grammar positions, and the `!T` lookup order resolves the one position where both could apply.
 
@@ -926,9 +926,9 @@ TSON has three type-level operations and one data-level action. **Construction**
 Construction creates new type definitions. A declaration is the construction mechanism:
 
 ```
-person => { name: string  age: integer }
+person => { name: text  age: integer }
 status => !enum [ACTIVE INACTIVE SUSPENDED]
-point => [float, float]
+point => [real, real]
 contact_method => (email | phone | address)
 age => !integer { min: 0  max: 150 }
 ```
@@ -936,7 +936,7 @@ age => !integer { min: 0  max: 150 }
 Supertype composition with `&` is a construction tool that combines parts from existing definitions:
 
 ```
-employee => person & contact & { department: string }
+employee => person & contact & { department: text }
 ```
 
 
@@ -945,7 +945,7 @@ employee => person & contact & { department: string }
 Narrowing copies an existing definition and refines it by binding parameters or tightening values. The result is a new definition with its own identity that IS-A the source. A source type name without `&` marks narrowing:
 
 ```
-config => { host: string  port: integer ~ 8080  debug: boolean = false }
+config => { host: text  port: integer ~ 8080  debug: boolean = false }
 production => config { host: = "prod.example.com"  port: = 9090 }
 ```
 
@@ -957,7 +957,7 @@ The result maintains an is-a relationship with the source. Every consumer expect
 Subtraction removes fields from an existing definition. Like narrowing, it transforms an existing type; unlike narrowing, it deliberately breaks IS-A. The `field: _` form in a composition or narrowing body marks subtraction:
 
 ```
-account => { name: string  email: string  password: string }
+account => { name: text  email: text  password: text }
 account_public => account & { password: _ }
 ```
 
@@ -1006,9 +1006,9 @@ At each level, the directive identifies the schema whose types govern the docume
 
 - A **data document** carries `!!schema` pointing to a user schema. Type annotations like `!person`, `!uuid`, and `!email` resolve against the types defined in that user schema.
 
-- A **user schema** carries `!!meta` pointing to the meta-schema, and `!!import` directives to bring in type library types. Type names used as type-refs within the type-definition grammar (e.g. `string`, `integer` in record field definitions) resolve against the user schema's type-name namespace — its local declarations and imports, not the structure namespace (§11.3). The meta-schema provides the structural vocabulary (`record`, `array`, `enum`, etc.) that type-definition resolution produces. The user schema defines new types (`person`, `employee`, `api_response`) as declarations — those names are available only to documents that reference this schema via their own `!!schema` directive.
+- A **user schema** carries `!!meta` pointing to the meta-schema, and `!!import` directives to bring in type library types. Type names used as type-refs within the type-definition grammar (e.g. `text`, `integer` in record field definitions) resolve against the user schema's type-name namespace — its local declarations and imports, not the structure namespace (§11.3). The meta-schema provides the structural vocabulary (`record`, `array`, `enum`, etc.) that type-definition resolution produces. The user schema defines new types (`person`, `employee`, `api_response`) as declarations — those names are available only to documents that reference this schema via their own `!!schema` directive.
 
-- The **meta-schema** (`meta.tn1`) carries `!!meta` pointing to the meta-kernel, together with an `!!import` of the kernel. The import is doubly load-bearing: it supplies the kernel types meta's own constraint-field declarations use, and — because resolution is one hop — it is what places the kernel's structural vocabulary (`enum`, `array`, `type_definition`, …) in meta's namespace, where every meta-governed module and its resolver output finds it (§11.3.1, §12). The **meta-kernel** carries `!!meta` pointing to its own URL — it defines its own core types (`integer`, `string`, `boolean`) directly. Both resolve to pre-loaded Schema objects in the schema library; the self-reference at the root is closed by pre-loading, not resolution (§11.5).
+- The **meta-schema** (`meta.tn1`) carries `!!meta` pointing to the meta-kernel, together with an `!!import` of the kernel. The import is doubly load-bearing: it supplies the kernel types meta's own constraint-field declarations use, and — because resolution is one hop — it is what places the kernel's structural vocabulary (`enum`, `array`, `type_definition`, …) in meta's namespace, where every meta-governed module and its resolver output finds it (§11.3.1, §12). The **meta-kernel** carries `!!meta` pointing to its own URL — it defines its own core types (`integer`, `text`, `boolean`) directly. Both resolve to pre-loaded Schema objects in the schema library; the self-reference at the root is closed by pre-loading, not resolution (§11.5).
 
 
 ### 11.2 Schema-Value Separation
@@ -1017,7 +1017,7 @@ The separation between a document and its schema serves two purposes:
 
 **Immutability.** A schema is a published, immutable artifact. Once a schema is published at a URL with a content hash, its type definitions do not change. Data documents reference schemas by URL. The data can change; the schema it was validated against cannot.
 
-**Unambiguous resolution.** Because type references always resolve against an external schema, there is no ambiguity about what `!string` means in a given document. It means whatever the referenced schema defines it to mean. Two documents referencing the same schema have identical type vocabularies. Two documents referencing different schemas may give different meanings to the same name.
+**Unambiguous resolution.** Because type references always resolve against an external schema, there is no ambiguity about what `!text` means in a given document. It means whatever the referenced schema defines it to mean. Two documents referencing the same schema have identical type vocabularies. Two documents referencing different schemas may give different meanings to the same name.
 
 A document with no `!!schema` directive has no type vocabulary. Base type resolution ([TSON-DATA] §4) applies, providing default interpretation of unquoted tokens as null, boolean, integer, float, or string. Type annotations in such a document are limited to the built-in annotations defined in [TSON-DATA] §5 (e.g. `!uuid`, `!base64`); any other type annotation is unresolved — the parser preserves it as a syntactic marker, but the resolver cannot validate it. Applications processing documents without `!!schema` SHOULD treat unresolved type annotations as informational.
 
@@ -1028,7 +1028,7 @@ The directive architecture separates three layers:
 
 **Meta-schema** — Defines the structural vocabulary that the type-definition grammar produces: `type_definition`, `record`, `record_field`, `array`, `enum`, and so on. A module's `!!meta` directive points to its meta module; the module's declarations are built with, and validated against, the meta module's vocabulary.
 
-**Type libraries** — Define specific types (`integer`, `string`, `boolean`, `float`, `decimal`, etc.) using the meta-schema's vocabulary. Type libraries are ordinary schemas. A schema author imports the library that matches their target platform via `!!import`.
+**Type libraries** — Define specific types (`integer`, `text`, `boolean`, `real`, `decimal`, etc.) using the meta-schema's vocabulary. Type libraries are ordinary schemas. A schema author imports the library that matches their target platform via `!!import`.
 
 **Application schemas** — Import type libraries and define domain types on top of them.
 
@@ -1039,7 +1039,7 @@ Name resolution is built from one primitive. The **namespace of a module** is it
 The **structure namespace** of a module is the namespace of its `!!meta` target — that module's local declarations plus its imports. One hop. It supplies what the module *builds with*, and it is consulted at exactly the **constructor roles**:
 
 - **Instantiation and narrowing targets** — the name after `!` (`!enum [...]`, `!integer_type {}`), subject to the lookup order below.
-- **Generic-application heads** — the name before `<` when the name is not otherwise in scope (`map<string, string>`, `set<string>`).
+- **Generic-application heads** — the name before `<` when the name is not otherwise in scope (`map<text, text>`, `set<text>`).
 - **The implicit desugar targets of the sugar forms** — `[T]` and `[T; n]` desugar to `array`, `[T, U]` to `tuple`, `(A | B)` to `choice` (§3.4).
 
 An entry consumed at a constructor role MUST be a constructor (`constructor: true`); resolving a non-constructor there is a resolver error. The structure namespace is never consulted for bare type-refs — a module governed by meta cannot write `field: enum` or reach the kernel's `integer` as a field type (§11.3.2).
@@ -1052,24 +1052,24 @@ An entry consumed at a constructor role MUST be a constructor (`constructor: tru
 
 #### 11.3.2 The Type-Name Namespace
 
-The **type-name namespace** provides the names a schema author can use as type-refs in their own definitions — what *fills* the structures. When a field is written as `street: string`, the name `string` resolves against this namespace. When a type-def body references another type by name (`vip => customer & { ... }`), `customer` resolves against this namespace.
+The **type-name namespace** provides the names a schema author can use as type-refs in their own definitions — what *fills* the structures. When a field is written as `street: text`, the name `text` resolves against this namespace. When a type-def body references another type by name (`vip => customer & { ... }`), `customer` resolves against this namespace.
 
 Lookup for the type-name namespace walks, in order:
 1. Parameters of the enclosing definition (§5).
 2. Local declarations of the current module.
 3. Entries brought in by `!!import` directives, in declaration order.
 
-The type-name namespace is NOT extended by the structure namespace. Names available through `!!meta` are available at constructor roles only, never as type-refs — this is the reason application schemas import core: the types that fill record fields (`string`, `integer`, `uuid`) must come from the module's own namespace.
+The type-name namespace is NOT extended by the structure namespace. Names available through `!!meta` are available at constructor roles only, never as type-refs — this is the reason application schemas import core: the types that fill record fields (`text`, `integer`, `uuid`) must come from the module's own namespace.
 
 Names from `!!import` directives must be disjoint — two imports defining the same name, or an import name matching a local entry, is a hard error. This is because imports are flat-merged into a single pool.
 
 #### 11.3.3 Why Two Namespaces
 
-The separation answers a problem that arises in any language with a meta-schema: if the governing target's namespace backed every type position, user schemas governed by meta would automatically see the kernel's `integer` and `string` as field types without importing core. That would make the type library unnecessary for meta-governed schemas, violate the design principle that schemas declare their dependencies explicitly via `!!import`, and create silent shadowing between the kernel's entries and core's identically-named ones.
+The separation answers a problem that arises in any language with a meta-schema: if the governing target's namespace backed every type position, user schemas governed by meta would automatically see the kernel's `integer` and `text` as field types without importing core. That would make the type library unnecessary for meta-governed schemas, violate the design principle that schemas declare their dependencies explicitly via `!!import`, and create silent shadowing between the kernel's entries and core's identically-named ones.
 
 The two-namespace model makes the dependency direction clean. A module's `!!meta` supplies the structures it *builds with*; its `!!import` supplies the types that *fill* them. The kernel's `integer` exists for the kernel's own constraint-field declarations (`integer_type.min: integer?`); it reaches other modules only through an explicit `!!import` of the kernel — as meta does — never by governance.
 
-The meta layer exercises both mechanisms and illustrates the boundary. Meta's governing target is the kernel, so meta reaches `!enum` (in `ordered => @annotation !enum [NONE PARTIAL TOTAL]`) and the `[...]` sugar through the structure namespace. Meta's *type-refs* — the base kinds `atom` and `sum` it composes with, the mixin `atom_specification`, and the field types `integer?`, `regex?`, `uri` in its constructor definitions — come through its `!!import` of the kernel. Composition operands are type-refs, not constructor roles: composing with `~atom &` or `~string_type &` requires the operand in the type-name namespace, which is exactly why defining *new* constructors demands a deliberate kernel import. Ordinary schemas use constructors; only meta-programming defines them.
+The meta layer exercises both mechanisms and illustrates the boundary. Meta's governing target is the kernel, so meta reaches `!enum` (in `ordered => @annotation !enum [NONE PARTIAL TOTAL]`) and the `[...]` sugar through the structure namespace. Meta's *type-refs* — the base kinds `atom` and `sum` it composes with, the mixin `atom_specification`, and the field types `integer?`, `regex?`, `uri` in its constructor definitions — come through its `!!import` of the kernel. Composition operands are type-refs, not constructor roles: composing with `~atom &` or `~text_type &` requires the operand in the type-name namespace, which is exactly why defining *new* constructors demands a deliberate kernel import. Ordinary schemas use constructors; only meta-programming defines them.
 
 #### 11.3.4 Annotation Resolution
 
@@ -1092,7 +1092,7 @@ A consequence with teeth: the structural vocabulary is invisible from ordinary d
 
 #### 11.3.6 Duplicate Names Across Layers
 
-A type name defined in both the meta-schema and a type library is not a conflict. Because the two namespaces are distinct, the kernel's `string` is not visible as a type-ref in a meta-governed module — only an imported `string` (core's) is, and core's `string` is a fresh definition, not a view of the kernel's. The kernel's own `string` reaches other modules only through an explicit `!!import` of the kernel.
+A type name defined in both the meta-schema and a type library is not a conflict. Because the two namespaces are distinct, the kernel's `text` is not visible as a type-ref in a meta-governed module — only an imported `text` (core's) is, and core's `text` is a fresh definition, not a view of the kernel's. The kernel's own `text` reaches other modules only through an explicit `!!import` of the kernel.
 
 A name spelled the same in a module's type-name namespace and in its structure namespace does not collide — the two are consulted at different grammar positions, and the `!T` lookup order (§11.3.1) resolves the one position where both could apply, with the type-name namespace taking precedence. An extended meta module MAY `!!import` a type library; overlaps between its governing namespace and its imports follow the same rules.
 
@@ -1110,13 +1110,13 @@ See §2.1 for the records-are-closed rule. Schema evolution is handled by publis
 
 The ladder of governing relations terminates at the meta-kernel. The kernel's `!!meta` directive references a URL that resolves to itself — the kernel is governed by its own namespace. This is not circular — it is a bootstrap.
 
-The kernel's types (`schema`, `record`, `record_field`, `integer`, `string`, `boolean`, and all other types defined in `meta-kernel.tn1`) are pre-loaded into the schema library by the implementation. They exist as in-memory structures before any document is parsed. When the kernel document is parsed, its type annotations resolve against these pre-loaded structures through the normal schema library lookup — the library receives the URL, finds the pre-loaded Schema object, and returns it.
+The kernel's types (`schema`, `record`, `record_field`, `integer`, `text`, `boolean`, and all other types defined in `meta-kernel.tn1`) are pre-loaded into the schema library by the implementation. They exist as in-memory structures before any document is parsed. When the kernel document is parsed, its type annotations resolve against these pre-loaded structures through the normal schema library lookup — the library receives the URL, finds the pre-loaded Schema object, and returns it.
 
 The meta schema (`meta.tn1`) is also pre-loaded. Its `!!meta` points at meta-kernel; its additional constructors (`binary`, `extern`, `unknown_type`, and the numeric/temporal/identifier/text constraint constructors) are likewise resolved against the pre-loaded kernel before being registered as pre-loaded entries themselves.
 
 See §12 for the kernel's inline description and a narrative account of meta.
 
-The kernel defines its own core types (`integer`, `string`, `boolean`, etc.) directly so that its own constraint-field declarations (`integer_type.min: integer?`, `record_field.name: field_name`) can reference them locally. The kernel's local entries are the structure namespace of every module the kernel directly governs — meta itself, and any alternative meta module; modules governed by meta receive the same vocabulary one hop away, through meta's kernel import (§11.3.1). These types are NOT automatically available as type-refs in governed schemas — per §11.3, the structure namespace populates the structure namespace, not the type-name namespace. Schemas that want `integer` or `string` available as type-refs import a type library that defines them (typically `core.tn1`).
+The kernel defines its own core types (`integer`, `text`, `boolean`, etc.) directly so that its own constraint-field declarations (`integer_type.min: integer?`, `record_field.name: field_name`) can reference them locally. The kernel's local entries are the structure namespace of every module the kernel directly governs — meta itself, and any alternative meta module; modules governed by meta receive the same vocabulary one hop away, through meta's kernel import (§11.3.1). These types are NOT automatically available as type-refs in governed schemas — per §11.3, the structure namespace populates the structure namespace, not the type-name namespace. Schemas that want `integer` or `text` available as type-refs import a type library that defines them (typically `core.tn1`).
 
 The kernel and meta documents are descriptions of the pre-loaded types, not the source of them. Parsing them validates that the document's description matches the implementation's in-memory model. If they disagree, the document is invalid — the in-memory model is authoritative.
 
@@ -1181,7 +1181,7 @@ attachments: [extern]
 
 No new constructor is needed; `extern` composes naturally with the existing array type.
 
-**Typed-position restriction.** A nested `!!schema` directive at a position whose type is constrained by the outer schema is a resolver error unless the outer type is one of the permissive types: `extern`, `value`, `unknown`, or a container thereof (e.g. `[extern]`, `map<string, value>`). The outer schema must opt in to receiving foreign values at each position where schema switching is permitted. Without this rule, a `!!schema` directive could silently substitute a value of any shape into a specifically-typed slot, with the mismatch surfacing only at the host-language assignment boundary. The permissive-type requirement makes cross-schema acceptance authored intent, not accident. Schemaless outer documents have no type expectations and always permit nested `!!schema` directives.
+**Typed-position restriction.** A nested `!!schema` directive at a position whose type is constrained by the outer schema is a resolver error unless the outer type is one of the permissive types: `extern`, `value`, `unknown`, or a container thereof (e.g. `[extern]`, `map<text, value>`). The outer schema must opt in to receiving foreign values at each position where schema switching is permitted. Without this rule, a `!!schema` directive could silently substitute a value of any shape into a specifically-typed slot, with the mismatch surfacing only at the host-language assignment boundary. The permissive-type requirement makes cross-schema acceptance authored intent, not accident. Schemaless outer documents have no type expectations and always permit nested `!!schema` directives.
 
 
 ### 11.7 Module Structure
@@ -1194,15 +1194,15 @@ A schema module is a fixed-shape header followed by a braced map of declarations
 !!import:"https://tson.io/2026/m/core.tn1"
 @doc:"Minimal example schema."
 {
-  person => { name: string  age: integer }
-  employee => person & { department: string }
+  person => { name: text  age: integer }
+  employee => person & { department: text }
   status => !enum [ACTIVE INACTIVE SUSPENDED]
 }
 ```
 
 Entries are separated like data-map entries — whitespace or a comma ([TSON-DATA] §2.4) — and the map MUST contain at least one entry (§17.1).
 
-The `!!meta` directive identifies the meta module governing this module's declarations. The `!!import` directive merges the type library's entries (`string`, `integer`, etc.) into the module's type-name namespace (§11.3). Each declaration binds a type name to a type definition with the `=>` operator — a compound token the frozen lexer already emits; the module grammar introduces no reserved words.
+The `!!meta` directive identifies the meta module governing this module's declarations. The `!!import` directive merges the type library's entries (`text`, `integer`, etc.) into the module's type-name namespace (§11.3). Each declaration binds a type name to a type definition with the `=>` operator — a compound token the frozen lexer already emits; the module grammar introduces no reserved words.
 
 **A module's body is a map — in syntax and in semantics.** The braced body makes the map visible: a schema *is* a map, and the module resolves to a value of the kernel's `schema` type, `map<type_name, type_definition>` (§12, §13). The braces are not decoration; they carry the module's annotation anchor. TSON's one binding convention is that annotations precede the value they bind to ([TSON-DATA] §3.1), and the schema map is the value the module-level annotations bind to — `@doc:"..." { ... }` binds to the module by the same rule that binds a data document's root annotations to its root value. (An earlier revision deleted the enclosing braces on the grounds that they did no work; restoring them is deliberate — without a body value there is no boundary between module annotations and the first declaration's.) What the braces do *not* carry is a type annotation: the `!schema` type-ref never appears in module source — the document kind and `!!meta` already say what the body is — and `!schema` marks *data* representations of resolved schema structure, most notably resolver output (§13). The symmetry is exact: source `@doc:"..." { name => type-def }` compiles to output `@doc:"..." !schema { name => !type_definition { ... } }` — the same shape, one rung down the ladder.
 
@@ -1211,13 +1211,13 @@ The `!!meta` directive identifies the meta module governing this module's declar
 **Fresh record definition** — defines a record type with named fields:
 
 ```
-person => { name: string  age: integer }
+person => { name: text  age: integer }
 ```
 
 **Supertype composition** — combines parent types with new fields via `&`:
 
 ```
-employee => person & contact & { department: string }
+employee => person & contact & { department: text }
 ```
 
 **Record narrowing** — refines existing fields without adding new ones:
@@ -1253,15 +1253,15 @@ set    => <T> ~array<T> { unordered: = true  unique_items: = true }
 **Type reference** — names an existing type:
 
 ```
-bigint => integer
+id => uuid
 ```
 
 **Array and tuple types:**
 
 ```
 scores => [integer; +]
-matrix => [[float; 3]; 3]
-point  => [float, float]
+matrix => [[real; 3]; 3]
+point  => [real, real]
 ```
 
 **Choice type:**
@@ -1273,8 +1273,8 @@ contact_method => (email | phone | address)
 **Type with generic arguments:**
 
 ```
-translations => map<string, string>
-lookup       => map<string, [integer; +]>
+translations => map<text, text>
+lookup       => map<text, [integer; +]>
 ```
 
 **The `!schema` annotation and the `!!schema` directive.** The two share a name but serve distinct roles. The directive (`!!schema`) appears on data documents and identifies the external schema for type resolution (§9.2). The type annotation (`!schema`) asserts that a map value conforms to the `schema` type. The `!!` prefix is always a directive; the `!` prefix is always a type annotation.
@@ -1286,7 +1286,7 @@ lookup       => map<string, [integer; +]>
 
 Two pre-loaded schemas form the meta-schema layer of TSON:
 
-- **`2026/m/meta-kernel.tn1`** — the self-referencing bootstrap layer. Its `!!id` and `!!meta` both reference its own URL — it bootstraps by defining its own core types directly without importing a type library. The kernel defines `top`, `atom`, `product`, `sum`, the `record` / `array` / `map` / `tuple` / `enum` / `choice` constructors, the `record_field` / `tuple_element` / `parameter` / `type_definition` / `schema` supporting records, and the minimal scalar vocabulary (`integer`, `string`, `uri`, `regex`, `boolean`, `unit`, `value`, `token`, `void`) needed for its own constraint-field declarations.
+- **`2026/m/meta-kernel.tn1`** — the self-referencing bootstrap layer. Its `!!id` and `!!meta` both reference its own URL — it bootstraps by defining its own core types directly without importing a type library. The kernel defines `top`, `atom`, `product`, `sum`, the `record` / `array` / `map` / `tuple` / `enum` / `choice` constructors, the `record_field` / `tuple_element` / `parameter` / `type_definition` / `schema` supporting records, and the minimal scalar vocabulary (`integer`, `text`, `uri`, `regex`, `boolean`, `unit`, `value`, `token`, `void`) needed for its own constraint-field declarations.
 
 - **`2026/m/meta.tn1`** — the canonical meta-schema, chained to by `!!meta` in user schemas. Built on top of the kernel; it adds the type constructors that the core type library (`core.tn1`) instantiates: `binary` with `binary_encoding`, `extern`, `unknown_type`, plus the constraint vocabularies for numeric (`real_type`, `decimal_type`, `rational_type`), temporal (`date_type`, `time_type`, `datetime_type`, `duration_type`), identifier (`uuid_type`), and text (`email_type`) atom families. Meta also hosts the application-level annotation types (`ordered`, `bounded`, `numeric`, `deprecated`, `since`, `todo`, `lang`) — annotation types must live in the schema chain to be usable as annotations (§6), and meta is the canonical location.
 
@@ -1296,7 +1296,7 @@ Users normally chain to `meta.tn1`. Schemas that chain to `meta-kernel.tn1` dire
 
 The kernel defines four base kinds — `top`, `atom`, `product`, `sum` — with `top` as the structural root and the other three composing with it via `top & {}`. Every type in the schema transitively IS-A `top`.
 
-Each atom family that carries a constraint vocabulary is defined as a pair: a constructor (`integer_type`, `string_type`, `uri_type`, `regex_type` in the kernel; `real_type`, `decimal_type`, and the temporal/identifier/text constructors in meta) that composes with `atom` via `~atom & {...}` and lists the family's constraint fields, and a canonical empty instance (`integer`, `string`, `uri`, `regex`; `real`, `decimal`, `date`, etc. in core) produced as `!<ctor> {}`. Field-type references from within a constructor use the instance name (e.g. `integer_type.min: integer?`); the mutual reference between the constructor and its instance closes via standard local-name lookup within the schema.
+Each atom family that carries a constraint vocabulary is defined as a pair: a constructor (`integer_type`, `text_type`, `uri_type`, `regex_type` in the kernel; `real_type`, `decimal_type`, and the temporal/identifier/text constructors in meta) that composes with `atom` via `~atom & {...}` and lists the family's constraint fields, and a canonical empty instance (`integer`, `text`, `uri`, `regex`; `real`, `decimal`, `date`, etc. in core) produced as `!<ctor> {}`. Field-type references from within a constructor use the instance name (e.g. `integer_type.min: integer?`); the mutual reference between the constructor and its instance closes via standard local-name lookup within the schema.
 
 The kernel also defines `unit` — an atom constructor with no constraint vocabulary — and three opaque instances:
 
@@ -1312,7 +1312,7 @@ The normative source for both schemas is carried in the companion artifacts (§1
 
 The meta-schema defines four type kinds:
 
-- **Atom** — scalar types. An atom constructor composes with `atom` via `~atom & {...}`; its record of constraint fields describes the narrowing vocabulary available to instances. `integer_type`, `string_type`, `uri_type`, `regex_type`, and `enum` are atom constructors in the kernel; `real_type` through `email_type`, `binary`, and `unknown_type`'s sibling `binary_encoding` are atom constructors in meta. The `unit` constructor is the atom with no constraint vocabulary — the atom equivalent of the empty record `{}` for products. Atom instances are produced as `!<ctor> {}` (empty) or `!<ctor> { values }` (narrowed); construction via `!` does not establish IS-A with the constructor, only the `kind`.
+- **Atom** — scalar types. An atom constructor composes with `atom` via `~atom & {...}`; its record of constraint fields describes the narrowing vocabulary available to instances. `integer_type`, `text_type`, `uri_type`, `regex_type`, and `enum` are atom constructors in the kernel; `real_type` through `email_type`, `binary`, and `unknown_type`'s sibling `binary_encoding` are atom constructors in meta. The `unit` constructor is the atom with no constraint vocabulary — the atom equivalent of the empty record `{}` for products. Atom instances are produced as `!<ctor> {}` (empty) or `!<ctor> { values }` (narrowed); construction via `!` does not establish IS-A with the constructor, only the `kind`.
 - **Product** — structural types. `record`, `array`, `set`, `map`, and `tuple` are constructors that compose with `product` via `~product & {...}`, fixing `access_pattern` and `size_type`. The parameterized constructors (`array<T>`, `set<T>`, `map<K, V>`) declare their type slots in the `<>` parameter list and reference them in field positions. `set` is a constructor narrowing of `array` with `unordered` and `unique_items` pinned to `true`. Bare `{...}` definitions without explicit composition (like `atom_specification`, `parameter`, `record_field`, `tuple_element`, and `type_definition` itself) resolve to `kind: PRODUCT` by structural default.
 - **Sum** — discriminated-union types. `choice` in the kernel, and `extern` and `unknown_type` in meta, compose with `sum` via `~sum & {...}`. `unknown` in core is produced as `!unknown_type {}` — the empty instance accepts any well-formed value of any type.
 - **Reference** — a type definition whose body is a pointer to another type. References appear in the schema namespace as `kind: REFERENCE` entries whose body is a `!reference { target: T }` record. The resolver flattens every use of a reference by rewriting it to the target type. Reference chains are fully resolved: if `A` points at `B` and `B` points at `C`, uses of `A` resolve to `C` directly. The validation graph contains only ATOM, PRODUCT, and SUM entries; REFERENCE entries exist as documentation only. When a reference is flattened, the resolver attaches an `@alias` annotation (defined in `core.tn1`) to the resolved type, naming the source-level alias used at the reference site.
@@ -1373,11 +1373,11 @@ For supertype composition (`person &`), the `supertypes` field records the paren
 
 | Position                      | Example                                       |
 |-------------------------------|-----------------------------------------------|
-| Record field type             | `tags: [string; +]`                           |
-| Tuple element type            | `[integer, [string]]` — inner `[string]`      |
+| Record field type             | `tags: [text; +]`                           |
+| Tuple element type            | `[integer, [text]]` — inner `[text]`      |
 | Array element type            | `[[integer; 3]]` — inner `[integer; 3]`       |
 | Choice variant                | `(email \| [phone])` — inner `[phone]`        |
-| Type argument (inside `<>`)   | `map<string, [integer]>` — inner `[integer]`  |
+| Type argument (inside `<>`)   | `map<text, [integer]>` — inner `[integer]`  |
 | Parameterized template reference | `linked_list<integer>` — synthesises `linked_list#integer` |
 
 Composition targets (`&`) and narrowing sources are restricted to named type references (bare or with type arguments); inline structural forms at these positions are resolver errors. Top-level type-definition bodies (e.g. `scores => [integer; +]`) are not synthesis sites — the declaration names the result via its name, and the inline form becomes the body directly.
@@ -1385,10 +1385,10 @@ Composition targets (`&`) and narrowing sources are restricted to named type ref
 *Body shape.* A synthesised type's body is the canonical form of the source inline expression, produced by the desugaring rules in §3.4. Examples:
 
 ```
-array#string => !type_definition {
+array#text => !type_definition {
   kind: PRODUCT
   source: array
-  body: !array { element_type: string }
+  body: !array { element_type: text }
 }
 
 choice#email#phone => !type_definition {
@@ -1404,7 +1404,7 @@ The `source` field names the constructor implied by the inline form; `kind` is i
 
 *Naming.* Implementations SHOULD name synthetic entries using the following scheme for cross-implementation consistency:
 
-- Simple containers (no constraints beyond the element type): `container#element` — e.g. `array#type_name`, `array#record_field`, `set#token`, `map#string#integer`.
+- Simple containers (no constraints beyond the element type): `container#element` — e.g. `array#type_name`, `array#record_field`, `set#token`, `map#text#integer`.
 - Constrained containers: `container#element#<hash>` — e.g. `array#record_field#a7f3b2e8`, where `<hash>` is a short content-based digest of the constraint values (size-spec, element state). The hash algorithm is implementation-defined; a truncated SHA-256 of a canonical serialisation of the constraint fields is a reasonable choice.
 - Choices: `choice#v1#v2#...` — variants listed in source order. `(email | phone)` → `choice#email#phone`.
 
@@ -1425,7 +1425,7 @@ The `source` field names the constructor implied by the inline form; `kind` is i
 - `type_definition.supertypes` carries the **transitive** IS-A chain established by `&` composition and instance/constructor narrowing. The resolver computes it by walking each direct supertype's own chain and deduplicating. Construction via `!T {}` does not contribute to this chain (§3.3).
 - `record.supertypes` (inside a `!record` body) records only the **direct** non-anonymous `&` compositions written in the source. The body field preserves authorial intent; the wrapping `type_definition.supertypes` is the materialised lattice.
 
-Example: `string_type => ~atom & { ... }` produces `type_definition.supertypes: [atom, top]` (transitive — `atom` itself IS-A `top`) and `body: !record { supertypes: [atom], ... }` (direct — only `atom` was written).
+Example: `text_type => ~atom & { ... }` produces `type_definition.supertypes: [atom, top]` (transitive — `atom` itself IS-A `top`) and `body: !record { supertypes: [atom], ... }` (direct — only `atom` was written).
 
 `type_definition.subtypes` is the transitive inverse of `supertypes` across the schema's namespace. The resolver MUST compute and populate it. It is not authored — every entry is derived from another entry's `supertypes`. Both fields are part of the resolver-output contract; if `supertypes` is required output, `subtypes` is its mandatory inverse.
 
@@ -1434,27 +1434,27 @@ Example: `string_type => ~atom & { ... }` produces `type_definition.supertypes: 
 
 A type-def body that is purely a type expression — with no body record, no `&` composition, no constructor application — produces a REFERENCE-kind entry. The `target` is determined by the form of the type expression:
 
-- **Simple type-ref leaf** (e.g. `bigint => integer`): the entry is preserved with `source: typename` and `body: !reference { target: typename }`. The `target` is the immediate referent name, not the fully-resolved ultimate type — reference chains (`doc → documentation → string`) appear in the schema as three distinct entries, each pointing one hop forward.
+- **Simple type-ref leaf** (e.g. `id => uuid`): the entry is preserved with `source: typename` and `body: !reference { target: typename }`. The `target` is the immediate referent name, not the fully-resolved ultimate type — reference chains (`doc → documentation → text`) appear in the schema as three distinct entries, each pointing one hop forward.
 
-- **Compound type expression** (parameterised types, arrays, tuples, choices, sets, maps — e.g. `coordinate => [float, float]`, `result => (success | error)`, `lookup => map<string, integer>`): the resolver materialises the expression as a synthetic per §13.1 (`tuple#float#float`, `choice#success#error`, `map#string#integer`, etc.) and the entry's `body: !reference { target: <synthetic-name> }`. The compound form is not stored inline in the REFERENCE entry; it is hoisted into a named synthetic, and the REFERENCE entry points at the synthetic.
+- **Compound type expression** (parameterised types, arrays, tuples, choices, sets, maps — e.g. `coordinate => [real, real]`, `result => (success | error)`, `lookup => map<text, integer>`): the resolver materialises the expression as a synthetic per §13.1 (`tuple#real#real`, `choice#success#error`, `map#text#integer`, etc.) and the entry's `body: !reference { target: <synthetic-name> }`. The compound form is not stored inline in the REFERENCE entry; it is hoisted into a named synthetic, and the REFERENCE entry points at the synthetic.
 
 **Resolution at use sites.** When a reference is used at a use site — as a field type, tuple element, type argument, or data-mode type annotation — the resolver flattens the reference. Flattening walks the reference chain to the first non-REFERENCE type and rewrites the use-site `type_name` to that type, attaching an `@alias` annotation to the type token recording the source-level name.
 
-Example. Given `bigint => integer` and a record declaring `count: bigint`, the resolved `record_field` is:
+Example. Given `id => uuid` and a record declaring `owner: id`, the resolved `record_field` is:
 
 ```
-!record_field { name: count  type: @alias:bigint integer }
+!record_field { name: owner  type: @alias:id uuid }
 ```
 
 The alias is attached to the type, not to the record_field — the alias describes the type reference, not the field itself.
 
-**Chain aliasing follows the source.** Only the source-site alias is preserved on the use-site type. Intermediate hops in the chain (`documentation` in a `doc → documentation → string` walk) are not aliased on the use-site type — they remain visible as schema entries for anyone walking the namespace. `@alias` records "what the author wrote here," not "which types were traversed to get to the target."
+**Chain aliasing follows the source.** Only the source-site alias is preserved on the use-site type. Intermediate hops in the chain (`documentation` in a `doc → documentation → text` walk) are not aliased on the use-site type — they remain visible as schema entries for anyone walking the namespace. `@alias` records "what the author wrote here," not "which types were traversed to get to the target."
 
-The same flattening applies in data mode. `!bigint 42` resolves to an integer-typed value with `@alias:bigint` on the type annotation.
+The same flattening applies in data mode. `!id 550e8400-e29b-41d4-a716-446655440000` resolves to a uuid-typed value with `@alias:id` on the type annotation.
 
-**References are not supertypes.** REFERENCE-kind entries do not contribute to the `supertypes` or `subtypes` graph of their targets. They are aliasing relationships, not IS-A relationships. `integer.subtypes` does not list `bigint`; `bigint.supertypes` is empty.
+**References are not supertypes.** REFERENCE-kind entries do not contribute to the `supertypes` or `subtypes` graph of their targets. They are aliasing relationships, not IS-A relationships. `uuid.subtypes` does not list `id`; `id.supertypes` is empty.
 
-**Synthetic names are not references.** Synthetic types (§13.1) carry names containing `#` (e.g. `array#string`, `choice#email#phone`) and are distinct from REFERENCE-kind entries. Synthetic types have their original kind (PRODUCT for containers, SUM for choices) and their body is a constructor instance, not a `!reference { target }` record. The `#` in the name is a synthesis-naming convention, not a reference indicator.
+**Synthetic names are not references.** Synthetic types (§13.1) carry names containing `#` (e.g. `array#text`, `choice#email#phone`) and are distinct from REFERENCE-kind entries. Synthetic types have their original kind (PRODUCT for containers, SUM for choices) and their body is a constructor instance, not a `!reference { target }` record. The `#` in the name is a synthesis-naming convention, not a reference indicator.
 
 
 ## 14. Schema Resolution Model
@@ -1505,7 +1505,7 @@ A schema declaring its own hash in `!!id` (first line excluded from hash input):
 !!id:"http://example.com/people.tn1?sha256=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
 !!meta:"https://tson.io/2026/m/meta.tn1"
 {
-  person => { name: string  age: integer }
+  person => { name: text  age: integer }
 }
 ```
 
@@ -1520,7 +1520,7 @@ Each atom type owns its parsing contract. When a schema is in scope and a token 
 
 Parsing and validation are distinct operations:
 
-- **Parsing** — Token (lexeme) to host value. The atom defines what tokens are accepted and what the resolved host value looks like. For example, `integer` accepts tokens that match the integer grammar and produces a host integer; `date` accepts tokens that match RFC 3339 full-date and produces a host date; `string` accepts any quoted or unquoted token and produces a host string.
+- **Parsing** — Token (lexeme) to host value. The atom defines what tokens are accepted and what the resolved host value looks like. For example, `integer` accepts tokens that match the integer grammar and produces a host integer; `date` accepts tokens that match RFC 3339 full-date and produces a host date; `text` accepts any quoted or unquoted token and produces a host text.
 - **Validation** — Host value against the constraint record. For example, `uint8` (narrowing `integer` with `{min: 0 max: 255}`) parses the token as an integer first, then validates the parsed value against the range.
 
 A parse failure is distinct from a validation failure. The token `twelve` against a field of type `integer` is a parse error — the integer atom's parser cannot interpret `twelve` as an integer. The token `300` against a field of type `uint8` parses successfully as an integer, then fails validation against `max: 255`. Implementations SHOULD distinguish these in error reporting ([TSON-DATA] §8.1).
@@ -1528,15 +1528,15 @@ A parse failure is distinct from a validation failure. The token `twelve` agains
 **Enum member semantics.** The `enum` atom's `members` field is a `set<token>` — it enumerates the lexical tokens permitted at an enum-typed position. Parsing an enum-typed position is a token-identity check: the source token (canonicalised per `token`'s parsing contract, below) must match one of the member tokens. The resolved host value is determined by natural parsing of that token:
 
 - For `boolean` (defined as `!enum [true false]` in core), the tokens `true` and `false` resolve to native host booleans. The enum member check is satisfied by token-identity match; the resolved representation is the host's native boolean type.
-- For user-defined enums such as `status => !enum [ACTIVE INACTIVE]`, the resolved host value is the member token (`ACTIVE` or `INACTIVE`) represented as a host string, or a host-language enum value if the implementation provides such a mapping.
+- For user-defined enums such as `status => !enum [ACTIVE INACTIVE]`, the resolved host value is the member token (`ACTIVE` or `INACTIVE`) represented as a host text, or a host-language enum value if the implementation provides such a mapping.
 
 The `members: set<token>` declaration describes the *permitted token lexemes*, not the resolved representation. Two distinct concerns — what tokens are accepted, what the runtime value looks like — share a single declaration because token identity is the canonical identifier for the member.
 
 **The `token` primitive.** The kernel defines `token` as an instance of `unit` (alongside `value`). A `token` value is the canonical NFC-normalised form of a source lexeme — for unquoted lexemes the lexer normalises ([TSON-DATA] §7.2.1), and for quoted lexemes appearing in identifier positions the resolver normalises ([TSON-DATA] §7.2.1). Two tokens are equal iff their canonical forms are byte-identical. Tokens are whitespace-free by construction — the lexer terminates tokens on whitespace — and this is a structural invariant, not a constraint. The `token` type carries no constraint vocabulary; its admissibility rules are fixed by the grammar.
 
-`token` shares its host representation with `string` — both are sequences of Unicode code points — but differs in its parsing contract: a `token` value rejects whitespace and applies NFC, while a `string` value can contain any character permitted by the string literal grammar. Use `token` as a value type when the value must be a valid TSON identifier (map keys in `map<token, ...>` authored as bare unquoted lexemes, enum members, identifier-like fields). Use `string` for free-form textual content. The conflation between `token` as a lexical category (an identifier in the source) and `token` as a value type (a string with the identifier contract) is intentional: a `token` value can always be rendered back as an unquoted lexeme, and an unquoted lexeme can always be promoted to a `token` value without escaping.
+`token` shares its host representation with `text` — both are sequences of Unicode code points — but differs in its parsing contract: a `token` value rejects whitespace and applies NFC, while a `text` value can contain any character permitted by the string literal grammar. Use `token` as a value type when the value must be a valid TSON identifier (map keys in `map<token, ...>` authored as bare unquoted lexemes, enum members, identifier-like fields). Use `text` for free-form textual content. The conflation between `token` as a lexical category (an identifier in the source) and `token` as a value type (a text with the identifier contract) is intentional: a `token` value can always be rendered back as an unquoted lexeme, and an unquoted lexeme can always be promoted to a `token` value without escaping.
 
-`token` is not used in data values and is not redefined in core or user schemas. It appears in the kernel's own declarations: `enum.members: set<token>`, and the identifier types `type_name`, `field_name`, and `param_name` (all defined as references to `token`). These are the positions where the schema language describes lexical identifiers from the source, as distinct from arbitrary Unicode text (which uses `string`).
+`token` is not used in data values and is not redefined in core or user schemas. It appears in the kernel's own declarations: `enum.members: set<token>`, and the identifier types `type_name`, `field_name`, and `param_name` (all defined as references to `token`). These are the positions where the schema language describes lexical identifiers from the source, as distinct from arbitrary Unicode text (which uses `text`).
 
 **Number-grammar reuse.** Atoms that parse numeric values (`integer`, `real`, `decimal`, `rational`, their narrowings in core, and user-defined numeric narrowings) SHOULD use the number grammar of [TSON-DATA] §7.6 for the relevant numeric form. This is functional reuse, not a normative dependency: each numeric atom defines its own parsing contract, and [TSON-DATA] §7.6 is the canonical source for the grammar and parsing logic. An implementation may share a single number parser across all numeric atoms and dispatch based on the atom's declared form — this is the expected pattern, and it matches how [TSON-DATA] §5.6 defines the built-in numeric atoms against the same productions.
 
@@ -1548,7 +1548,7 @@ Each constrained atom's implementation is responsible for converting `value`-typ
 
 Two concrete consequences: (1) a decimal atom using an arbitrary-precision internal representation may accept integer, float, and string constraint values and normalise them, while a 32-bit-float atom may accept only values representable in IEEE 754 single precision and reject out-of-range constraints at load time. (2) Two implementations of the same atom may differ in which constraint-value types they accept, as long as they both validate successfully-loaded schemas identically. The permissiveness of conversion is an implementation choice; the validation semantics after conversion are the atom's contract.
 
-**Base type resolution as a schemaless default.** [TSON-DATA] §4 defines a resolution order (null, boolean, number, string) that applies when no schema is in scope. This dispatch is itself an implicit atom parser — one that chooses across the atom family by first-character and pattern. When a schema is in scope, the field's declared atom's parser takes over; the dispatch does not apply.
+**Base type resolution as a schemaless default.** [TSON-DATA] §4 defines a resolution order (null, boolean, number, string) that applies when no schema is in scope. These category names are **lexical classifications**, not type names: `number` and `string` name what a token looks like, while `integer`, `real`, and `text` name types declared in modules (§12). The two vocabularies never mix — a schema cannot reference the lexical class `string`, and base resolution never produces the type `text`. This dispatch is itself an implicit atom parser — one that chooses across the atom family by first-character and pattern. When a schema is in scope, the field's declared atom's parser takes over; the dispatch does not apply.
 
 
 ## 16. Security Considerations
@@ -1667,9 +1667,9 @@ The `paren-type` production produces choice types. Choices require at least two 
 
 **Composed definitions.** The trailing record-def in `composed-def` is optional. `customer => address & contact` is a valid definition combining two supertypes with no additional fields and no tightening; `& {}` at the end is not required. When a `{` follows a `&`-chain, it always belongs to the composed-def's record-def — no other production in the type-definition grammar starts with `{` after a chain of `&`-separated type-refs.
 
-**Narrowing target.** The narrowed-def target is restricted to a bare type-name, optionally with type-args (e.g. `map<string, integer> { ... }`). Narrowing an inline instance, a choice, or an array is a parse error — these have no field list to tighten.
+**Narrowing target.** The narrowed-def target is restricted to a bare type-name, optionally with type-args (e.g. `map<text, integer> { ... }`). Narrowing an inline instance, a choice, or an array is a parse error — these have no field list to tighten.
 
-**Type argument separators.** Type arguments inside `<>` may be separated by comma or whitespace, matching the `array-def` separator rule. `map<string, integer>` and `map<string integer>` are both valid.
+**Type argument separators.** Type arguments inside `<>` may be separated by comma or whitespace, matching the `array-def` separator rule. `map<text, integer>` and `map<text integer>` are both valid.
 
 `_` is not valid in type-ref or type-def body positions — see the absent sentinel position table in §2.4. Empty records use `{}`.
 

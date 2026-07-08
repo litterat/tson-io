@@ -522,7 +522,6 @@ The numeric atoms are defined against the productions of the number grammar (§7
 | `!int64`   | `integer` / `based-integer` | 64-bit signed range | 64-bit integer |
 | `!uint32`  | `integer` / `based-integer`, no sign | 32-bit unsigned range | 32-bit unsigned |
 | `!uint64`  | `integer` / `based-integer`, no sign | 64-bit unsigned range | 64-bit unsigned |
-| `!bigint`  | `integer` / `based-integer` | none (arbitrary precision) | big integer |
 | `!decimal` | `integer` / `float` | none (exact decimal) | decimal type |
 | `!float32` | `float` / `hex-float` / `special-value` / `nan-payload` | IEEE 754 single precision | 32-bit float |
 | `!float64` | `float` / `hex-float` / `special-value` / `nan-payload` | IEEE 754 double precision | 64-bit float |
@@ -996,7 +995,7 @@ Implementations MUST include source position (line, column, and byte offset) in 
 
 Deeply nested structures and extremely long tokens are potential denial-of-service vectors. Implementations SHOULD enforce configurable limits on nesting depth, token length, and document size.
 
-**Numeric literal length.** Base type resolution admits arbitrary-precision numeric literals by grammar. Implementations SHOULD enforce a maximum digit count for unquoted numeric literals (a reasonable default is 4096 digits). The limit MUST be configurable or, where configuration is impractical, the implementation MUST document its enforced limit. Parsers exceeding the limit MUST report a clear error indicating the configured threshold rather than failing with an out-of-memory condition. The limit applies to annotated numeric tokens (`!bigint`, `!decimal`) exactly as to unannotated ones.
+**Numeric literal length.** Base type resolution admits arbitrary-precision numeric literals by grammar. Implementations SHOULD enforce a maximum digit count for unquoted numeric literals (a reasonable default is 4096 digits). The limit MUST be configurable or, where configuration is impractical, the implementation MUST document its enforced limit. Parsers exceeding the limit MUST report a clear error indicating the configured threshold rather than failing with an out-of-memory condition. The limit applies to annotated numeric tokens (`!decimal`, `!rational`) exactly as to unannotated ones.
 
 **Decoded binary size.** The binary atoms (§5.3) decode token content into byte arrays. Token-length limits bound the encoded input; implementations SHOULD apply corresponding limits to decoded output rather than assuming the token limit alone bounds allocation.
 

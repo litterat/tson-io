@@ -123,9 +123,6 @@
   @doc:"Integer zero or less."
   non_positive_integer => !integer { max: 0 }
 
-  @doc:"Explicit arbitrary-precision integer marker."
-  bigint => integer
-
   @doc:"IEEE 754 single-precision float."
   float32 => !real { min: -3.4028235e+38  max: 3.4028235e+38 }
 
