@@ -100,7 +100,7 @@ A data document exercising the header, the three structural types, augmentation,
 !!id:"https://example.com/orders/1042.tn1"
 !!schema:"https://example.com/order.tn1"
 @doc:"Order record exported 2026-07-03"
-{
+!order {
   order_id:  1042
   reference: !uuid 9f1c8e2a-4b7d-4e6f-9a3b-2c5d8e7f1a09
   customer: {
@@ -116,7 +116,7 @@ A data document exercising the header, the three structural types, augmentation,
     { sku: B-205 qty: 1 price: 100.00 discount: _ }
   ]
   discounts: { @expires:"2026-12-31" WELCOME10 => "10%" loyalty => _ }
-  shipping: !!schema:"https://example.com/address.tn1" {
+  shipping: !!schema:"https://example.com/address.tn1" !address {
     street: "12 Byron Rd"
     city:   London
   }
@@ -127,7 +127,7 @@ A data document exercising the header, the three structural types, augmentation,
 }
 ```
 
-The two header directives name the document and bind its schema, and the field-level `!!schema` on `shipping` scopes a different schema to that one value (§2.2, §3.3). Annotations attach metadata at three levels: `@doc` on the document, the valueless `@deprecated` on a field's value, and `@expires` on a map key (§3.1). Type references invoke the built-in vocabulary — `!uuid`, `!date`, and `!decimal` parse their tokens by atom contract (§3.2, §5) — while unannotated tokens resolve by the base rules of §4: `1042` and `0b0110` are integers, `.5` is a float, and `GOLD` and `A-100` are strings (as `2026-07-01` would be without its `!date`). The value is a record (§2.5) containing a nested record, an array of records (§2.7), and a map (§2.6). Tokens are quoted only where content demands it — `"ada@example.com"` contains a special character, `"12 Byron Rd"` a space, `"10%"` a character outside the unquoted profile (§7.1) — and `notes` is a multi-line token whose common indentation is stripped (§7.2.3, §2.4). The absent sentinel `_` marks a field and a map entry that are present with explicitly no value (§2.9).
+The two header directives name the document and bind its schema, and the root value's `!order` names — in the data itself — which of that schema's types the document instantiates: a schema directive supplies a type vocabulary; a type annotation names the type a value conforms to. The field-level `!!schema` on `shipping` scopes a different schema to that one value, paired with `!address` naming the type within it, so schema scope changes are always visible in the data (§2.2, §3.3). Annotations attach metadata at three levels: `@doc` on the document, the valueless `@deprecated` on a field's value, and `@expires` on a map key (§3.1). Type references invoke the built-in vocabulary — `!uuid`, `!date`, and `!decimal` parse their tokens by atom contract (§3.2, §5) — while unannotated tokens resolve by the base rules of §4: `1042` and `0b0110` are integers, `.5` is a float, and `GOLD` and `A-100` are strings (as `2026-07-01` would be without its `!date`). The value is a record (§2.5) containing a nested record, an array of records (§2.7), and a map (§2.6). Tokens are quoted only where content demands it — `"ada@example.com"` contains a special character, `"12 Byron Rd"` a space, `"10%"` a character outside the unquoted profile (§7.1) — and `notes` is a multi-line token whose common indentation is stripped (§7.2.3, §2.4). The absent sentinel `_` marks a field and a map entry that are present with explicitly no value (§2.9).
 
 
 ### 2.2 Document and Header
@@ -232,10 +232,10 @@ field      = field-name ws ":" ws scoped-value
 field-name = token                          ; unquoted or quoted
 ```
 
-A field's value is a scoped value, so a `schema` directive may prefix it:
+A field's value is a scoped value, so a `schema` directive may prefix it, paired with a type annotation naming a type from the scoped schema:
 
 ```
-{ database: !!schema:"https://example.com/db-config.tn1" { host: db1 port: 5432 } }
+{ database: !!schema:"https://example.com/db-config.tn1" !db_config { host: db1 port: 5432 } }
 ```
 
 Field names are bare tokens: directives, annotations, and type annotations MUST NOT precede a field name. Metadata concerning a field is expressed as annotations on the field's value — `{ name: @deprecated Alice }` — which attach to the value per §3.1.
