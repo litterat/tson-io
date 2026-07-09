@@ -15,6 +15,7 @@ src/
     2026/
       spec/            # TSON Part 1/2 (2026 Revision 31), plus any companion specs
       m/                # .tn1 schema source files (meta-kernel, meta, core)
+      fixtures/          # Non-normative resolved-output fixtures for the schema source files
     research/
       deep-dive-into-json/   # "A Deep Dive into JSON" article series
       proto-schema/           # "Proto-Schema" article series
@@ -34,7 +35,7 @@ src/
   lib/
     llmsTxt.ts          # Shared helpers for the llms.txt endpoints
 public/
-  2026/m/               # Static .tn1 schema files served as-is
+  2026/m/               # Static .tn1 schema + resolved-fixture files served as-is
   images/                # Images extracted from the research articles
   robots.txt             # Content-Signal preferences + sitemap reference
   _headers                # Cloudflare response headers (content types, Link header, etc.)

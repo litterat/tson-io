@@ -1,0 +1,293 @@
+!!id:"http://tson.io/2026/m/meta-resolved.tn1"
+!!schema:"http://tson.io/2026/m/meta-kernel.tn1"
+@doc:"""
+  Resolver-output fixture for meta.tn1 (2026 Revision 34 draft).
+  Parse the source schema, run the resolver, canonicalise, compare.
+  Conventions as in meta-kernel-resolved.tn1.
+
+  Supertype names in this map (`atom`, `sum`, `text_type`,
+  `atom_specification`, `top`) resolve through the source schema's
+  kernel import; `subtypes` lists entries of this map only, and none
+  of this map's entries narrows or composes with another, so every
+  `subtypes` list here is empty and omitted.
+  """
+!schema {
+  @doc:"Binary encoding formats per RFC 4648."
+  binary_encoding => !type_definition {
+    kind: ATOM
+    source: enum
+    body: !enum { members: [BASE64 BASE64URL BASE32 HEX] }
+  }
+
+  @doc:"Binary data constructor."
+  binary => !type_definition {
+    kind: ATOM
+    constructor: true
+    supertypes: [atom top]
+    body: !record { supertypes: [atom]  fields: [
+      !record_field { name: encoding    type: binary_encoding }
+      !record_field { name: min_length  type: integer  state: OPTIONAL }
+      !record_field { name: max_length  type: integer  state: OPTIONAL }
+    ] }
+  }
+
+  @doc:"Constructor for sum types whose members belong to a named external schema."
+  extern => !type_definition {
+    kind: SUM
+    constructor: true
+    supertypes: [sum top]
+    body: !record { supertypes: [sum]  fields: [
+      !record_field { name: schema  type: uri }
+      !record_field { name: types   type: array#type_name  state: OPTIONAL }
+    ] }
+  }
+
+  @doc:"Unknown sum constructor. Its instance `unknown` (core) accepts any well-formed value of any type."
+  unknown_type => !type_definition {
+    kind: SUM
+    constructor: true
+    supertypes: [sum top]
+    body: !record { supertypes: [sum]  fields: [] }
+  }
+
+  @doc:"Real constraint vocabulary. Instance is `real` in core."
+  real_type => !type_definition {
+    kind: ATOM
+    constructor: true
+    supertypes: [atom top]
+    body: !record { supertypes: [atom]  fields: [
+      !record_field { name: min             type: value    state: OPTIONAL }
+      !record_field { name: max             type: value    state: OPTIONAL }
+      !record_field { name: allow_nan       type: boolean  state: OPTIONAL }
+      !record_field { name: allow_infinity  type: boolean  state: OPTIONAL }
+      !record_field { name: pattern         type: regex    state: OPTIONAL }
+    ] }
+  }
+
+  @doc:"Decimal constraint vocabulary. Instance is `decimal` in core."
+  decimal_type => !type_definition {
+    kind: ATOM
+    constructor: true
+    supertypes: [atom top]
+    body: !record { supertypes: [atom]  fields: [
+      !record_field { name: min              type: value    state: OPTIONAL }
+      !record_field { name: max              type: value    state: OPTIONAL }
+      !record_field { name: total_digits     type: integer  state: OPTIONAL }
+      !record_field { name: fraction_digits  type: integer  state: OPTIONAL }
+      !record_field { name: pattern          type: regex    state: OPTIONAL }
+    ] }
+  }
+
+  @doc:"Rational constraint vocabulary. Instance is `rational` in core."
+  rational_type => !type_definition {
+    kind: ATOM
+    constructor: true
+    supertypes: [atom top]
+    body: !record { supertypes: [atom]  fields: [
+      !record_field { name: min              type: value    state: OPTIONAL }
+      !record_field { name: max              type: value    state: OPTIONAL }
+      !record_field { name: max_denominator  type: integer  state: OPTIONAL }
+    ] }
+  }
+
+  @doc:"Date constraint vocabulary. Instance is `date` in core."
+  date_type => !type_definition {
+    kind: ATOM
+    constructor: true
+    supertypes: [atom atom_specification top]
+    body: !record { supertypes: [atom atom_specification]  fields: [
+      !record_field { name: spec  type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc3339" }
+      !record_field { name: min   type: value  state: OPTIONAL }
+      !record_field { name: max   type: value  state: OPTIONAL }
+    ] }
+  }
+
+  @doc:"Time constraint vocabulary. Instance is `time` in core."
+  time_type => !type_definition {
+    kind: ATOM
+    constructor: true
+    supertypes: [atom atom_specification top]
+    body: !record { supertypes: [atom atom_specification]  fields: [
+      !record_field { name: spec              type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc3339" }
+      !record_field { name: min               type: value    state: OPTIONAL }
+      !record_field { name: max               type: value    state: OPTIONAL }
+      !record_field { name: precision         type: integer  state: OPTIONAL }
+      !record_field { name: require_timezone  type: boolean  state: OPTIONAL }
+    ] }
+  }
+
+  @doc:"Datetime constraint vocabulary. Instance is `datetime` in core."
+  datetime_type => !type_definition {
+    kind: ATOM
+    constructor: true
+    supertypes: [atom atom_specification top]
+    body: !record { supertypes: [atom atom_specification]  fields: [
+      !record_field { name: spec              type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc3339" }
+      !record_field { name: min               type: value    state: OPTIONAL }
+      !record_field { name: max               type: value    state: OPTIONAL }
+      !record_field { name: precision         type: integer  state: OPTIONAL }
+      !record_field { name: require_timezone  type: boolean  state: OPTIONAL }
+    ] }
+  }
+
+  @doc:"Duration constraint vocabulary. Instance is `duration` in core."
+  duration_type => !type_definition {
+    kind: ATOM
+    constructor: true
+    supertypes: [atom atom_specification top]
+    body: !record { supertypes: [atom atom_specification]  fields: [
+      !record_field { name: spec  type: uri  state: REQUIRED_FIXED  value: "https://www.iso.org/standard/70907.html" }
+      !record_field { name: min   type: value  state: OPTIONAL }
+      !record_field { name: max   type: value  state: OPTIONAL }
+    ] }
+  }
+
+  @doc:"UUID constraint vocabulary. Instance is `uuid` in core."
+  uuid_type => !type_definition {
+    kind: ATOM
+    constructor: true
+    supertypes: [atom atom_specification top]
+    body: !record { supertypes: [atom atom_specification]  fields: [
+      !record_field { name: spec     type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc9562" }
+      !record_field { name: version  type: integer  state: OPTIONAL }
+    ] }
+  }
+
+  @doc:"Email constraint vocabulary. Instance is `email` in core."
+  email_type => !type_definition {
+    kind: ATOM
+    constructor: true
+    supertypes: [atom atom_specification text_type top]
+    body: !record { supertypes: [text_type atom_specification]  fields: [
+      !record_field { name: min_length  type: integer  state: OPTIONAL }
+      !record_field { name: max_length  type: integer  state: OPTIONAL }
+      !record_field { name: length      type: integer  state: OPTIONAL }
+      !record_field { name: pattern     type: regex    state: OPTIONAL }
+      !record_field { name: spec        type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc5322" }
+    ] }
+  }
+
+  @doc:"IPv4 address constraint vocabulary. Instance is `ipv4` in core."
+  ipv4_type => !type_definition {
+    kind: ATOM
+    constructor: true
+    supertypes: [atom atom_specification top]
+    body: !record { supertypes: [atom atom_specification]  fields: [
+      !record_field { name: spec       type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc3986" }
+      !record_field { name: within     type: array#value  state: OPTIONAL }
+      !record_field { name: excluding  type: array#value  state: OPTIONAL }
+    ] }
+  }
+
+  @doc:"IPv6 address constraint vocabulary. Instance is `ipv6` in core."
+  ipv6_type => !type_definition {
+    kind: ATOM
+    constructor: true
+    supertypes: [atom atom_specification top]
+    body: !record { supertypes: [atom atom_specification]  fields: [
+      !record_field { name: spec       type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc4291" }
+      !record_field { name: within     type: array#value  state: OPTIONAL }
+      !record_field { name: excluding  type: array#value  state: OPTIONAL }
+    ] }
+  }
+
+  @doc:"IPv4 network constraint vocabulary. Instance is `cidr4` in core."
+  cidr4_type => !type_definition {
+    kind: ATOM
+    constructor: true
+    supertypes: [atom atom_specification top]
+    body: !record { supertypes: [atom atom_specification]  fields: [
+      !record_field { name: spec        type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc4632" }
+      !record_field { name: min_prefix  type: integer  state: OPTIONAL }
+      !record_field { name: max_prefix  type: integer  state: OPTIONAL }
+      !record_field { name: within      type: array#value  state: OPTIONAL }
+      !record_field { name: excluding   type: array#value  state: OPTIONAL }
+    ] }
+  }
+
+  @doc:"IPv6 network constraint vocabulary. Instance is `cidr6` in core."
+  cidr6_type => !type_definition {
+    kind: ATOM
+    constructor: true
+    supertypes: [atom atom_specification top]
+    body: !record { supertypes: [atom atom_specification]  fields: [
+      !record_field { name: spec        type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc4291" }
+      !record_field { name: min_prefix  type: integer  state: OPTIONAL }
+      !record_field { name: max_prefix  type: integer  state: OPTIONAL }
+      !record_field { name: within      type: array#value  state: OPTIONAL }
+      !record_field { name: excluding   type: array#value  state: OPTIONAL }
+    ] }
+  }
+
+  @doc:"MAC address (EUI-48) constraint vocabulary. Instance is `mac` in core."
+  mac_type => !type_definition {
+    kind: ATOM
+    constructor: true
+    supertypes: [atom atom_specification top]
+    body: !record { supertypes: [atom atom_specification]  fields: [
+      !record_field { name: spec  type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc9542" }
+    ] }
+  }
+
+  @doc:"Ordering classification (ISO/IEC 11404 / XSD fundamental facet)."
+  ordered => @annotation !type_definition {
+    kind: ATOM
+    source: enum
+    body: !enum { members: [NONE PARTIAL TOTAL] }
+  }
+
+  @doc:"Boundedness annotation."
+  bounded => @annotation !type_definition {
+    kind: REFERENCE
+    source: boolean
+    body: !reference { target: boolean }
+  }
+
+  @doc:"Numeric type marker annotation."
+  numeric => @annotation !type_definition {
+    kind: REFERENCE
+    source: void
+    body: !reference { target: void }
+  }
+
+  @doc:"Marks a definition or field as deprecated."
+  deprecated => @annotation !type_definition {
+    kind: REFERENCE
+    source: text
+    body: !reference { target: text }
+  }
+
+  @doc:"Records when a definition or field was introduced."
+  since => @annotation !type_definition {
+    kind: REFERENCE
+    source: text
+    body: !reference { target: text }
+  }
+
+  @doc:"Marks incomplete work requiring attention."
+  todo => @annotation !type_definition {
+    kind: REFERENCE
+    source: text
+    body: !reference { target: text }
+  }
+
+  @doc:"BCP 47 language tag (RFC 5646)."
+  lang => @annotation !type_definition {
+    kind: REFERENCE
+    source: text
+    body: !reference { target: text }
+  }
+
+  @doc:"Synthetic entries materialised from inline forms."
+  array#type_name => !type_definition {
+    kind: PRODUCT
+    source: array
+    body: !array { element_type: @alias:type_name token }
+  }
+
+  array#value => !type_definition {
+    kind: PRODUCT
+    source: array
+    body: !array { element_type: value }
+  }
+}
