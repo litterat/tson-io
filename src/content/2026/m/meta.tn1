@@ -4,14 +4,14 @@
 @doc:"""
   TSON meta-schema — 2026 Revision 32 draft.
 
-  The canonical meta-schema for user schemas: a module governed by the
+  The canonical meta-schema for user schemas: a schema governed by the
   meta-kernel that adds the type constructors the core type library
   (core.tn1) instantiates. Type constructors are a meta-schema concern:
   user schemas use them but should not define new ones.
 
   User schemas normally chain to this file via `!!meta`. The
   meta-kernel is reachable but not typically referenced directly —
-  modules that chain to meta-kernel are either alternative type
+  schemas that chain to meta-kernel are either alternative type
   libraries replacing meta, or extensions of the meta layer itself
   (the format's sanctioned extension point: new type vocabularies
   arrive as new meta layers, never as grammar changes).
@@ -33,8 +33,8 @@
 
   Plus annotation types — `ordered`, `bounded`, `numeric`,
   `deprecated`, `since`, `todo`, `lang`. Annotation types must
-  reside in the governing module's namespace (per §5.4); placing them
-  in meta makes them reachable from core and from every module that
+  reside in the governing target's namespace (per §5.4); placing them
+  in meta makes them reachable from core and from every schema that
   meta governs.
 
   Constructors that bind to a governing specification compose with
@@ -44,7 +44,7 @@
   Constraint fields whose values are of the constrained atom's family
   use the kernel's `value` escape hatch where the constrained atom is
   not defined in meta-kernel or meta. Where the type is integer, the
-  field uses `integer?` directly (available through this module's
+  field uses `integer?` directly (available through this schema's
   kernel import).
   """
 {

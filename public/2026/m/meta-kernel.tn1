@@ -3,7 +3,7 @@
 @doc:"""
   TSON meta-kernel — self-referencing bootstrap layer (2026 Revision 32 draft).
 
-  The root of the schema ladder, written in the Part 2 module grammar:
+  The root of the schema ladder, written in the Part 2 schema grammar:
   a braced schema map of `name => definition` declarations, one entry
   per type, resolving to the kernel's own `schema` type
   (`map<type_name, type_definition>`).
@@ -92,7 +92,7 @@
     types reference `integer` directly; the mutual reference closes
     via the kernel's standard local-name lookup. The constructor reaches
     meta directly (the kernel is meta's governing namespace) and reaches
-    meta-governed modules through meta's kernel import — one hop in each
+    meta-governed schemas through meta's kernel import — one hop in each
     case. The `integer` instance reaches meta via that same import; core
     defines its own.
 
