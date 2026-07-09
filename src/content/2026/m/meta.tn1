@@ -33,7 +33,7 @@
 
   Plus annotation types — `ordered`, `bounded`, `numeric`,
   `deprecated`, `since`, `todo`, `lang`. Annotation types must
-  reside in the governing target's namespace (per §5.4); placing them
+  reside in the governing target's namespace (per Part 2 §6); placing them
   in meta makes them reachable from core and from every schema that
   meta governs.
 

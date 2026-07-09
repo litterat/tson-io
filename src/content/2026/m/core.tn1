@@ -42,14 +42,14 @@
   @doc:"""
     Void primitive. Re-exported from meta-kernel under the same name
     so that core-only schemas can target it. The atom whose parsing
-    contract admits only the absent sentinel `_`. See spec §5.4 and §7.8.
+    contract admits only the absent sentinel `_`. See Part 2 §6 and §7.3.
     """
   void => !unit {}
 
   @doc:"Two-value boolean enumeration."
   boolean => !enum [true false]
 
-  @doc:"Arbitrary-precision signed integer. Decimal, hex, octal, and binary forms; spec §7.6."
+  @doc:"Arbitrary-precision signed integer. Decimal, hex, octal, and binary forms; [TSON-DATA] §7.6."
   @ordered:TOTAL @bounded:false @numeric
   integer => !integer_type {}
 

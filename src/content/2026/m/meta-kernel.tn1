@@ -37,7 +37,7 @@
 
   @doc:"""
     Escape hatch primitive. Instance of the unit atom constructor. The
-    result of base type resolution (§8) applied to a source token, with
+    result of base type resolution ([TSON-DATA] §4) applied to a source token, with
     no further interpretation by the TSON type system. value-typed
     fields receive whatever §8 produces — null, boolean, integer, float,
     or string — and the host runtime is responsible for type-checking
@@ -55,8 +55,8 @@
   @doc:"""
     Lexical token primitive. Instance of the unit atom constructor. The
     canonical NFC-normalised form of a source lexeme — for unquoted
-    lexemes the lexer normalises (§3.4); for quoted lexemes appearing
-    in identifier positions the resolver normalises (§3.2.1). Identity
+    lexemes the lexer normalises ([TSON-DATA] §7.2.1); for quoted lexemes appearing
+    in identifier positions the resolver normalises ([TSON-DATA] §7.2.1). Identity
     comparison is by canonical form; tokens are whitespace-free by
     construction because the lexer terminates tokens on whitespace.
 
@@ -76,7 +76,7 @@
     parsing contract admits only the absent sentinel `_`. The host
     value is absent. void is the target type for bare annotations
     (`@T` with no value); the resolver fills the implicit `_` and
-    validates against this contract. See §5.4.
+    validates against this contract. See Part 2 §6.
 
     Re-exported in core under the same name so that core-only schemas
     can target it.
