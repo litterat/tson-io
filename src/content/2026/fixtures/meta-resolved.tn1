@@ -1,7 +1,7 @@
 !!id:"http://tson.io/2026/m/meta-resolved.tn1"
 !!schema:"http://tson.io/2026/m/meta-kernel.tn1"
 @doc:"""
-  Resolver-output fixture for meta.tn1 (2026 Revision 34 draft).
+  Resolver-output fixture for meta.tn1 (2026 Revision 32 draft).
   Parse the source schema, run the resolver, canonicalise, compare.
   Conventions as in meta-kernel-resolved.tn1.
 
@@ -38,7 +38,7 @@
     supertypes: [sum top]
     body: !record { supertypes: [sum]  fields: [
       !record_field { name: schema  type: uri }
-      !record_field { name: types   type: array#type_name  state: OPTIONAL }
+      !record_field { name: types   type: "[type_name]"  state: OPTIONAL }
     ] }
   }
 
@@ -174,8 +174,8 @@
     supertypes: [atom atom_specification top]
     body: !record { supertypes: [atom atom_specification]  fields: [
       !record_field { name: spec       type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc3986" }
-      !record_field { name: within     type: array#value  state: OPTIONAL }
-      !record_field { name: excluding  type: array#value  state: OPTIONAL }
+      !record_field { name: within     type: "[value]"  state: OPTIONAL }
+      !record_field { name: excluding  type: "[value]"  state: OPTIONAL }
     ] }
   }
 
@@ -186,8 +186,8 @@
     supertypes: [atom atom_specification top]
     body: !record { supertypes: [atom atom_specification]  fields: [
       !record_field { name: spec       type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc4291" }
-      !record_field { name: within     type: array#value  state: OPTIONAL }
-      !record_field { name: excluding  type: array#value  state: OPTIONAL }
+      !record_field { name: within     type: "[value]"  state: OPTIONAL }
+      !record_field { name: excluding  type: "[value]"  state: OPTIONAL }
     ] }
   }
 
@@ -200,8 +200,8 @@
       !record_field { name: spec        type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc4632" }
       !record_field { name: min_prefix  type: integer  state: OPTIONAL }
       !record_field { name: max_prefix  type: integer  state: OPTIONAL }
-      !record_field { name: within      type: array#value  state: OPTIONAL }
-      !record_field { name: excluding   type: array#value  state: OPTIONAL }
+      !record_field { name: within      type: "[value]"  state: OPTIONAL }
+      !record_field { name: excluding   type: "[value]"  state: OPTIONAL }
     ] }
   }
 
@@ -214,8 +214,8 @@
       !record_field { name: spec        type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc4291" }
       !record_field { name: min_prefix  type: integer  state: OPTIONAL }
       !record_field { name: max_prefix  type: integer  state: OPTIONAL }
-      !record_field { name: within      type: array#value  state: OPTIONAL }
-      !record_field { name: excluding   type: array#value  state: OPTIONAL }
+      !record_field { name: within      type: "[value]"  state: OPTIONAL }
+      !record_field { name: excluding   type: "[value]"  state: OPTIONAL }
     ] }
   }
 
@@ -279,13 +279,13 @@
   }
 
   @doc:"Synthetic entries materialised from inline forms."
-  array#type_name => !type_definition {
+  "[type_name]" => !type_definition {
     kind: PRODUCT
     source: array
     body: !array { element_type: @alias:type_name token }
   }
 
-  array#value => !type_definition {
+  "[value]" => !type_definition {
     kind: PRODUCT
     source: array
     body: !array { element_type: value }

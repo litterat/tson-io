@@ -1,7 +1,7 @@
 !!id:"http://tson.io/2026/m/core-resolved.tn1"
 !!schema:"http://tson.io/2026/m/meta.tn1"
 @doc:"""
-  Resolver-output fixture for core.tn1 (2026 Revision 34 draft).
+  Resolver-output fixture for core.tn1 (2026 Revision 32 draft).
   Parse the source schema, run the resolver, canonicalise, compare.
   Conventions as in meta-kernel-resolved.tn1.
 

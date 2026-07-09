@@ -1,7 +1,7 @@
 !!id:"http://tson.io/2026/m/meta-kernel-resolved.tn1"
 !!schema:"http://tson.io/2026/m/meta-kernel.tn1"
 @doc:"""
-  Resolver-output fixture for meta-kernel.tn1 (2026 Revision 34 draft).
+  Resolver-output fixture for meta-kernel.tn1 (2026 Revision 32 draft).
   Parse the source schema, run the resolver, canonicalise, compare.
 
   Conventions:
@@ -25,7 +25,9 @@
   - Entry-level source @doc strings longer than one line are
     carried abbreviated in this fixture; a conforming resolver
     preserves them verbatim.
-  - Synthetic entries appear at the end of the map.
+  - Synthetic entries are named by the quoted canonical rendering
+    of their source form (Part 2 Section 8.2) and appear at the
+    end of the map.
   """
 !schema {
   @doc:"Base kinds. `top` is the structural root; every type in the schema IS-A `top`."
@@ -308,8 +310,8 @@
     body: !record { supertypes: [product]  fields: [
       !record_field { name: access_pattern  type: product_access_type  state: REQUIRED_FIXED  value: NAMED }
       !record_field { name: size_type       type: product_size_type    state: REQUIRED_FIXED  value: FIXED }
-      !record_field { name: fields          type: array#record_field }
-      !record_field { name: supertypes      type: array#type_name  state: OPTIONAL }
+      !record_field { name: fields          type: "[record_field]" }
+      !record_field { name: supertypes      type: "[type_name]"  state: OPTIONAL }
     ] }
   }
 
@@ -371,7 +373,7 @@
     body: !record { supertypes: [product]  fields: [
       !record_field { name: access_pattern  type: product_access_type  state: REQUIRED_FIXED  value: INDEX }
       !record_field { name: size_type       type: product_size_type    state: REQUIRED_FIXED  value: FIXED }
-      !record_field { name: elements        type: array#tuple_element }
+      !record_field { name: elements        type: "[tuple_element]" }
     ] }
   }
 
@@ -380,7 +382,7 @@
     constructor: true
     supertypes: [atom top]
     body: !record { supertypes: [atom]  fields: [
-      !record_field { name: members  type: set#token }
+      !record_field { name: members  type: "set<token>" }
     ] }
   }
 
@@ -389,7 +391,7 @@
     constructor: true
     supertypes: [sum top]
     body: !record { supertypes: [sum]  fields: [
-      !record_field { name: variants  type: array#type_name }
+      !record_field { name: variants  type: "[type_name]" }
     ] }
   }
 
@@ -399,52 +401,52 @@
     body: !record { fields: [
       !record_field { name: source       type: @alias:type_name token  state: OPTIONAL }
       !record_field { name: kind         type: type_kind }
-      !record_field { name: parameters   type: array#parameter  state: OPTIONAL }
+      !record_field { name: parameters   type: "[parameter]"  state: OPTIONAL }
       !record_field { name: constructor  type: boolean  state: REQUIRED_DEFAULT  value: false }
-      !record_field { name: supertypes   type: array#type_name  state: OPTIONAL }
-      !record_field { name: subtypes     type: array#type_name  state: OPTIONAL }
+      !record_field { name: supertypes   type: "[type_name]"  state: OPTIONAL }
+      !record_field { name: subtypes     type: "[type_name]"  state: OPTIONAL }
       !record_field { name: body         type: top }
     ] }
   }
 
   schema => !type_definition {
     kind: REFERENCE
-    source: map#type_name#type_definition
-    body: !reference { target: map#type_name#type_definition }
+    source: "map<type_name,type_definition>"
+    body: !reference { target: "map<type_name,type_definition>" }
   }
 
   @doc:"Synthetic entries materialised from inline forms."
-  array#record_field => !type_definition {
+  "[record_field]" => !type_definition {
     kind: PRODUCT
     source: array
     body: !array { element_type: record_field }
   }
 
-  array#type_name => !type_definition {
+  "[type_name]" => !type_definition {
     kind: PRODUCT
     source: array
     body: !array { element_type: @alias:type_name token }
   }
 
-  array#tuple_element => !type_definition {
+  "[tuple_element]" => !type_definition {
     kind: PRODUCT
     source: array
     body: !array { element_type: tuple_element }
   }
 
-  array#parameter => !type_definition {
+  "[parameter]" => !type_definition {
     kind: PRODUCT
     source: array
     body: !array { element_type: parameter }
   }
 
-  set#token => !type_definition {
+  "set<token>" => !type_definition {
     kind: PRODUCT
     source: set
     body: !set { element_type: token }
   }
 
-  map#type_name#type_definition => !type_definition {
+  "map<type_name,type_definition>" => !type_definition {
     kind: PRODUCT
     source: map
     body: !map { key_type: @alias:type_name token  value_type: type_definition }
