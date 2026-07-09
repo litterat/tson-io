@@ -31,10 +31,12 @@
     RFC 3339              Internet date/time profile
     RFC 9562              UUID format
     RFC 4648              Base encoding
-    RFC 3986              URI syntax
+    RFC 3986              URI syntax (incl. IPv4address grammar)
+    RFC 4291              IPv6 addressing architecture
+    RFC 4632              Classless Inter-domain Routing (CIDR)
+    RFC 9542              IEEE 802 parameters (EUI-48 format)
     RFC 5322              Email address format
     RFC 5646              BCP 47 language tags
-    UNF Draft 1.1         Unicode Number Format
   """
 {
   @doc:"""
@@ -47,7 +49,7 @@
   @doc:"Two-value boolean enumeration."
   boolean => !enum [true false]
 
-  @doc:"Arbitrary-precision signed integer. UNF decimal/hex/octal/binary."
+  @doc:"Arbitrary-precision signed integer. Decimal, hex, octal, and binary forms; spec §7.6."
   @ordered:TOTAL @bounded:false @numeric
   integer => !integer_type {}
 
@@ -67,7 +69,7 @@
   @ordered:TOTAL @bounded:false @numeric
   decimal => !decimal_type {}
 
-  @doc:"Exact fraction a/b. Reduced form, positive denominator."
+  @doc:"Exact fraction a/b, reduced form, positive denominator. Contains `/`, so data values must be quoted."
   @ordered:TOTAL @bounded:false @numeric
   rational => !rational_type {}
 
@@ -196,6 +198,49 @@
   @doc:"Email address per RFC 5322."
   @ordered:NONE @bounded:false
   email => !email_type {}
+
+  @doc:"""
+    IPv4 address, dotted-quad per the RFC 3986 IPv4address production.
+    Totally ordered by numeric address value over a finite 32-bit space.
+    """
+  @ordered:TOTAL @bounded:true
+  ipv4 => !ipv4_type {}
+
+  @doc:"""
+    IPv6 address, RFC 4291 §2.2 text representation. Zone identifiers
+    (RFC 4007, `fe80::1%eth0`) are host-local and excluded from the
+    contract. Totally ordered by numeric address value over a finite
+    128-bit space. Contains colons, so data values must be quoted.
+    """
+  @ordered:TOTAL @bounded:true
+  ipv6 => !ipv6_type {}
+
+  @doc:"""
+    IPv4 network, address `/` prefix length 0-32 (RFC 4632). PARTIAL
+    ordering is by containment: a network precedes another when its
+    address range is a strict subset; CIDR blocks never partially
+    overlap, so any two are nested or disjoint, and disjoint networks
+    are incomparable. Contains `/`, so data values must be quoted.
+    """
+  @ordered:PARTIAL @bounded:true
+  cidr4 => !cidr4_type {}
+
+  @doc:"""
+    IPv6 network, address `/` prefix length 0-128 (RFC 4291 §2.3).
+    PARTIAL ordering is by containment, as for cidr4. Contains colons
+    and `/`, so data values must be quoted.
+    """
+  @ordered:PARTIAL @bounded:true
+  cidr6 => !cidr6_type {}
+
+  @doc:"""
+    MAC address, EUI-48: six hex octets, colon- or hyphen-separated
+    (RFC 9542). The colon form must be quoted; the hyphen form may be
+    written unquoted. An opaque hardware identifier — like uuid,
+    ordering is not semantically meaningful.
+    """
+  @ordered:NONE @bounded:true
+  mac => !mac_type {}
 
   @doc:"""
     Value whose type is unconstrained. Membership is the universe of

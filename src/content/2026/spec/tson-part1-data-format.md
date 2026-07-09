@@ -115,7 +115,7 @@ A data document exercising the header, the three structural types, augmentation,
     { sku: A-100 qty: 2 price: 49.95 discount: .5 }
     { sku: B-205 qty: 1 price: 100.00 discount: _ }
   ]
-  discounts: { @expires:"2026-12-31" WELCOME10 => 10% loyalty => _ }
+  discounts: { @expires:"2026-12-31" WELCOME10 => "10%" loyalty => _ }
   shipping: !!schema:"https://example.com/address.tn1" {
     street: "12 Byron Rd"
     city:   London
@@ -127,7 +127,7 @@ A data document exercising the header, the three structural types, augmentation,
 }
 ```
 
-The two header directives name the document and bind its schema, and the field-level `!!schema` on `shipping` scopes a different schema to that one value (§2.2, §3.3). Annotations attach metadata at three levels: `@doc` on the document, the valueless `@deprecated` on a field's value, and `@expires` on a map key (§3.1). Type references invoke the built-in vocabulary — `!uuid`, `!date`, and `!decimal` parse their tokens by atom contract (§3.2, §5) — while unannotated tokens resolve by the base rules of §4: `1042` and `0b0110` are integers, `.5` is a float, and `GOLD`, `A-100`, and `10%` are strings (as `2026-07-01` would be without its `!date`). The value is a record (§2.5) containing a nested record, an array of records (§2.7), and a map (§2.6). Tokens are quoted only where content demands it — `"ada@example.com"` contains a special character, `"12 Byron Rd"` a space — and `notes` is a multi-line token whose common indentation is stripped (§7.2.3, §2.4). The absent sentinel `_` marks a field and a map entry that are present with explicitly no value (§2.9).
+The two header directives name the document and bind its schema, and the field-level `!!schema` on `shipping` scopes a different schema to that one value (§2.2, §3.3). Annotations attach metadata at three levels: `@doc` on the document, the valueless `@deprecated` on a field's value, and `@expires` on a map key (§3.1). Type references invoke the built-in vocabulary — `!uuid`, `!date`, and `!decimal` parse their tokens by atom contract (§3.2, §5) — while unannotated tokens resolve by the base rules of §4: `1042` and `0b0110` are integers, `.5` is a float, and `GOLD` and `A-100` are strings (as `2026-07-01` would be without its `!date`). The value is a record (§2.5) containing a nested record, an array of records (§2.7), and a map (§2.6). Tokens are quoted only where content demands it — `"ada@example.com"` contains a special character, `"12 Byron Rd"` a space, `"10%"` a character outside the unquoted profile (§7.1) — and `notes` is a multi-line token whose common indentation is stripped (§7.2.3, §2.4). The absent sentinel `_` marks a field and a map entry that are present with explicitly no value (§2.9).
 
 
 ### 2.2 Document and Header
@@ -210,11 +210,11 @@ Field values and map entry values are scoped values; map keys and array elements
 
 A token is the atom of TSON data: **text plus form**. The text is the token's content after escape processing (and, for multi-line tokens, whitespace stripping); the form is one of three:
 
-- **Unquoted** — `name`, `42`, `0xFF`, `2025-03-13`, `名前`, `$10.23`, `€10.50`, `#tag`, `/api/v1/users`. Available when every character is in the unquoted-token profile (§7.1).
+- **Unquoted** — `name`, `42`, `0xFF`, `2025-03-13`, `名前`, `v1.2.3`, `snake_case`, `A-100`. Available when every character is in the unquoted-token profile (§7.1).
 - **Quoted** — `"has spaces"`, `"alice@example.com"`, `"42"`. Any single-line content, with escape sequences (§7.2.2).
 - **Multi-line** — `"""` blocks for multi-line content with indentation stripping (§7.2.3).
 
-**Form is not meaning.** Throughout this series, a token's form is consulted exactly once: by base type resolution (§4), where quoting is the author's way to say "the string `42`, not the number". Everywhere else only the text matters. Type contracts operate on text — `!decimal 10.2`, `!decimal "10.2"`, and `!decimal """10.2"""` are the same value (§5.2) — and identity is form-blind: `name` and `"name"` are the same field name (§2.5), and `Alice` and `"Alice"` are duplicate map keys (§2.6). Quoting is a lexical necessity, not a semantic signal: content containing characters outside the profile — spaces, colons (timestamps, URLs), `@` (email addresses) — MUST be quoted; content inside it may be written in any form.
+**Form is not meaning.** Throughout this series, a token's form is consulted exactly once: by base type resolution (§4), where quoting is the author's way to say "the string `42`, not the number". Everywhere else only the text matters. Type contracts operate on text — `!decimal 10.2`, `!decimal "10.2"`, and `!decimal """10.2"""` are the same value (§5.2) — and identity is form-blind: `name` and `"name"` are the same field name (§2.5), and `Alice` and `"Alice"` are duplicate map keys (§2.6). Quoting is a lexical necessity, not a semantic signal: content containing characters outside the profile — spaces, colons (timestamps, URLs), `@` (email addresses), `/` (paths, networks, rationals), `%` and currency symbols — MUST be quoted; content inside it may be written in any form.
 
 **Separators.** Within structural types, adjacent values MUST be separated by at least one whitespace character, a comma, or both: `[1 2 3]`, `[1,2,3]`, and `[1, 2, 3]` are equivalent. Zero-width separation is a parse error. Trailing separators are not permitted — `[1, 2, 3,]` and `{ x: 1, }` are parse errors — and the rule applies throughout the series. Structural delimiters inherently create token boundaries, so no separator is required between a delimiter and adjacent content: `{name:Alice}` is valid. Any non-zero amount of whitespace (including line breaks) between tokens is equivalent to any other; indentation is not significant. Within quoted tokens, whitespace is content, subject to each form's character rules (§7.2.2, §7.2.3).
 
@@ -392,7 +392,7 @@ Any other directive name, and any of these names outside its placement, is a par
 ## 4. Base Type Resolution
 
 
-Base type resolution applies **only when no declared type information is in scope** and the token carries no built-in type annotation — a built-in annotation overrides base resolution for its token (§5). When a higher part supplies declared type information ([TSON-SCHEMA]), base type resolution does NOT apply at typed positions; each declared atom type owns its own parsing contract. The tokens `true`, `false`, and `null` have special status only under base type resolution.
+Base type resolution applies **only when no declared type information is in scope** and the token carries no built-in type annotation — a built-in annotation overrides base resolution for its token (§5). When a higher part supplies declared type information ([TSON-SCHEMA]), base type resolution does NOT apply at typed positions; each declared atom type owns its own parsing contract. The tokens `true`, `false`, and `null` have special status only under base type resolution. Resolution applies to **data values only**: field names and map keys are text, never resolved — in `{ 007: 007 }` the key is the name `007` by definition, while the value is a string by fallthrough (leading zeros fail the `integer` production, §4.3), and `07` and `7` are distinct keys because key identity is textual (§2.4).
 
 
 ### 4.1 Null
@@ -412,12 +412,12 @@ The tokens `true` and `false` (case-sensitive, lowercase only) resolve to boolea
 
 An unquoted token resolves to a numeric value if and only if its complete text matches the `number` production (§7.6). Base type resolution recognises four numeric forms — special values, based integers, floats, and integers — which are pairwise disjoint; a token matching none falls through to string (§4.4).
 
-- **Special values** — `.nan` and `.inf`/`.infinity`/`∞` (infinity with optional sign). Lowercase only.
+- **Special values** — `.nan` and `.inf`/`.infinity` (infinity with optional sign). Lowercase only.
 - **Floats** — signed decimal with fraction and/or exponent (`1.5`, `.5`, `6.02e23`, `-2e-3`). Digits MUST follow a decimal point; the integer part MAY be omitted. `5.` is not a number. The signed zeros `+0.0` and `-0.0` are floats whose sign MUST be preserved.
 - **Integers** — signed decimal integers. Leading zeros MUST NOT be used except for the single digit zero.
 - **Based integers** — hexadecimal, octal, and binary integers via the lowercase prefixes `0x`, `0o`, `0b` (`0xFF`, `0o755`, `0b1010`), with optional sign; hex digits may be either case.
 
-These are JSON's numeric forms extended by an optional leading `+`, leading-dot fractions (`.5`), underscore digit separators (`1_000_000` — permitted only between digits, enforced by the digit-sequence productions), arbitrary precision, based integers, and the special values. Richer numeric forms — rationals (`2/3`), complex numbers (`3+4i`), hexadecimal floats, and NaN payloads — are **not** recognised by base type resolution and resolve as strings; the built-in type vocabulary provides typed access to them under explicit annotation (§5.6). A consequence of based-integer recognition: hex-shaped identifier data (a blockchain address such as `0x71C7656EC7ab88b098defB751B7401B5f6d8976F`) resolves as a number; authors who intend such a token as a string MUST quote it.
+These are JSON's numeric forms extended by an optional leading `+`, leading-dot fractions (`.5`), underscore digit separators (`1_000_000` — permitted only between digits, enforced by the digit-sequence productions), arbitrary precision, based integers, and the special values. Richer numeric forms — rationals (`2/3`), complex numbers (`3+4i`), and hexadecimal floats — are **not** recognised by base type resolution; the built-in type vocabulary provides typed access to them under explicit annotation (§5.6). Complex and hex-float tokens are expressible unquoted and resolve as strings; rational content contains `/`, which is outside the unquoted profile (§7.1), so rational values are always quoted. A consequence of based-integer recognition: hex-shaped identifier data (a blockchain address such as `0x71C7656EC7ab88b098defB751B7401B5f6d8976F`) resolves as a number; authors who intend such a token as a string MUST quote it.
 
 Numeric values are arbitrary precision; how values map to host-language numeric types is an implementation concern (see §9.1 for literal-length limits). Non-ASCII digit sequences do not match the number grammar and fall through to string.
 
@@ -427,7 +427,7 @@ Numeric values are arbitrary precision; how values map to host-language numeric 
 ### 4.4 String
 
 
-Any quoted token resolves to a string value. Any unquoted token that does not match null, boolean, or the `number` production resolves to a string value — including single-character tokens such as `-`, `+`, `.`, `#`, `$`, `%`, `/`, and richer numeric forms such as `2/3` and `3+4i` (§4.3). The infinity character `∞` is the exception: alone, it is a complete special value and resolves to positive infinity.
+Any quoted token resolves to a string value. Any unquoted token that does not match null, boolean, or the `number` production resolves to a string value — including the single-character tokens `-`, `+`, and `.`, near-miss numeric forms such as `007` and `1.2.3` (leading zeros and second dots fail the number grammar), and the complex form `3+4i` (§4.3). There are no exceptions: every string-resolving token is one whose complete text failed the null, boolean, and number rules.
 
 
 ### 4.5 Resolution Order
@@ -510,7 +510,7 @@ A token that does not match the named format is a parse error. `date-time` and `
 | `!cidr6`   | IPv6 address `/` prefix length 0–128 | network |
 | `!mac`     | EUI-48, colon- or hyphen-separated hex octets | MAC address |
 
-A token that does not match the named format is a parse error; a CIDR prefix length outside the address family's range is a validation error. IPv6 zone identifiers (`fe80::1%eth0`, RFC 4007) are host-local and are not part of the `ipv6` or `cidr6` contracts. URIs with a scheme and IPv6 addresses contain colons and MUST be quoted (§2.4).
+A token that does not match the named format is a parse error; a CIDR prefix length outside the address family's range is a validation error, as is an address whose host bits are nonzero under the stated prefix length — the host value is a network, and accept-and-mask would be lossy (§5.2). IPv6 zone identifiers (`fe80::1%eth0`, RFC 4007) are host-local and are not part of the `ipv6` or `cidr6` contracts. URIs with a scheme and IPv6 addresses contain colons, and CIDR values contain `/`; all of these MUST be quoted (§2.4). MAC addresses in the colon-separated form MUST be quoted; the hyphen-separated form is expressible unquoted.
 
 
 ### 5.6 Numeric Types
@@ -525,12 +525,12 @@ The numeric atoms are defined against the productions of the number grammar (§7
 | `!uint32`  | `integer` / `based-integer`, no sign | 32-bit unsigned range | 32-bit unsigned |
 | `!uint64`  | `integer` / `based-integer`, no sign | 64-bit unsigned range | 64-bit unsigned |
 | `!decimal` | `integer` / `float` | none (exact decimal) | decimal type |
-| `!float32` | `float` / `hex-float` / `special-value` / `nan-payload` | IEEE 754 single precision | 32-bit float |
-| `!float64` | `float` / `hex-float` / `special-value` / `nan-payload` | IEEE 754 double precision | 64-bit float |
+| `!float32` | `float` / `hex-float` / `special-value` | IEEE 754 single precision | 32-bit float |
+| `!float64` | `float` / `hex-float` / `special-value` | IEEE 754 double precision | 64-bit float |
 | `!rational` | `rational` | denominator nonzero (by grammar) | rational |
 | `!complex` | `complex` / `float` / `integer` | none | complex number |
 
-The integer atoms accept based forms — `!uint32 0xFF00_0000` is the idiomatic range-checked bitmask — and the annotation is the only schemaless route to the rational, complex, hex-float, and NaN-payload forms, which base resolution treats as strings (§4.3). The float atoms give the special values IEEE 754-2019 semantics, including NaN payloads (`!float64 ".nan#0xDEAD"`). Unannotated numeric tokens resolve through base type resolution alone.
+The integer atoms accept based forms — `!uint32 0xFF00_0000` is the idiomatic range-checked bitmask — and the annotation is the only schemaless route to the rational, complex, and hex-float forms: complex and hex-float tokens resolve as strings under base resolution (§4.3), and rational content contains `/`, so rational values are always quoted (`!rational "2/3"`). The float atoms give the special values IEEE 754-2019 semantics. NaN payloads are not part of a value's information content: every NaN, however produced, denotes the canonical quiet NaN, so preservation (§5.2) holds by definition; applications that need payload bits should carry them as integers or binary values. Unannotated numeric tokens resolve through base type resolution alone.
 
 
 ## 6. TSON and JSON
@@ -573,7 +573,6 @@ TSON is a Unicode data format. The grammar is defined in terms of Unicode charac
 | Nd                    | UCD     | Decimal digits in all scripts     |
 | Pattern_White_Space   | UAX #31 | Whitespace / token separation     |
 | Pattern_Syntax        | UAX #31 | Special tokens / syntax operators |
-| Sc                    | UCD     | Currency symbols in unquoted tokens |
 | NFC                   | UAX #15 | Unquoted token normalization      |
 
 `XID_Start`, `XID_Continue`, `Nd`, `Pattern_White_Space`, and `Pattern_Syntax` are stable — the Unicode Standard guarantees that characters are never removed from these sets — and `XID_Start`/`XID_Continue` are stable under NFC normalization, so normalizing a valid token always produces a valid token. Implementations MUST support these properties for their declared Unicode version and SHOULD document which Unicode version they support.
@@ -581,11 +580,15 @@ TSON is a Unicode data format. The grammar is defined in terms of Unicode charac
 **UAX #31 profile.** TSON's unquoted tokens are a declared profile of Unicode identifiers per UAX #31 requirement R1:
 
 ```
-Start    = XID_Start ∪ Nd ∪ Sc ∪ { - + . # % / ∞ }
-Continue = XID_Continue ∪ Sc ∪ { - + . # % / ∞ }
+Start    = XID_Start ∪ Nd ∪ { - + . }
+Continue = XID_Continue ∪ { - + . }
 ```
 
-The seven extension characters are all `Pattern_Syntax` and therefore immutable, so the profile itself is frozen. The property-based components grow with the Unicode version: new scripts enter `XID_Start`/`XID_Continue`, new digits enter `Nd`, and new currency symbols enter `Sc` as they are encoded. Growth is monotone in practice — characters that were lexer errors become token characters, and valid documents remain valid under later versions. `Sc` (a General_Category value) does not carry the formal never-removed guarantee that the UAX #31 properties do; no character has left `Sc` to date, and tokenization is in any case defined relative to the implementation's declared Unicode version. Underscore (U+005F) is in `XID_Continue` but not `XID_Start`: it may appear within a token (`my_type`) but cannot start one, preserving the absent sentinel `_` (§2.9).
+The three extension characters are all `Pattern_Syntax` and therefore immutable, so the profile itself is frozen. The property-based components grow with the Unicode version: new scripts enter `XID_Start`/`XID_Continue` and new digits enter `Nd` as they are encoded. Growth is monotone — characters that were lexer errors become token characters, and valid documents remain valid under later versions. Underscore (U+005F) is in `XID_Continue` but not `XID_Start`: it may appear within or at the end of a token (`my_type`) but cannot start one. Token-initial underscore is reserved to the format and occupied by the absent sentinel `_` (§2.9); names with a leading underscore (`_id`) MUST be quoted.
+
+**Rationale.** The profile is the UAX #31 identifier profile plus exactly what base type resolution consumes: `Nd` joins Start because scalar tokens, unlike identifiers, include numbers; `-` and `+` are the sign and exponent-sign characters; `.` is the decimal point and the leading character of `.inf`, `.infinity`, and `.nan`. Every extension character is required by a production of the number grammar (§7.6); none is speculative. Characters are excluded whenever the kinds of content that need them can be covered only partially — paths (`~`, `\`, spaces), URIs (`:`), monetary amounts (currency symbols, grouping separators, spaces), rationals and networks (`/`), percentages (`%`). A kind the profile cannot cover totally is excluded entirely, so that its quoting rule is *always*, never a per-character scan.
+
+**Quoting by kind.** The profile makes the quoting decision a property of what a value *is*, not of the characters it happens to contain. Never quoted: numbers, `null`/`true`/`false`, identifier- and enum-like names, `full-date` temporals, UUIDs, hyphen-form MAC addresses, version strings. Always quoted: anything containing whitespace or prose, timestamps and URIs (colons), email addresses (`@`), paths, rationals, and CIDR networks (`/`), IPv6 addresses (colons), monetary amounts and percentages, and leading-underscore names. A generator's decision procedure is two clauses: quote if any character falls outside the profile, and quote if the bare token would resolve to something other than the intended string (`"true"`, `"42"`, `"0x71C7…"`, §4).
 
 The format-control characters ZWNJ (U+200C) and ZWJ (U+200D) are deliberately excluded from the profile, although UAX #31 permits them in restricted contexts and some languages admit them. They are invisible, which makes them confusable and spoofing surface (§9.4); names whose orthography requires them MUST be quoted.
 
@@ -703,7 +706,7 @@ The remaining ten — `&` `<` `>` `?` `~` `=` `|` `;` `(` `)` — are reserved b
 #### 7.2.6 Unrecognised Characters
 
 
-Any character that falls into no token-producing category is an **unrecognised character**, and its appearance outside a quoted token is a lexer error. This includes control characters, unassigned code points, and every `Pattern_Syntax` character outside the special-token set — among them `*` `^` `'` `` ` `` `\`, which are deliberately unused anywhere in the series (within quoted tokens, `\` is the escape character).
+Any character that falls into no token-producing category is an **unrecognised character**, and its appearance outside a quoted token is a lexer error. This includes control characters, unassigned code points, currency symbols (`$` `€` `¥` …), and every `Pattern_Syntax` character outside the special-token set — among them `/` `#` `%` `*` `^` `'` `` ` `` `\` — which are deliberately unused anywhere in the series (within quoted tokens, `\` is the escape character). Content requiring any of these — `$19.99`, `10%`, `2/3`, `/usr/bin`, `#tag` — is written as a quoted token.
 
 
 ### 7.3 Lexical Grammar
@@ -770,12 +773,10 @@ PS            = ; U+2029  PARAGRAPH SEPARATOR
 ; ── Unquoted tokens (Unicode UAX #31) ─────────────────────
 
 unquoted-token = unquoted-start *unquoted-char
-unquoted-start = XID_Start / Nd / Sc
-               / "-" / "+" / "." / "#" / "%" / "/"
-               / "∞"                                ; U+221E INFINITY
-unquoted-char  = XID_Continue / Sc
-               / "-" / "+" / "." / "#" / "%" / "/"
-               / "∞"                                ; U+221E INFINITY
+unquoted-start = XID_Start / Nd
+               / "-" / "+" / "."
+unquoted-char  = XID_Continue
+               / "-" / "+" / "."
 
 ; ── Structural delimiters ─────────────────────────────────
 
@@ -823,7 +824,6 @@ HEXDIG        = ; 0-9 / A-F / a-f
 ; XID_Start          UAX #31 — letters and letter-like numbers
 ; XID_Continue       UAX #31 — XID_Start + digits + combining marks + connector punctuation
 ; Nd                 General Category "Decimal Number"
-; Sc                 General Category "Currency_Symbol" ($ € ¥ £ ₿ ...)
 ; Pattern_White_Space  UAX #31 — immutable whitespace (11 chars)
 ; Pattern_Syntax       UAX #31 — immutable syntax characters
 ```
@@ -905,7 +905,7 @@ ABNF concatenation does not express "no whitespace permitted here." The followin
 ### 7.6 Number Grammar
 
 
-The number grammar applies to the complete text of an unquoted token; it is not part of the token-stream grammar. Every character it uses is already in the unquoted token character set, so a candidate token is first produced by the lexer, then matched — in full — against a production here. The `number` production is the base type resolution entry (§4.3); its four alternatives are pairwise disjoint. The extended forms below it are recognised only through the numeric atoms of the type vocabulary (§5.6).
+The number grammar applies to the complete text of a token; it is not part of the token-stream grammar. The `number` production is the base type resolution entry (§4.3): every character it uses is in the unquoted token profile (§7.1), so a candidate token is first produced by the lexer, then matched — in full — against it; its four alternatives are pairwise disjoint. The extended forms below it are recognised only through the numeric atoms of the type vocabulary (§5.6) and, like all atom contracts, match token *content* after escape processing (§5.2): `hex-float` and `complex` are expressible unquoted, while `rational` contains `/`, which is outside the profile, so rational values are always quoted.
 
 ```
 ; ── Base type resolution entry (§4.3) ─────────────────────
@@ -939,7 +939,7 @@ exponent        = ( "e" / "E" ) [sign] digits
 
 special-value   = [sign] infinity
                 / ".nan"
-infinity        = ".inf" / ".infinity" / "∞"        ; ∞ is U+221E
+infinity        = ".inf" / ".infinity"
 
 ; ── Extended forms (type vocabulary, §5.6) ────────────────
 
@@ -956,8 +956,6 @@ complex         = [sign] magnitude sign magnitude imag-unit
 magnitude       = decimal-natural [ "." digits ] [ exponent ]
                 / "." digits [ exponent ]
 imag-unit       = "i" / "j"
-
-nan-payload     = ".nan" "#0x" hex-digits
 
 ; ── Terminals ─────────────────────────────────────────────
 
