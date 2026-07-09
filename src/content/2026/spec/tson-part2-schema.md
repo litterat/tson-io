@@ -1808,7 +1808,7 @@ The following rows extend the adjacency table of [TSON-DATA] §7.5 for the opera
 | RFC 9562 | Universally Unique IDentifiers (UUIDs) | https://www.rfc-editor.org/rfc/rfc9562 |
 | ISO 8601-1:2019 | Date and time — Representations for information interchange | https://www.iso.org/standard/70907.html |
 | IEEE 754-2019 | Standard for Floating-Point Arithmetic | https://ieeexplore.ieee.org/document/8766229 |
-| TSON-DATA | TSON Part 1: Data Format | https://tson.io/raw/2026/tson-part1-data-format.md (pinned at publication) |
+| TSON-DATA | TSON Part 1: Data Format | https://tson.io/raw/2026/tson-part1-data.md (pinned at publication) |
 | meta-kernel.tn1 | TSON Meta-Kernel (companion artifact) | https://tson.io/2026/m/meta-kernel.tn1?sha256=&lt;pinned at publication&gt; |
 | meta.tn1 | TSON Meta-Schema (companion artifact) | https://tson.io/2026/m/meta.tn1?sha256=&lt;pinned at publication&gt; |
 | core.tn1 | TSON Core Type Library (companion artifact) | https://tson.io/2026/m/core.tn1?sha256=&lt;pinned at publication&gt; |
