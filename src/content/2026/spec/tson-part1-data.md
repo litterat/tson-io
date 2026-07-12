@@ -182,7 +182,7 @@ Content addressing composes. A data document may reference its schema by hashed 
 ### 2.3 Values
 
 
-TSON uses a single parser with two closely related value rules. A **scoped value** is an optional `schema` directive followed by a data value; it occurs in exactly two positions — record field values and map entry values. A **data value** is zero or more annotations, an optional type reference, and a core value; it occurs everywhere a value does.
+TSON uses a single parser with two closely related value rules. A **scoped value** is an optional `schema` directive followed by a data value; it occurs in exactly three positions — record field values, map entry values, and array elements. A **data value** is zero or more annotations, an optional type reference, and a core value; it occurs everywhere a value does.
 
 ```
 scoped-value     = [ schema-directive ws ] data-value
@@ -208,7 +208,7 @@ There are three structural types for contained data; the document is the implici
 | Map    | `{ => }`    | `=>`      | Variable key-value associations  |
 | Array  | `[ ]`       | whitespace| Variable-length sequence         |
 
-Field values and map entry values are scoped values; map keys and array elements are data values.
+Field values, map entry values, and array elements are scoped values; map keys are data values.
 
 
 ### 2.4 Tokens
@@ -271,11 +271,13 @@ A map MUST contain at least one entry. An empty `{}` is parsed as an `empty-brac
 ### 2.7 Array
 
 
-An array is an ordered, variable-length collection of values enclosed in square brackets. Values are separated by whitespace or an optional comma.
+An array is an ordered, variable-length collection of values enclosed in square brackets. Values are separated by whitespace or an optional comma. Array elements are scoped values (§2.3): a `schema` directive may prefix an individual element and scopes to that element alone (§3.3, [TSON-SCHEMA] §7.8).
 
 ```
-array = "[" ws [ data-value *( separator data-value ) ] ws "]"
+array = "[" ws [ scoped-value *( separator scoped-value ) ] ws "]"
 ```
+
+In a whitespace-separated array a directive binds unambiguously to the element it prefixes, but for readability encoders SHOULD place each directive-carrying element on its own line or separate elements with commas.
 
 
 ### 2.8 Brace Disambiguation and Empty Braces
@@ -375,7 +377,7 @@ A configuration directive provides pre-interpretation configuration: the `!!` co
 
 The `:` MUST be adjacent to the directive name. The argument is a single quoted token; in every directive of this series it is a URI or file reference (RFC 3986).
 
-Directives appear only in the document header (§2.2) and in scoped-value positions (§2.3): record field values and map entry values. A directive scopes to the document or value it prefixes. Directives are not permitted before array elements, map keys, field names, or annotation values.
+Directives appear only in the document header (§2.2) and in scoped-value positions (§2.3): record field values, map entry values, and array elements. A directive scopes to the document or value it prefixes. Directives are not permitted before map keys, field names, or annotation values. The remaining exclusions are deliberate: keys and names are identity-bearing, so a schema scope on a key would make identity scope-dependent (§2.6); and annotation values are metadata resolved against the governing target's namespace by the one-hop rule ([TSON-SCHEMA] §3.3.3), which a local scope switch would subvert.
 
 Unlike an annotation, a directive is not strippable metadata: it affects how the value is interpreted. A Class 1 processor does not act on `schema` bindings — it preserves them for the consuming application — but it enforces directive grammar in full.
 
@@ -384,7 +386,7 @@ Unlike an annotation, a directive is not strippable metadata: it affects how the
 | Name | Document kind | Placement | Argument | Operation |
 |---|---|---|---|---|
 | `id` | both | Header; first line; optional in the grammar — publishing a schema requires it ([TSON-SCHEMA]) | URI | Names the document (§2.2.1). The id line is excluded from content hashing. |
-| `schema` | data | Header, at most once; field values; map entry values | URI | Binds the schema governing the document or value in scope. |
+| `schema` | data | Header, at most once; field values; map entry values; array elements | URI | Binds the schema governing the document or value in scope. |
 | `meta` | schema | Schema-document header; exactly once, first directive after the optional `id` | URI | Binds the meta-schema governing the schema's declarations. |
 | `import` | schema | Schema-document header; after `meta`; repeatable | URI | Imports the named schema's declarations. |
 
@@ -840,7 +842,7 @@ HEXDIG        = ; 0-9 / A-F / a-f
 ### 7.4 Data Grammar
 
 
-The parser consumes the token stream and produces a document tree. The `document` rule dispatches on the header (§2.2); values use two rules: `scoped-value` (record field values, map entry values) and `data-value` (everywhere a value occurs). Adjacency requirements that ABNF concatenation cannot express are enforced via source-position comparison; see §7.5.
+The parser consumes the token stream and produces a document tree. The `document` rule dispatches on the header (§2.2); values use two rules: `scoped-value` (record field values, map entry values, array elements) and `data-value` (everywhere a value occurs). Adjacency requirements that ABNF concatenation cannot express are enforced via source-position comparison; see §7.5.
 
 ```
 document        = ws [ id-directive ws ] ( data-doc / schema-doc )
@@ -878,8 +880,8 @@ map             = "{" ws map-entry
                  *( separator map-entry ) ws "}"
 map-entry       = data-value ws "=>" ws scoped-value
 
-array           = "[" ws [ data-value
-                 *( separator data-value ) ] ws "]"
+array           = "[" ws [ scoped-value
+                 *( separator scoped-value ) ] ws "]"
 
 scoped-value    = [ schema-directive ws ] data-value
 

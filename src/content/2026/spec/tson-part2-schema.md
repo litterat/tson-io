@@ -207,7 +207,7 @@ This document defines the directive *operations* — what each directive means t
 | Operation | Directive | Placement ([TSON-DATA] §3.3) | Defined in |
 |-----------|-----------|------------------------------|------------|
 | Identity declaration | `!!id` | first header line, either kind; optional in the grammar — required for published schemas (§2.2.1) | §2.2.1 |
-| Schema binding | `!!schema` | data-document header; record field values; map entry values | §7.1 |
+| Schema binding | `!!schema` | data-document header; record field values; map entry values; array elements | §7.1 |
 | Meta binding | `!!meta` | schema-document header, immediately after `!!id`; exactly once | §2.2.2 |
 | Type-library import | `!!import` | schema-document header, after `!!meta`; repeatable | §2.2.3 |
 
@@ -1236,7 +1236,7 @@ Any type in the governing target's namespace can be used as an annotation. There
 
 **The referent is a schema document.** A `!!schema` URL resolves to a schema document — never to a resolved-schema data document, whose resolver-derived fields cannot be verified from the document alone. Resolved-form documents enter the schema library only through the explicit ingest path (§8.1). §10.1 states the enforcement rule; the Developer Guide collects the rationale.
 
-On a data document's header, `!!schema` binds the schema for the entire document. On a scoped value — a record field value or map entry value ([TSON-DATA] §2.3) — it binds the schema for that value alone: the referenced schema becomes the active scope for all `!name` type annotations within that value and its descendants, and when the value ends, the scope reverts to the enclosing scope. Nested scoped values override the enclosing scope for their value. Directives are not permitted before array elements ([TSON-DATA] §3.3); §7.8 discusses the consequences for heterogeneous collections.
+On a data document's header, `!!schema` binds the schema for the entire document. On a scoped value — a record field value, map entry value, or array element ([TSON-DATA] §2.3) — it binds the schema for that value alone: the referenced schema becomes the active scope for all `!name` type annotations within that value and its descendants, and when the value ends, the scope reverts to the enclosing scope. Nested scoped values override the enclosing scope for their value. Directives remain excluded before map keys, field names, and annotation values ([TSON-DATA] §3.3); §7.8 defines the typed-position rules for scoped elements in heterogeneous collections.
 
 **The directive names a namespace, not a root contract.** `!!schema` supplies the vocabulary against which `!name` annotations resolve; it does not itself assert the governed value's type, and a schema has no privileged entry point — it is a map of declarations (§2.1). The value names its own type by annotation: `!!schema:"…"` followed by `!order { … }`. Encoders SHOULD annotate the value a `!!schema` directive governs with the type it instantiates; an unannotated value under a bound schema is legal but vocabulary-only — validation engages only where annotations appear within it, and no record-level contract applies to the value itself. At extern-matched positions the annotation is not optional: the type is the sum's discriminant and MUST be present (§7.8).
 
@@ -1393,7 +1393,17 @@ At the data level, values matched by an `extern` field MUST carry their own `!!s
 }
 ```
 
-Each `!!schema` directive opens a schema scope for the value that follows. The scope is bounded by the value — when the `!insurance_claim` record closes, the patient schema becomes active again. The scope depth is bounded by the document's containment depth.
+Each `!!schema` directive opens a schema scope for the value that follows. The scope is bounded by the value — when the `!insurance_claim` record closes, the patient schema becomes active again. The scope depth is bounded by the document's containment depth. The two attachments are array elements, which are scoped-value positions ([TSON-DATA] §2.3, §2.7): each directive binds to the single element it prefixes, and the example follows the encoder recommendation of [TSON-DATA] §2.7 — one directive-carrying element per line.
+
+**Composition order and augmentation under a scoped element.** Within a scoped value the composition order is fixed by the grammar: directive, then annotations, then the optional type annotation, then the core value ([TSON-DATA] §2.3, §3.1). The directive therefore opens its scope before the element's own augmentation resolves: annotations on a scoped element resolve against the newly scoped schema's namespace by the ordinary one-hop rule (§3.3.3), and the type annotation resolves against its type-name namespace. Given a schema `x` declaring the type `xtype` and the annotation type `xann`:
+
+```
+[ a  !!schema:"https://example.com/x.tn1" @xann:"value" !xtype b  c ]
+```
+
+the directive scopes the second element alone: `@xann` and `!xtype` resolve through `x`, while `a` and `c` remain in the enclosing scope. Note the ordering — annotations precede the type annotation in a data value, so `!xtype @xann:"value" b` is a parse error ([TSON-DATA] §2.3).
+
+**The discriminant is required at extern positions.** At an extern-matched position, the `!type` annotation is the sum's discriminant and MUST be present: a scoped value that opens a schema scope but names no type is a validation error there. Everywhere else the general rule of §7.1 applies — a `!!schema` directive without a type annotation is legal but vocabulary-only, and unannotated tokens within the value resolve by base type resolution ([TSON-DATA] §4).
 
 For multi-schema heterogeneous arrays, declare the field as `[extern]` — an array of `extern`. Each element carries its own `!!schema` and `!type` annotations independently:
 
@@ -1403,7 +1413,7 @@ attachments: [extern]
 
 No new constructor is needed; `extern` composes naturally with the existing array type.
 
-**Typed-position restriction.** A nested `!!schema` directive at a position whose type is constrained by the outer schema is a resolver error unless the outer type is one of the permissive types: `extern`, `value`, `unknown`, or a container thereof (e.g. `[extern]`, `map<text, value>`). The outer schema must opt in to receiving foreign values at each position where schema switching is permitted. Without this rule, a `!!schema` directive could silently substitute a value of any shape into a specifically-typed slot, with the mismatch surfacing only at the host-language assignment boundary. The permissive-type requirement makes cross-schema acceptance authored intent, not accident. Schemaless outer documents have no type expectations and always permit nested `!!schema` directives.
+**Typed-position restriction.** A nested `!!schema` directive at a position whose type is constrained by the outer schema is a resolver error unless the outer type is one of the permissive types: `extern`, `value`, `unknown`, or a container thereof (e.g. `[extern]`, `map<text, value>`). The check is per-position: for a record field or map entry value the field or entry type applies; for an array element, the array type's element type applies. The outer schema must opt in to receiving foreign values at each position where schema switching is permitted. Without this rule, a `!!schema` directive could silently substitute a value of any shape into a specifically-typed slot, with the mismatch surfacing only at the host-language assignment boundary. The permissive-type requirement makes cross-schema acceptance authored intent, not accident. Schemaless outer documents have no type expectations and always permit nested `!!schema` directives.
 
 
 ## 8. Resolver Output
