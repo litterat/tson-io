@@ -14,7 +14,7 @@
   and this document describes it.
   """
 {
-  @doc:"Base kinds. `top` is the structural root; every type in the schema IS-A `top`."
+  @doc:"Base kinds. `top` is the structural root; every constructor transitively IS-A `atom`, `product`, or `sum`, each of which IS-A `top`. Construction transfers kind, not IS-A, so instances and fresh records sit under the kinds without supertypes."
   top       => {}
   atom      => top & {}
   product   => top & {
