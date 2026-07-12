@@ -42,7 +42,7 @@ This document defines the TSON **data format**: the lexer, the structural gramma
 
 4. **Minimal required syntax** — Commas and double quotes are optional where the structure is unambiguous.
 
-5. **JSON compatibility** — Valid JSON is a subset of valid TSON at the structural level. TSON parsers SHOULD accept JSON documents.
+5. **JSON compatibility** — Valid JSON is a subset of valid TSON at the structural level, apart from two character-level string exceptions (§6). TSON parsers SHOULD accept JSON documents outside those exceptions.
 
 6. **Locality** — A TSON data value is fully local. The format provides no data-level reuse mechanisms (no anchors, references, or merge operators): what appears at a position is the complete value.
 
@@ -136,7 +136,7 @@ The two header directives name the document and bind its schema, and the root va
 A TSON document is the outermost structure: a **header** followed by a body. The header is a fixed sequence of directives — names, order, and cardinality are enforced by the grammar (§3.3, §7.4) — and it determines the document kind:
 
 ```
-document   = ws [ id-directive ws ] ( data-doc / schema-doc )
+document   = [ id-directive ] ws ( data-doc / schema-doc )
 
 data-doc   = [ schema-directive ws ] data-value ws
 schema-doc = meta-directive ws *( import-directive ws ) schema-map ws
@@ -166,7 +166,7 @@ _
 
 The `!!id` directive names the document: its argument is a URI identifying the document as a published artifact. `!!id` is optional in the grammar for both document kinds (§2.2). Publishing a schema — registering it for reference by other documents under its own name, or pinning it by content hash — requires it ([TSON-SCHEMA]); an id-less schema is a development artifact. Identity gives diagnostics, imports, and registries a stable way to refer to the document independent of its storage location.
 
-When the identifying URI carries a content hash (the convention is defined below), the document is **content-addressed** and immutable: any change to its bytes changes its hash, which the canonical identity (defined below) binds to the document. A content-addressed document MUST place the `id-directive` at the very start of the document, followed by a line terminator, and MUST be encoded in UTF-8. The hash input is every byte after that line terminator — the id line is excluded so that a document can state its own identity without the circularity of hashing its own hash. A document with no id line may still be hashed by a consumer; the hash input is then the entire document.
+When the identifying URI carries a content hash (the convention is defined below), the document is **content-addressed** and immutable: any change to its bytes changes its hash, which the canonical identity (defined below) binds to the document. A content-addressed document MUST be encoded in UTF-8. The grammar places the `id-directive` at the very start of the document (§2.2); a content-addressed document MUST follow it with a line terminator. The hash input is every byte after that terminator — the id line, up to and including its terminator, is excluded so a document can carry its own hash without the circularity of hashing it. A byte order mark, if present, is stripped before parsing (§7.1) and never enters a hash input. The target of a hashed reference MUST carry an id line: the hash input is then always well-defined, and the embedded identity is available for the cross-check below.
 
 **The hash-parameter URI convention.** A content hash rides on the identifying URI as a query parameter named for its algorithm: `?sha256=<hash>`, with the value in lowercase hexadecimal at full length — a truncated hash is an error. `sha256` is the algorithm of this revision; future algorithms use their own parameter names. The hash parameter is **verification metadata, not identity** (canonical identity is defined below); a query component, when present, MUST consist solely of hash parameters, and a query parameter whose name is not a recognized hash algorithm is an error — never silently retained. This closes an identity-stability gap: identity does not depend on which algorithms a given reader happens to recognize, so an implementation that predates a future hash algorithm rejects an unfamiliar parameter rather than computing a different identity than a newer implementation for the same reference.
 
@@ -174,7 +174,7 @@ When the identifying URI carries a content hash (the convention is defined below
 
 Canonical identity stays at RFC 3986's cheapest rung by *restricting the input* rather than normalizing it, in the manner of the unquoted-token profile (§7.1): an identifying URI MUST already be in canonical form apart from scheme and hash query — lowercase host, no userinfo, no port (default or otherwise), no percent-encoding of unreserved characters, no dot-segments (`.`/`..`), and no fragment. An identifier that is not in this form is an error, not a candidate for normalization; no case folding, path resolution, or percent-decoding is ever performed at comparison time. RFC 3986 §6.1 motivates the conservatism: a false positive (two distinct documents judged identical) validates data against the wrong contract, whereas a false negative merely costs a redundant fetch — so identity comparison stays as literal as the profile allows.
 
-A consumer holding a hashed reference MUST verify the content against the declared hash before use and MUST NOT silently use mismatched content: a mismatch is an error, never a fallback. Because the hash attaches to the *canonical identity* and not to the reference string, two references that share a canonical identity but declare different hashes are in conflict — at most one describes the real bytes — and a consumer that observes both MUST report an error rather than choosing between them ([TSON-SCHEMA] §10.2 defines the schema-library treatment).
+A consumer holding a hashed reference MUST verify the content against the declared hash before use and MUST NOT silently use mismatched content: a mismatch is an error, never a fallback. The authenticating hash always comes from the referencing side or another trusted source, never from the document alone: a body verified against its own embedded id-line hash is self-consistent, not authentic — an attacker who can rewrite the body can rewrite the id line to match. An embedded id whose canonical identity differs from the reference under which the document was obtained is likewise an error. Because the hash attaches to the *canonical identity* and not to the reference string, two references that share a canonical identity but declare different hashes are in conflict — at most one describes the real bytes — and a consumer that observes both MUST report an error rather than choosing between them ([TSON-SCHEMA] §10.2 defines the schema-library treatment).
 
 Content addressing composes. A data document may reference its schema by hashed URI, that schema its meta-schema, and so on to the pre-loaded bootstrap ([TSON-SCHEMA]), so a consumer holding a single identifier can verify the integrity of a document together with its entire contract chain — a Merkle-style dependency graph in the manner of content-addressed stores. Ordering, consensus, and mutability policy are application concerns outside this series.
 
@@ -553,7 +553,7 @@ TSON is a superset of JSON with two deliberate character-level exceptions, both 
 1. RFC 8259 permits the line terminators NEL (U+0085), LINE SEPARATOR (U+2028), and PARAGRAPH SEPARATOR (U+2029) unescaped inside string literals — and emitters, including `JSON.stringify`, output them raw when they occur in string data. TSON excludes all three from single-line tokens; they MUST be written as escapes (`\u0085`, `\u2028`, `\u2029`) (§7.2.2). These are the same characters that made raw JSON famously unsafe to embed in JavaScript and HTML. A single escaping pass converts any affected JSON document into TSON with identical meaning.
 2. RFC 8259 leaves surrogate pairing unenforced, so `"\uD800"` alone is grammatically valid JSON — with host-dependent results ranging from exceptions to ill-formed strings. TSON rejects unpaired surrogate escapes as lexer errors (§7.2.2), as ECMAScript's well-formed `JSON.stringify` (ES2019) rejects producing the raw equivalent. This is not a representational gap: a lone surrogate encodes data that no Unicode string can hold, and TSON refuses it loudly rather than variably.
 
-A TSON parser SHOULD accept any valid JSON document. JSON documents carry no TSON type information, so base type resolution (§4) applies:
+A TSON parser SHOULD accept any valid JSON document outside the two exceptions above; documents within them are mandatory lexer errors (§7.2.2), not implementation latitude. JSON documents carry no TSON type information, so base type resolution (§4) applies:
 
 - JSON objects are records; JSON arrays are arrays.
 - JSON strings are quoted tokens resolved as strings.
@@ -845,7 +845,7 @@ HEXDIG        = ; 0-9 / A-F / a-f
 The parser consumes the token stream and produces a document tree. The `document` rule dispatches on the header (§2.2); values use two rules: `scoped-value` (record field values, map entry values, array elements) and `data-value` (everywhere a value occurs). Adjacency requirements that ABNF concatenation cannot express are enforced via source-position comparison; see §7.5.
 
 ```
-document        = ws [ id-directive ws ] ( data-doc / schema-doc )
+document        = [ id-directive ] ws ( data-doc / schema-doc )
 
 data-doc        = [ schema-directive ws ] data-value ws
 schema-doc      = meta-directive ws *( import-directive ws )

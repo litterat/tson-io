@@ -165,7 +165,9 @@
     Exact (ℚ; ISO/IEC 11404 `rational`), so bounds and `multiple_of`
     are exact. `min`/`max` inclusive, `exclusive_min`/`exclusive_max`
     exclusive; an inclusive and an exclusive bound on the same side is a
-    schema error. `max_denominator` bounds the reduced-form denominator.
+    schema error. Constraints operate on the value, not the written
+    token: tokens are not normalized, so `"2/4"` and `"1/2"` satisfy
+    the same constraints.
     """
   rational_type => ~atom & {
     min:              value?
@@ -173,7 +175,6 @@
     exclusive_min:    value?
     exclusive_max:    value?
     multiple_of:      value?
-    max_denominator:  integer?
   }
 
   @doc:"""

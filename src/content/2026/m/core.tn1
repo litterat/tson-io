@@ -67,7 +67,13 @@
   @ordered:TOTAL @bounded:false @exact:true @numeric
   number => !decimal_type {}
 
-  @doc:"Exact fraction a/b, reduced form, positive denominator. Contains `/`, so data values must be quoted."
+  @doc:"""
+    Exact fraction a/b; positive nonzero denominator by grammar. Not
+    normalized: the token is preserved as written and 2/4 round-trips
+    as 2/4. Equality and constraints operate on the value (2/4 equals
+    1/2); receivers reduce if their representation needs it. Contains
+    `/`, so data values must be quoted.
+    """
   @ordered:TOTAL @bounded:false @exact:true @numeric
   rational => !rational_type {}
 
