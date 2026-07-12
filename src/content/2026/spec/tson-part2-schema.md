@@ -174,7 +174,7 @@ A schema document is the source artifact of the schema layer: the document kind,
 A schema document is a fixed-shape header followed by a braced map of declarations — the **schema map**. The header carries the schema's identity (`!!id`, first line; optional in the grammar, required for publication and hash-pinning, §2.2.1), its governing meta-schema (`!!meta`, mandatory, exactly once), and its dependencies (`!!import`, repeatable, declaration order significant); annotations that bind to the schema sit after the header, immediately before the opening brace. Header order and cardinality are grammar productions, not conventions ([TSON-DATA] §2.2, §3.3; §12.1):
 
 ```
-!!id:"http://example.com/people.tn1"
+!!id:"https://example.com/people.tn1"
 !!meta:"https://tson.io/2026/m/meta.tn1"
 !!import:"https://tson.io/2026/m/core.tn1"
 @doc:"Minimal example schema."
@@ -214,7 +214,7 @@ This document defines the directive *operations* — what each directive means t
 
 #### 2.2.1 The `!!id` Directive
 
-`!!id` declares the authoritative identity (URL) of a document — the URL other documents use to reference it. It connects the file's content to its logical name in the schema library (§10), and it anchors content addressing: the hash input for a document's content hash is every byte after the id line ([TSON-DATA] §2.2.1; §10.2).
+`!!id` declares the authoritative identity of a document — the name other documents use to reference it, compared as a canonical identity ([TSON-DATA] §2.2.1). It connects the file's content to its logical name in the schema library (§10), and it anchors content addressing: the hash input for a document's content hash is every byte after the id line ([TSON-DATA] §2.2.1; §10.2).
 
 `!!id` is optional in the grammar for both document kinds and, when present, must be the first line ([TSON-DATA] §2.2). For schema documents it is required by policy, not grammar: **publishing a schema — registering it under its own name for reference by other documents, or pinning it by content hash — REQUIRES `!!id`.** An id-less schema is a development artifact; it may be registered under an application-supplied URL (§10.1) but has no published identity and cannot be hash-pinned. On data documents `!!id` appears when the document participates in content addressing — a fixture, a golden file, a document referenced by hash from elsewhere.
 
@@ -242,10 +242,10 @@ User schemas normally chain to `meta.tn1`. Chaining to `meta-kernel.tn1` directl
 **Imports are shallow.** Only the entries declared in the imported schema's own body are imported — entries that the imported schema itself brought in via its own `!!import` directives are not transitively included. Each schema MUST explicitly import all the dependencies it needs.
 
 ```
-!!id:"http://example.com/patients.tn1"
+!!id:"https://example.com/patients.tn1"
 !!meta:"https://tson.io/2026/m/meta.tn1"
 !!import:"https://tson.io/2026/m/core.tn1"
-!!import:"http://example.com/medical-types.tn1"
+!!import:"https://example.com/medical-types.tn1"
 {
   patient => { name: text  dob: date  blood_type: blood_type }
 }
@@ -307,7 +307,7 @@ The directive architecture separates three layers:
 
 **Meta-schema** — Defines the structural vocabulary that the type-definition grammar produces: `type_definition`, `record`, `record_field`, `array`, `enum`, and so on. A schema document's `!!meta` directive points to its meta-schema; the schema's declarations are built with, and validated against, the meta-schema's vocabulary.
 
-**Type libraries** — Define specific types (`integer`, `text`, `boolean`, `real`, `decimal`, etc.) using the meta-schema's vocabulary. Type libraries are ordinary schemas. A schema author imports the library that matches their target platform via `!!import`.
+**Type libraries** — Define specific types (`integer`, `text`, `boolean`, `number`, `float64`, etc.) using the meta-schema's vocabulary. Type libraries are ordinary schemas. A schema author imports the library that matches their target platform via `!!import`.
 
 **Application schemas** — Import type libraries and define domain types on top of them.
 
@@ -427,7 +427,7 @@ The kernel defines four base kinds — `top`, `atom`, `product`, `sum` — with 
 
 The meta-schema defines four type kinds:
 
-- **Atom** — scalar types. An atom constructor composes with `atom` via `~atom & {...}`; its record of constraint fields describes the narrowing vocabulary available to instances. `integer_type`, `text_type`, `uri_type`, `regex_type`, and `enum` are atom constructors in the kernel; `real_type` through `email_type`, `binary`, and `unknown_type`'s sibling `binary_encoding` are atom constructors in meta. The `unit` constructor is the atom with no constraint vocabulary — the atom equivalent of the empty record `{}` for products. Atom instances are produced as `!<ctor> {}` (empty) or `!<ctor> { values }` (narrowed); construction via `!` does not establish IS-A with the constructor, only the `kind`.
+- **Atom** — scalar types. An atom constructor composes with `atom` via `~atom & {...}`; its record of constraint fields describes the narrowing vocabulary available to instances. `integer_type`, `text_type`, `uri_type`, `regex_type`, and `enum` are atom constructors in the kernel; the numeric constructors `float_type` (with the `ieee_format` enum), `decimal_type`, `rational_type`, and `complex_type` (with the `complex_component` enum), the temporal, identifier, network, and text constructors through `email_type`, `binary` (with the `binary_encoding` enum), and `unknown_type` are atom constructors in meta. The `unit` constructor is the atom with no constraint vocabulary — the atom equivalent of the empty record `{}` for products. Atom instances are produced as `!<ctor> {}` (empty) or `!<ctor> { values }` (narrowed); construction via `!` does not establish IS-A with the constructor, only the `kind`.
 - **Product** — structural types. `record`, `array`, `set`, `map`, and `tuple` are constructors that compose with `product` via `~product & {...}`, fixing `access_pattern` and `size_type`. The parameterized constructors (`array<T>`, `set<T>`, `map<K, V>`) declare their type slots in the `<>` parameter list and reference them in field positions. `set` is a constructor narrowing of `array` with `unordered` and `unique_items` pinned to `true`. Bare `{...}` definitions without explicit composition (like `atom_specification`, `parameter`, `record_field`, `tuple_element`, and `type_definition` itself) resolve to `kind: PRODUCT` by structural default.
 - **Sum** — discriminated-union types. `choice` in the kernel, and `extern` and `unknown_type` in meta, compose with `sum` via `~sum & {...}`. `unknown` in core is produced as `!unknown_type {}` — the empty instance accepts any well-formed value of any type.
 - **Reference** — a type definition whose body is a pointer to another type: a `kind: REFERENCE` entry with body `!reference { target: T }`. References are aliasing relationships, not IS-A; the resolver flattens every use to the target and attaches `@alias` (§8.3).
@@ -501,7 +501,7 @@ Narrowings of these atoms use the instance form: `uint8 => !integer { min: 0  ma
 - `token` — admits NFC-normalised lexemes. Used for identifier types (`type_name`, `field_name`, `param_name`) and enum members.
 - `void` — the unit type of absence: admits the absent sentinel `_` as its single canonical value (and the token `null` as an equivalent spelling, normalised to `_`; see below). Used as the target type for bare annotations like `@annotation` and `@numeric` (see §6), and usable in data as a field type or choice variant meaning "no value" — the opposite pole to `unknown` (any value ↔ no value).
 
-Core adds `complex` — host-defined complex-number representation. The kernel's `void` is re-exported in core under the same name so that core-only schemas can target it (see §9). Kind determination per §5.5 ensures all four are `kind: ATOM`.
+The kernel's `void` is re-exported in core under the same name so that core-only schemas can target it (see §9). Kind determination per §5.5 ensures `value`, `token`, and `void` are `kind: ATOM`. Core's `complex` is no longer a `unit` instance: it is `!complex_type {}` (§9), an atom whose `component` field selects the numeric type of its parts (from the `complex_component` vocabulary), so its exactness follows that component rather than being opaque.
 
 **`void` and `null`.** `void` is the type of absence; its canonical value is `_`, and a `void`-typed position also accepts the token `null` as an equivalent spelling, normalised to absence. The data-level rule and its bounds are in §7.3.
 
@@ -532,7 +532,7 @@ Construction creates new type definitions. A declaration is the construction mec
 ```
 person => { name: text  age: integer }
 status => !enum [ACTIVE INACTIVE SUSPENDED]
-point => [real, real]
+point => [number, number]
 contact_method => (email | phone | address)
 age => !integer { min: 0  max: 150 }
 ```
@@ -650,8 +650,8 @@ id => uuid
 
 ```
 scores => [integer; +]
-matrix => [[real; 3]; 3]
-point  => [real, real]
+matrix => [[number; 3]; 3]
+point  => [number, number]
 ```
 
 **Choice type (§5.4):**
@@ -741,7 +741,7 @@ config => {
 
 **Inline structural definitions — atom narrowings and bare records prohibited.** Schema authors MUST introduce atom narrowings and record types via named declarations; they MAY NOT appear inline in field-type, tuple-element, array element, choice variant, type-argument, or composition positions. The two prohibited forms:
 
-- `!decimal { min: -273.15 max: 10000 }` as a field type — atom narrowing.
+- `!number { min: -273.15 max: 10000 }` as a field type — atom narrowing.
 - `{ name: text }` as a field type — bare record.
 
 The required form is:
@@ -763,11 +763,11 @@ Inside the type-definition grammar, type expressions support arrays, tuples, opt
 config => {
   tags:     [text]                array of text values
   scores:   [integer; +]           non-empty array (one or more)
-  matrix:   [real; 9]             exactly 9 real values
+  matrix:   [number; 9]           exactly 9 number values
   batch:    [order; 1..100]        between 1 and 100
   aliases:  [text]?              optional field, array of text values
   meta:     map<text, integer>   typed map
-  point:    [real, real]          tuple (two real values)
+  point:    [number, number]      tuple (two number values)
   sparse:   [text, text?]      tuple with optional second position
   contact:  (email | phone)        choice type
 }
@@ -795,7 +795,7 @@ The `set` constructor narrows `array` and pins `state: = REQUIRED` — absence h
 **Tuple types** use `[type, type, ...]` with comma or whitespace separation between individually typed positions:
 
 ```
-[real, real]                 two real values
+[number, number]             two number values
 [text integer boolean?]    three positions, third optional
 ```
 
@@ -877,7 +877,7 @@ Choice types MAY also appear inline in type-ref positions: `contact: (email | ph
 
 Within the type-definition grammar, the `!` prefix marks construction of a type from a constructor. The name after `!` resolves per §3.3.1's lookup order: the type-name namespace first (an atom instance there makes the form an instance narrowing), then the structure namespace supplied by `!!meta` (where the entry must be a constructor). Two forms exist, with different semantics:
 
-**Instantiation — `!T { values }`.** Produces a constructor instance filled with specific values. The data-value after `!T` is interpreted against the constructor's record shape — the field list `T` declared as its narrowable vocabulary. This interpretation differs from the data-mode reading of `!T value`, where `!T` annotates a value parsed by `T`'s atom contract (e.g. `!decimal 250.12` annotates the decimal value 250.12). In type-def body position, `!T { ... }` interprets the brace-record as `T`'s constructor record (`min`, `max`, etc.), not as data shaped by `T`. See §5.2 for why this distinction motivates the rule that atom narrowings cannot appear inline.
+**Instantiation — `!T { values }`.** Produces a constructor instance filled with specific values. The data-value after `!T` is interpreted against the constructor's record shape — the field list `T` declared as its narrowable vocabulary. This interpretation differs from the data-mode reading of `!T value`, where `!T` annotates a value parsed by `T`'s atom contract (e.g. `!number 250.12` annotates the number value 250.12). In type-def body position, `!T { ... }` interprets the brace-record as `T`'s constructor record (`min`, `max`, etc.), not as data shaped by `T`. See §5.2 for why this distinction motivates the rule that atom narrowings cannot appear inline.
 
 This form does NOT establish IS-A with `T`: construction transfers only the `kind` (ATOM, PRODUCT, or SUM) of the constructor, not its supertypes. The resulting type records `source: T` to indicate which constructor produced it, but `supertypes` is empty. In resolver output the entry's `kind` is the constructor's settled kind and its `body` is the canonical `!T { bindings }` itself (§5.6).
 
@@ -940,17 +940,17 @@ REQUIRED_DEFAULT, REQUIRED_FIXED, and OPTIONAL fields do not count toward the si
 ```
 !integer { min: 0  max: 255 }   →  !integer_type { min: 0  max: 255 }
 !text { min_length: 1 }       →  !text_type { min_length: 1 }
-!decimal { min: 0  max: 100 }   →  !decimal_type { min: 0  max: 100 }
+!number { min: 0  max: 100 }   →  !decimal_type { min: 0  max: 100 }
 ```
 
 The resolver recognises this case by checking `C.constructor`: if `false`, `C` is an instance and the retarget follows `C.source`. The resulting type records `source: C.source` and `supertypes: [C]` — instance narrowing establishes IS-A with the narrowed instance (§5.5), unlike construction which transfers only kind.
 
 **End state.** After desugaring, every type-def body in resolver output is `!C { bindings }` where `C` is a constructor and `bindings` is a record literal supplying values for the constructor's REQUIRED fields that are not pinned by REQUIRED_FIXED or covered by REQUIRED_DEFAULT. Pinned and default values come from the constructor itself and do not appear in the binding record; OPTIONAL fields appear only when the source provides a value. Positional forms are always expanded to their record-literal equivalent — `!array text` becomes `!array { element_type: text }` — and inline type expressions and instance narrowings are fully desugared. The surface abbreviations exist only in source text.
 
-**Named definitions required.** The instance form (`!T { values }`) and the empty constructor instantiation (`!T {}`) are valid only as the top-level body of a declaration — the inline prohibition of §5.2. A constrained atom such as `!decimal { min: -273.15 max: 10000 }` must be introduced with its own declaration and referenced by name:
+**Named definitions required.** The instance form (`!T { values }`) and the empty constructor instantiation (`!T {}`) are valid only as the top-level body of a declaration — the inline prohibition of §5.2. A constrained atom such as `!number { min: -273.15 max: 10000 }` must be introduced with its own declaration and referenced by name:
 
 ```
-temperature => !decimal { min: -273.15  max: 10000 }
+temperature => !number { min: -273.15  max: 10000 }
 retries     => !integer { min: 0  max: 10 }
 status      => !enum [ACTIVE INACTIVE SUSPENDED]
 
@@ -1127,7 +1127,7 @@ pair      => <T, U> { first: T  second: U }
 box       => <T> { contents: T  count: integer }
 ```
 
-`container<text>`, `pair<text, integer>`, and `box<real>` are concrete types. Bare `container` or `pair` references (without `<>`) are resolver errors.
+`container<text>`, `pair<text, integer>`, and `box<number>` are concrete types. Bare `container` or `pair` references (without `<>`) are resolver errors.
 
 **Parameter scoping.** Parameters are local to the type definition that declares them. Within the body, parameter names take precedence over the schema namespace. Parameter names do not escape, do not compose across `&`, and two definitions can independently use the same parameter name without collision. When the resolver encounters a name in a type position, it walks scope outward: parameters of the enclosing definition first, then the schema namespace. The first match wins.
 
@@ -1230,7 +1230,7 @@ Any type in the governing target's namespace can be used as an annotation. There
 `!!schema` identifies the schema whose types are available for `!name` references in the value it governs. The directive value is a URL string identifying a published schema.
 
 ```
-!!schema:"http://example.com/people.tn1?sha256=c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
+!!schema:"https://example.com/people.tn1?sha256=c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
 !person { name: Alice age: 30 }
 ```
 
@@ -1307,17 +1307,17 @@ The `members: set<token>` declaration describes the *permitted token lexemes*, n
 
 `token` is not used in data values and is not redefined in core or user schemas. It appears in the kernel's own declarations: `enum.members: set<token>`, and the identifier types `type_name`, `field_name`, and `param_name` (all defined as references to `token`). These are the positions where the schema language describes lexical identifiers from the source, as distinct from arbitrary Unicode text (which uses `text`).
 
-**Number-grammar reuse.** Atoms that parse numeric values (`integer`, `real`, `decimal`, `rational`, their narrowings in core, and user-defined numeric narrowings) SHOULD use the number grammar of [TSON-DATA] §7.6 for the relevant numeric form. This is functional reuse, not a normative dependency: each numeric atom defines its own parsing contract, and [TSON-DATA] §7.6 is the canonical source for the grammar and parsing logic. An implementation may share a single number parser across all numeric atoms and dispatch based on the atom's declared form — this is the expected pattern, and it matches how [TSON-DATA] §5.6 defines the built-in numeric atoms against the same productions.
+**Number-grammar reuse.** Atoms that parse numeric values (`integer`, `number`, `float32`/`float64`, `rational`, their narrowings in core, and user-defined numeric narrowings) SHOULD use the number grammar of [TSON-DATA] §7.6 for the relevant numeric form. This is functional reuse, not a normative dependency: each numeric atom defines its own parsing contract, and [TSON-DATA] §7.6 is the canonical source for the grammar and parsing logic. An implementation may share a single number parser across all numeric atoms and dispatch based on the atom's declared form — this is the expected pattern, and it matches how [TSON-DATA] §5.6 defines the built-in numeric atoms against the same productions.
 
-**Constraint fields typed as `value`.** Some atom constructors declare constraint fields with type `value` because the constrained atom cannot be referenced at the point of declaration — for example, `real_type.min: value?` cannot use `real` as its type because `real` is an instance of `real_type` (bootstrap ordering, §3.4). The `value` escape hatch defers the type decision to the atom implementation.
+**Constraint fields typed as `value`.** Some atom constructors declare constraint fields with type `value` because the constrained atom cannot be referenced at the point of declaration — for example, `decimal_type.min: value?` cannot use `number` as its type because `number` is a core instance of `decimal_type` (bootstrap ordering, §3.4). The `value` escape hatch defers the type decision to the atom implementation. The kernel's `integer_type` is the exception that proves the rule: its bounds (`min`, `max`, `exclusive_min`, `exclusive_max`, `multiple_of`) are typed `integer`, not `value`, because an integer's bounds are integers and `integer` is available in the kernel's own namespace — whereas the meta numeric tiers (`decimal_type`, `float_type`, `rational_type`) type their bounds `value`, since the constrained atom is not yet defined. A reader of resolver output will therefore see `type: integer` on the integer constructor's bound fields and `type: value` on the meta tiers'. `integer_type` also carries the fixed-width pair `bits`/`signed` (both `integer?`/`boolean?`): `bits` gives a representation width, `signed` its two's-complement signedness, and the pair derives the representable range for the `int8`…`uint256` family without spelling out `min`/`max`.
 
 Tokens at these positions are parsed by [TSON-DATA] §4 base type resolution. Whatever [TSON-DATA] §4 produces — an integer, a float, a string — is what the resolver stores in the constraint-record field.
 
 Each constrained atom's implementation is responsible for converting `value`-typed constraint values to whatever internal representation it uses for validation. Conversion MUST occur at schema-load time (eager), not per-validation (lazy). Atoms that cannot convert a given constraint value — because the value is of a non-convertible type, out of the atom's internal range, or otherwise incompatible — MUST report an error at schema-load time. This ensures a schema either loads cleanly or fails with a clear diagnostic; a half-valid schema that silently mis-validates data is never produced.
 
-Two concrete consequences: (1) a decimal atom using an arbitrary-precision internal representation may accept integer, float, and string constraint values and normalise them, while a 32-bit-float atom may accept only values representable in IEEE 754 single precision and reject out-of-range constraints at load time. (2) Two implementations of the same atom may differ in which constraint-value types they accept, as long as they both validate successfully-loaded schemas identically. The permissiveness of conversion is an implementation choice; the validation semantics after conversion are the atom's contract.
+Two concrete consequences: (1) an exact-number atom using an arbitrary-precision internal representation may accept integer, float, and string constraint values and normalise them, while a 32-bit-float atom may accept only values representable in IEEE 754 binary32 and reject out-of-range constraints at load time. (2) Two implementations of the same atom may differ in which constraint-value types they accept, as long as they both validate successfully-loaded schemas identically. The permissiveness of conversion is an implementation choice; the validation semantics after conversion are the atom's contract.
 
-**Base type resolution as a schemaless default.** [TSON-DATA] §4 defines a resolution order (null, boolean, number, string) that applies when no schema is in scope. These category names are **lexical classifications**, not type names: `number` and `string` name what a token looks like, while `integer`, `real`, and `text` name types declared in schemas (§9). The two vocabularies never mix — a schema cannot reference the lexical class `string`, and base resolution never produces the type `text`. This dispatch is itself an implicit atom parser — one that chooses across the atom family by first-character and pattern; when a schema is in scope it does not apply (§7.3).
+**Base type resolution as a schemaless default.** [TSON-DATA] §4 defines a resolution order (null, boolean, number, string) that applies when no schema is in scope. These category names are **lexical classifications**, not type names: the lexical class `number` and `string` name what a token looks like, while `integer`, `number`, and `text` name types declared in schemas (§9). The lexical class `number` and the core type `number` are deliberately distinct namespaces that happen to share a word: one classifies a token's form during schemaless resolution, the other is a declared exact-numeric type — a schema cannot reference the lexical class, and base resolution never produces a declared type. This dispatch is itself an implicit atom parser — one that chooses across the atom family by first-character and pattern; when a schema is in scope it does not apply (§7.3).
 
 
 ### 7.5 Sets
@@ -1469,7 +1469,7 @@ Composition targets (`&`) and narrowing sources are restricted to named type ref
 - A simple type reference renders as the name as written. Renderings use source-level names throughout: reference flattening (§8.3) applies to the synthesised *body*, never to the name — `[type_name]` renders as `"[type_name]"` even though its body's element type flattens to `token` with `@alias:type_name`.
 - An element or position marked optional appends `?` to its rendering.
 - An array form renders as `[`, the element rendering, `;` and the size-spec token exactly as written (when present), and `]`: `"[text]"`, `"[text?]"`, `"[text;+]"`, `"[order;1..100]"`.
-- A tuple form renders as `[`, the position renderings joined by `,`, and `]`: `"[real,real]"`, `"[text,text?]"`.
+- A tuple form renders as `[`, the position renderings joined by `,`, and `]`: `"[number,number]"`, `"[text,text?]"`.
 - A choice form renders as `(`, the variant renderings joined by `|` in source order, and `)`: `"(email|phone)"`.
 - A generic application renders as the applied name, `<`, the argument renderings joined by `,`, and `>`: `"map<text,integer>"`, `"set<token>"`, `"linked_list<integer>"`.
 - Nested inline forms render recursively by the same rules: `map<text, [integer]>` synthesises the inner `"[integer]"` and the outer `"map<text,[integer]>"`.
@@ -1538,15 +1538,15 @@ Two pre-loaded schemas form the meta-schema layer of TSON:
 
 - **`2026/m/meta-kernel.tn1`** — the self-referencing bootstrap layer. Its `!!id` and `!!meta` both reference its own URL — it bootstraps by defining its own core types directly without importing a type library. The kernel defines `top`, `atom`, `product`, `sum`, the `record` / `array` / `map` / `tuple` / `enum` / `choice` constructors, the `record_field` / `tuple_element` / `parameter` / `type_definition` / `schema` supporting records, and the minimal scalar vocabulary (`integer`, `text`, `uri`, `regex`, `boolean`, `unit`, `value`, `token`, `void`) needed for its own constraint-field declarations.
 
-- **`2026/m/meta.tn1`** — the canonical meta-schema, chained to by `!!meta` in user schemas. Built on top of the kernel; it adds the type constructors that the core type library (`core.tn1`) instantiates: `binary` with `binary_encoding`, `extern`, `unknown_type`, plus the constraint vocabularies for numeric (`real_type`, `decimal_type`, `rational_type`), temporal (`date_type`, `time_type`, `datetime_type`, `duration_type`), identifier (`uuid_type`), and text (`email_type`) atom families. Meta also hosts the application-level annotation types (`ordered`, `bounded`, `numeric`, `deprecated`, `since`, `todo`, `lang`) — annotation types must live in the schema chain to be usable as annotations (§6), and meta is the canonical location.
+- **`2026/m/meta.tn1`** — the canonical meta-schema, chained to by `!!meta` in user schemas. Built on top of the kernel; it adds the type constructors that the core type library (`core.tn1`) instantiates: `binary` with `binary_encoding`, `extern`, `unknown_type`, plus the constraint vocabularies for numeric (`float_type` with the `ieee_format` enum, `decimal_type`, `rational_type`, and `complex_type` with the `complex_component` enum), temporal (`date_type`, `time_type`, `datetime_type`, `duration_type`), identifier (`uuid_type`), network (`ipv4_type`, `ipv6_type`, `cidr4_type`, `cidr6_type`, `mac_type`), and text (`email_type`) atom families. Meta also hosts the application-level annotation types (`ordered`, `bounded`, `exact`, `numeric`, `deprecated`, `since`, `todo`, `lang`) — annotation types must live in the schema chain to be usable as annotations (§6), and meta is the canonical location.
 
 Implementations MUST pre-load both. See §3.4 for the full bootstrap rule.
 
 Users normally chain to `meta.tn1`. Schemas that chain to `meta-kernel.tn1` directly are either alternative type libraries replacing meta, or extensions of the meta layer itself — both meta-programming cases, not application-schema authoring.
 
-Each atom family that carries a constraint vocabulary is defined as a pair: a constructor (`integer_type`, `text_type`, `uri_type`, `regex_type` in the kernel; `real_type`, `decimal_type`, and the temporal/identifier/text constructors in meta) that composes with `atom` via `~atom & {...}` and lists the family's constraint fields, and a canonical empty instance (`integer`, `text`, `uri`, `regex`; `real`, `decimal`, `date`, etc. in core) produced as `!<ctor> {}`.
+Each atom family that carries a constraint vocabulary is defined as a pair: a constructor (`integer_type`, `text_type`, `uri_type`, `regex_type` in the kernel; `float_type`, `decimal_type`, `rational_type`, `complex_type`, and the temporal/identifier/network/text constructors in meta) that composes with `atom` via `~atom & {...}` and lists the family's constraint fields, and a canonical empty instance (`integer`, `text`, `uri`, `regex`; `number`, `float32`, `float64`, `rational`, `complex`, `date`, etc. in core) produced as `!<ctor> {}`.
 
-The kernel also defines `unit` — the atom constructor with no constraint vocabulary — and its three opaque instances `value`, `token`, and `void`; their parsing contracts are defined with the type system (§4.2) and atom token parsing (§7.4). The kernel additionally defines `annotation` (`@annotation void`) as the canonical void-targeted annotation. Core re-exports `void` under the same name so that schemas importing core can target it, and adds `complex` (`!unit {}`, a complex-number representation). The `numeric` annotation (also `@annotation void`) lives in `meta.tn1` so it is reachable through the schema chain — annotation types must live in the chain to be usable as annotations (§6); per §3.3, the kernel's `void` reaches a chaining schema as a type-ref only through an explicit import.
+The kernel also defines `unit` — the atom constructor with no constraint vocabulary — and its three opaque instances `value`, `token`, and `void`; their parsing contracts are defined with the type system (§4.2) and atom token parsing (§7.4). The kernel additionally defines `annotation` (`@annotation void`) as the canonical void-targeted annotation. Core re-exports `void` under the same name so that schemas importing core can target it, and adds `complex` (`!complex_type {}`, whose `component` field selects the parts' numeric type). The `numeric` annotation (also `@annotation void`) lives in `meta.tn1` so it is reachable through the schema chain — annotation types must live in the chain to be usable as annotations (§6); per §3.3, the kernel's `void` reaches a chaining schema as a type-ref only through an explicit import.
 
 The kernel's types serve as the structure namespace for the schemas the kernel directly governs and reach meta-governed schemas through meta's kernel import; they are not available as type-refs without an explicit import (§3.4, §3.3.2).
 
@@ -1555,7 +1555,7 @@ The normative source for both schemas is carried in the companion artifacts (§1
 
 ## 10. Schema Resolution Model
 
-Schema URLs in TSON are **logical identifiers**, not fetch instructions. A URL like `https://tson.io/2026/m/core.tn1` names a schema — it does not require the implementation to make an HTTP request to that address. Implementations resolve schema URLs through a **schema library**: a local store mapping URLs to schema content.
+Schema URLs in TSON are **logical identifiers first**: a URL like `https://tson.io/2026/m/core.tn1` names a schema, and resolving it does not by itself require a network request. Implementations resolve schema references through a **schema library**: a local store mapping canonical identities ([TSON-DATA] §2.2.1) to schema content. Fetching is a permitted but opt-in way to *populate* that library (§10.1, §11.2), not the meaning of a reference — a reference's identity is its canonical identity (§10.3), and its scheme, where present, is the transport hint a fetcher may use, not part of the name.
 
 
 ### 10.1 The Schema Library
@@ -1570,31 +1570,33 @@ The library is populated through three mechanisms, in order of precedence:
 
 **Fetched schemas (optional).** Implementations MAY support fetching schemas by URL as a convenience for development and exploration. Fetching MUST be explicitly enabled by the application — it is never the default behaviour. Fetched schemas are subject to the security constraints in §11.2. Production systems SHOULD NOT rely on runtime fetching; they SHOULD register all required schemas at startup.
 
-**Identity agreement.** Registration under a URL that differs from the content's declared `!!id` is an error — the library MUST reject it as identity confusion. Content with no `!!id` MAY be registered under an application-supplied URL (a development-mode convenience, §2.2.1); content with an `!!id` is registered under that URL and no other.
+**Identity agreement.** Registration whose target identity differs from the canonical identity of the content's declared `!!id` ([TSON-DATA] §2.2.1) is an error — the library MUST reject it as identity confusion. The comparison is over canonical identities, so an `http`-scheme registration of a document whose `!!id` is written `https` (or vice versa) agrees; a differing host or path does not. Content with no `!!id` MAY be registered under an application-supplied identity (a development-mode convenience, §2.2.1); content with an `!!id` is registered under that identity and no other.
 
 **Schema sources are schema documents.** Whenever the library is populated from a document — a registered local file, an embedded resource, or fetched content — that document MUST classify as a schema document ([TSON-DATA] §2.2). This applies to the targets of `!!schema`, `!!meta`, and `!!import` alike. A resolved-schema data document (resolver output, §8) is not a valid schema source: its resolver-derived fields (`supertypes`, `subtypes`, synthesised entries) cannot be verified against the document alone and may be stale, corrupted, or malicious, and the document is non-canonical and not hash-pinnable. An implementation MUST reject a data document supplied as the content of a schema URL, with a categorized diagnostic ([TSON-DATA] §8.1). Resolved-form documents MAY enter the library only through the explicit ingest path (§8), which does not take derived fields on trust.
 
 
 ### 10.2 Hash-Pinned References
 
-The hash-parameter URI convention — the algorithm-named query parameter, lowercase full-length hex, the identity-versus-verification split, and the mismatch rule — is defined in [TSON-DATA] §2.2.1 and applies to every TSON document. This section defines how the schema library applies it.
+The hash-parameter URI convention — the algorithm-named query parameter, lowercase full-length hex, the query-is-hash-parameters-only rule, canonical identity, and the mismatch rule — is defined in [TSON-DATA] §2.2.1 and applies to every TSON document. This section defines how the schema library applies it.
 
-Library keys are **stripped identities**: a reference's identity is its URL with hash parameters removed ([TSON-DATA] §2.2.1), so a plain URL and its hash-pinned form name the same library entry — the pinned form additionally demands verification. When a hashed reference resolves, the implementation MUST verify the library's content against the declared hash before use; a mismatch is a resolver error ([TSON-DATA] §8.1), and the library MUST NOT silently substitute mismatched content. When registration supplies a document whose declared `!!id` itself carries a hash, the implementation SHOULD verify at registration time — failing fast at entry rather than at first reference.
+Library keys are **canonical identities** ([TSON-DATA] §2.2.1): host plus path, with scheme and query removed. A plain reference, its `http`/`https` variant, and its hash-pinned form all name the same library entry — the pinned form additionally demands verification. When a hashed reference resolves, the implementation MUST verify the library's content against the declared hash before use; a mismatch is a resolver error ([TSON-DATA] §8.1), and the library MUST NOT silently substitute mismatched content. When registration supplies a document whose declared `!!id` itself carries a hash, the implementation SHOULD verify at registration time — failing fast at entry rather than at first reference.
 
-When no content hash is present, the URL resolves against the library without integrity verification. This is appropriate for development but NOT RECOMMENDED for production data interchange. References that cross a trust boundary SHOULD be hash-pinned: a schema's `!!meta` and `!!import` values pin its contract and dependencies; a data document's `!!schema` pins its vocabulary. Pinning composes into the verification chain of [TSON-DATA] §2.2.1 — a consumer holding a single hashed reference can verify a document together with its schema, that schema's meta-schema, and the kernel.
+**Hashes attach to the canonical entry.** Because the hash is a fact about the canonical identity rather than the reference string, all references that resolve to one entry must agree on it. Two references sharing a canonical identity but declaring different hashes are in conflict — `http://…/core.tn1?sha256=ABC` and `https://…/core.tn1?sha256=DEF` cannot both describe the real bytes — and a consumer that observes both MUST report a resolver error rather than choosing between them. A verified entry, once cached under its canonical identity, is immutable and need not be re-fetched. A *failed* verification SHOULD NOT be cached under the canonical identity (which would poison later valid references); an implementation MAY maintain a separate negative cache keyed on the full reference string including its hash parameter, so that a repeated bad pin fails fast without re-fetching. A consumer MAY confirm a cached entry still matches a declared hash cheaply — for example, an HTTP `HEAD` carrying the expected digest — without transferring the body.
+
+When no content hash is present, the reference resolves against the library without integrity verification. This is appropriate for development but NOT RECOMMENDED for production data interchange. References that cross a trust boundary SHOULD be hash-pinned: a schema's `!!meta` and `!!import` values pin its contract and dependencies; a data document's `!!schema` pins its vocabulary. Pinning composes into the verification chain of [TSON-DATA] §2.2.1 — a consumer holding a single hashed reference can verify a document together with its schema, that schema's meta-schema, and the kernel.
 
 Examples:
 
 Referencing a schema with integrity verification:
 
 ```
-!!schema:"http://example.com/people.tn1?sha256=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+!!schema:"https://example.com/people.tn1?sha256=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
 ```
 
 A schema declaring its own hash in `!!id` (first line excluded from hash input):
 
 ```
-!!id:"http://example.com/people.tn1?sha256=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+!!id:"https://example.com/people.tn1?sha256=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
 !!meta:"https://tson.io/2026/m/meta.tn1"
 {
   person => { name: text  age: integer }
@@ -1602,9 +1604,17 @@ A schema declaring its own hash in `!!id` (first line excluded from hash input):
 ```
 
 
-### 10.3 URL Identity
+### 10.3 Canonical Identity
 
-Reference identity is defined by [TSON-DATA] §2.2.1: two references are identical if and only if their URLs are byte-for-byte identical after removing hash query parameters, with no URL normalization of any kind. The library applies this as its key rule — `https://tson.io/2026/m/core.tn1` and `https://tson.io/2026/m/core.tn1?sha256=9f86d0...` resolve to the same entry (the latter additionally requiring verification, §10.2) — while spelling variants that a web stack would normalize (scheme case, trailing slashes, percent-encoding) are *different identities* here. The identity-agreement rule of §10.1 completes the picture: the URL a document declares in `!!id` is the URL it is registered under, stripped of hash parameters.
+Reference identity is defined by [TSON-DATA] §2.2.1: two references name the same document if and only if their **canonical identities** — host plus path, scheme and query removed — are byte-for-byte identical. The library applies this as its key rule. Consequences:
+
+- `http://tson.io/2026/m/core.tn1` and `https://tson.io/2026/m/core.tn1` are the **same** entry — the scheme is a transport hint the fetcher chooses, not part of the name.
+- `https://tson.io/2026/m/core.tn1` and `https://tson.io/2026/m/core.tn1?sha256=9f86d0…` are the same entry — the hash-pinned form additionally requires verification (§10.2).
+- `https://tson.io/2026/m/core.tn1` and `https://elsewhere.example/2026/m/core.tn1` are **different** entries — the host is load-bearing, so a fetch-endpoint change cannot silently redirect a name.
+
+Canonical identity is a documented profile of RFC 3986 §6.2.1 (simple string comparison): the profile *forbids* the spelling variants a general web stack would normalize — non-lowercase host, userinfo, explicit or default ports, percent-encoded unreserved characters, dot-segments, fragments — rather than normalizing them away ([TSON-DATA] §2.2.1, §7.1). An identifier outside the profile is an error, not a candidate for normalization, so comparison never performs runtime normalization and the false-positive risk RFC 3986 §6.1 warns against does not arise. The identity-agreement rule of §10.1 completes the picture: the canonical identity a document declares in `!!id` is the identity it is registered under.
+
+**Confusable identities.** Because identity selects a document's entire type vocabulary, a look-alike identity is a higher-value spoof than a confusable field name ([TSON-DATA] §9.4). Implementations processing untrusted references SHOULD surface, and MAY reject, two registered identities that differ only in ways the profile does not already forbid — for example, visually confusable host labels (UTS #39) — the identity analogue of the field-name guidance in [TSON-DATA] §9.4.
 
 
 ## 11. Security Considerations
@@ -1623,11 +1633,12 @@ Schema URLs in `!!schema`, `!!meta`, and `!!import` directives are logical ident
 
 Implementations that support optional schema fetching (§10.1) MUST treat it as an opt-in capability, disabled by default. When fetching is enabled, implementations SHOULD enforce the following controls:
 
-- **URL allowlists.** Restrict fetchable URLs to a set of approved domains or URL prefixes. The `!!schema` and `!!meta` directives are particularly sensitive because they determine the type vocabulary for the document — a malicious URL could direct a parser to load an untrusted schema that redefines expected types.
-- **Content hash verification.** Require content hashes on fetched schema URLs (`?sha256=...`) and reject schemas whose content does not match. This prevents both tampering and silent schema drift.
+- **Transport security.** When a reference is fetched, the transport MUST be authenticated and encrypted — in practice, `https`. Because the scheme is not part of a reference's identity (§10.3), a document may name a schema without committing a fetcher to an insecure transport; a fetcher MUST NOT downgrade to a cleartext scheme for an unpinned reference, where there is no hash to detect tampering.
+- **Allowlists.** Restrict fetchable references to a set of approved hosts or path prefixes, matched on canonical identity (§10.3) so that scheme variance cannot evade the list. The `!!schema` and `!!meta` references are particularly sensitive because they determine the type vocabulary for the document — a malicious reference could direct a parser to load an untrusted schema that redefines expected types.
+- **Content hash verification.** Require content hashes on fetched references (`?sha256=...`) and reject content that does not match. This prevents both tampering and silent schema drift.
 - **Size limits.** Enforce maximum size limits on fetched content to prevent denial-of-service via oversized schemas.
 - **No recursive fetching.** A fetched schema's own `!!import` directives MUST NOT trigger further fetches. All transitive dependencies must be pre-registered or pre-fetched.
-- **Caching.** Fetched schemas SHOULD be cached locally after verification. A verified schema at a given URL with a matching content hash is immutable — re-fetching is unnecessary.
+- **Caching.** Fetched schemas SHOULD be cached locally after verification, keyed on canonical identity (§10.3). A verified schema with a matching content hash is immutable — re-fetching is unnecessary, and a cheap revalidation (e.g. an HTTP `HEAD` carrying the expected digest) suffices to confirm a cache entry without transferring the body. A *failed* verification MUST NOT overwrite or poison the canonical-identity entry (§10.2).
 
 Production systems SHOULD pre-register all required schemas at application startup and disable runtime fetching entirely. The schema library model (§10) is designed to make this the natural and easy path.
 
@@ -1810,6 +1821,7 @@ The following rows extend the adjacency table of [TSON-DATA] §7.5 for the opera
 | RFC 5234 | Augmented BNF for Syntax Specifications (ABNF) | https://www.rfc-editor.org/rfc/rfc5234 |
 | RFC 3339 | Date and Time on the Internet: Timestamps | https://www.rfc-editor.org/rfc/rfc3339 |
 | RFC 3986 | Uniform Resource Identifier (URI): Generic Syntax | https://www.rfc-editor.org/rfc/rfc3986 |
+| RFC 8820 | URI Design and Ownership | https://www.rfc-editor.org/rfc/rfc8820 |
 | RFC 4648 | The Base16, Base32, and Base64 Data Encodings | https://www.rfc-editor.org/rfc/rfc4648 |
 | RFC 5322 | Internet Message Format (email address syntax) | https://www.rfc-editor.org/rfc/rfc5322 |
 | RFC 9485 | I-Regexp: An Interoperable Regular Expression Format | https://www.rfc-editor.org/rfc/rfc9485 |

@@ -1,5 +1,5 @@
-!!id:"http://tson.io/2026/m/core.tn1"
-!!meta:"http://tson.io/2026/m/meta.tn1"
+!!id:"https://tson.io/2026/m/core.tn1"
+!!meta:"https://tson.io/2026/m/meta.tn1"
 @doc:"""
   TSON Core Type Library — canonical types for data interchange
   (2026 Revision 32 draft).
@@ -17,10 +17,10 @@
       uint8            => !integer { min: 0  max: 255 }
       non_empty_text   => !text { min_length: 1 }
 
-  Annotation types (`@ordered`, `@bounded`, `@numeric`, `@deprecated`,
-  `@since`, `@todo`, `@lang`) live in meta.tn1 — they must be reachable
-  through the `!!meta` chain to be usable as annotations (§5.4).
-  They appear here only by use, not by definition.
+  Annotation types (`@ordered`, `@bounded`, `@exact`, `@numeric`,
+  `@deprecated`, `@since`, `@todo`, `@lang`) live in meta.tn1 — they
+  must be reachable through the `!!meta` chain to be usable as
+  annotations (§5.4). They appear here only by use, not by definition.
 
   References:
     ISO/IEC 11404:2007    General Purpose Datatypes
@@ -50,68 +50,74 @@
   boolean => !enum [true false]
 
   @doc:"Arbitrary-precision signed integer. Decimal, hex, octal, and binary forms; [TSON-DATA] §7.6."
-  @ordered:TOTAL @bounded:false @numeric
+  @ordered:TOTAL @bounded:false @exact:true @numeric
   integer => !integer_type {}
 
   @doc:"""
-    Real number with arbitrary precision. Includes special values
-    (.inf, .nan). PARTIAL ordering is due to NaN's incomparability
-    (NaN is neither less than, equal to, nor greater than any value
-    including itself); the underlying real numbers are totally ordered.
-    A narrowing that excludes NaN (e.g. via `allow_nan: false`) is
-    functionally totally ordered but inherits PARTIAL unless explicitly
-    re-annotated.
+    Exact number of arbitrary magnitude and precision, finite, with no
+    special values (SQL exact tier; ISO/IEC 11404 `scaled`, radix 10).
+    The canonical numeric type and the JSON Schema `number` mapping:
+    a bare JSON number is a TSON `number`. Preserved as written, so
+    equality is safe and ordering is TOTAL. Lossiness enters only when
+    a consumer narrows to an approximate type (`float32`/`float64`),
+    where the value is rounded onto an IEEE grid. A value
+    needing `.inf`/`.nan` is not a `number` — those belong to the
+    approximate tier.
     """
-  @ordered:PARTIAL @bounded:false @numeric
-  real => !real_type {}
-
-  @doc:"Exact decimal, arbitrary precision. No floating-point rounding."
-  @ordered:TOTAL @bounded:false @numeric
-  decimal => !decimal_type {}
+  @ordered:TOTAL @bounded:false @exact:true @numeric
+  number => !decimal_type {}
 
   @doc:"Exact fraction a/b, reduced form, positive denominator. Contains `/`, so data values must be quoted."
-  @ordered:TOTAL @bounded:false @numeric
+  @ordered:TOTAL @bounded:false @exact:true @numeric
   rational => !rational_type {}
 
-  @doc:"Complex number a+bi or a+bj. Component representation is host-defined."
+  @doc:"""
+    Complex number, a pair of components (real and imaginary parts).
+    Components default to `number` (exact); a narrowing may set
+    `component` to another numeric type — e.g. `complex { component:
+    integer }` for Gaussian integers, `complex { component: float64 }`
+    for floating-point complex. Exactness follows the component type,
+    so `complex` carries no `@exact` marker. Surface forms a+bi and
+    a+bj are both accepted; component representation is host-defined.
+    """
   @ordered:NONE @bounded:false @numeric
-  complex => !unit {}
+  complex => !complex_type {}
 
   @doc:"Signed 8-bit integer (-128 to 127)."
-  int8 => !integer { min: -128  max: 127 }
+  int8 => !integer { bits: 8  signed: true }
 
   @doc:"Signed 16-bit integer."
-  int16 => !integer { min: -32768  max: 32767 }
+  int16 => !integer { bits: 16  signed: true }
 
   @doc:"Signed 32-bit integer."
-  int32 => !integer { min: -2147483648  max: 2147483647 }
+  int32 => !integer { bits: 32  signed: true }
 
   @doc:"Signed 64-bit integer."
-  int64 => !integer { min: -9223372036854775808  max: 9223372036854775807 }
+  int64 => !integer { bits: 64  signed: true }
 
   @doc:"Signed 128-bit integer."
-  int128 => !integer { min: -170141183460469231731687303715884105728  max: 170141183460469231731687303715884105727 }
+  int128 => !integer { bits: 128  signed: true }
 
   @doc:"Signed 256-bit integer."
-  int256 => !integer { min: -57896044618658097711785492504343953926634992332820282019728792003956564819968  max: 57896044618658097711785492504343953926634992332820282019728792003956564819967 }
+  int256 => !integer { bits: 256  signed: true }
 
   @doc:"Unsigned 8-bit integer (0 to 255)."
-  uint8 => !integer { min: 0  max: 255 }
+  uint8 => !integer { bits: 8  signed: false }
 
   @doc:"Unsigned 16-bit integer."
-  uint16 => !integer { min: 0  max: 65535 }
+  uint16 => !integer { bits: 16  signed: false }
 
   @doc:"Unsigned 32-bit integer."
-  uint32 => !integer { min: 0  max: 4294967295 }
+  uint32 => !integer { bits: 32  signed: false }
 
   @doc:"Unsigned 64-bit integer."
-  uint64 => !integer { min: 0  max: 18446744073709551615 }
+  uint64 => !integer { bits: 64  signed: false }
 
   @doc:"Unsigned 128-bit integer."
-  uint128 => !integer { min: 0  max: 340282366920938463463374607431768211455 }
+  uint128 => !integer { bits: 128  signed: false }
 
   @doc:"Unsigned 256-bit integer."
-  uint256 => !integer { min: 0  max: 115792089237316195423570985008687907853269984665640564039457584007913129639935 }
+  uint256 => !integer { bits: 256  signed: false }
 
   @doc:"Integer greater than zero."
   positive_integer => !integer { min: 1 }
@@ -125,11 +131,13 @@
   @doc:"Integer zero or less."
   non_positive_integer => !integer { max: 0 }
 
-  @doc:"IEEE 754 single-precision float."
-  float32 => !real { min: -3.4028235e+38  max: 3.4028235e+38 }
+  @doc:"IEEE 754 binary32. Value set is the binary32 grid plus signed zeros, subnormals, both infinities, and quiet NaN."
+  @ordered:PARTIAL @bounded:false @exact:false @numeric
+  float32 => !float_type { format: BINARY32 }
 
-  @doc:"IEEE 754 double-precision float."
-  float64 => !real { min: -1.7976931348623157e+308  max: 1.7976931348623157e+308 }
+  @doc:"IEEE 754 binary64. Value set is the binary64 grid plus signed zeros, subnormals, both infinities, and quiet NaN."
+  @ordered:PARTIAL @bounded:false @exact:false @numeric
+  float64 => !float_type { format: BINARY64 }
 
   @doc:"Unicode code point sequence. The universal text type."
   @ordered:NONE @bounded:false

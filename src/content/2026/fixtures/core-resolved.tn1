@@ -1,5 +1,5 @@
-!!id:"http://tson.io/2026/m/core-resolved.tn1"
-!!schema:"http://tson.io/2026/m/meta.tn1"
+!!id:"https://tson.io/2026/m/core-resolved.tn1"
+!!schema:"https://tson.io/2026/m/meta.tn1"
 @doc:"""
   Resolver-output fixture for core.tn1 (2026 Revision 32 draft).
   Parse the source schema, run the resolver, canonicalise, compare.
@@ -9,11 +9,12 @@
   vocabulary (`type_definition`, `record`, `enum`, ...) reaches it
   through meta's kernel import, and the annotation types used here
   (`doc` from the kernel via that import; `ordered`, `bounded`,
-  `numeric` from meta itself) resolve one hop against meta's
+  `exact`, `numeric` from meta itself) resolve one hop against meta's
   namespace. Constructor names in `source` fields and bodies
-  (`integer_type`, `real_type`, ...) likewise name meta- and
-  kernel-level entries. Source @doc strings are carried abbreviated;
-  a conforming resolver preserves them verbatim.
+  (`integer_type`, `decimal_type`, `float_type`, `complex_type`, ...)
+  likewise name meta- and kernel-level entries. Source @doc strings
+  are carried abbreviated; a conforming resolver preserves them
+  verbatim.
   """
 !schema {
   @doc:"Void primitive, re-exported from meta-kernel. Admits only the absent sentinel `_`."
@@ -31,7 +32,7 @@
   }
 
   @doc:"Arbitrary-precision signed integer. Decimal, hex, octal, and binary forms; [TSON-DATA] Section 7.6."
-  @ordered:TOTAL @bounded:false @numeric
+  @ordered:TOTAL @bounded:false @exact:true @numeric
   integer => !type_definition {
     kind: ATOM
     source: integer_type
@@ -39,37 +40,28 @@
     body: !integer_type {}
   }
 
-  @doc:"Real number with arbitrary precision, including .inf and .nan. PARTIAL ordering is due to NaN's incomparability."
-  @ordered:PARTIAL @bounded:false @numeric
-  real => !type_definition {
-    kind: ATOM
-    source: real_type
-    subtypes: [float32 float64]
-    body: !real_type {}
-  }
-
-  @doc:"Exact decimal, arbitrary precision. No floating-point rounding."
-  @ordered:TOTAL @bounded:false @numeric
-  decimal => !type_definition {
+  @doc:"Exact number of arbitrary magnitude and precision, finite, no special values (SQL exact tier; ISO/IEC 11404 scaled, radix 10). JSON Schema `number` mapping."
+  @ordered:TOTAL @bounded:false @exact:true @numeric
+  number => !type_definition {
     kind: ATOM
     source: decimal_type
     body: !decimal_type {}
   }
 
   @doc:"Exact fraction a/b, reduced form, positive denominator. Contains `/`, so data values must be quoted."
-  @ordered:TOTAL @bounded:false @numeric
+  @ordered:TOTAL @bounded:false @exact:true @numeric
   rational => !type_definition {
     kind: ATOM
     source: rational_type
     body: !rational_type {}
   }
 
-  @doc:"Complex number a+bi or a+bj. Component representation is host-defined."
+  @doc:"Complex number, a pair of components. `component` defaults to number; exactness follows the component type."
   @ordered:NONE @bounded:false @numeric
   complex => !type_definition {
     kind: ATOM
-    source: unit
-    body: !unit {}
+    source: complex_type
+    body: !complex_type {}
   }
 
   @doc:"Signed 8-bit integer (-128 to 127)."
@@ -77,7 +69,7 @@
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { min: -128  max: 127 }
+    body: !integer_type { bits: 8  signed: true }
   }
 
   @doc:"Signed 16-bit integer."
@@ -85,7 +77,7 @@
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { min: -32768  max: 32767 }
+    body: !integer_type { bits: 16  signed: true }
   }
 
   @doc:"Signed 32-bit integer."
@@ -93,7 +85,7 @@
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { min: -2147483648  max: 2147483647 }
+    body: !integer_type { bits: 32  signed: true }
   }
 
   @doc:"Signed 64-bit integer."
@@ -101,7 +93,7 @@
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { min: -9223372036854775808  max: 9223372036854775807 }
+    body: !integer_type { bits: 64  signed: true }
   }
 
   @doc:"Signed 128-bit integer."
@@ -109,7 +101,7 @@
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { min: -170141183460469231731687303715884105728  max: 170141183460469231731687303715884105727 }
+    body: !integer_type { bits: 128  signed: true }
   }
 
   @doc:"Signed 256-bit integer."
@@ -117,7 +109,7 @@
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { min: -57896044618658097711785492504343953926634992332820282019728792003956564819968  max: 57896044618658097711785492504343953926634992332820282019728792003956564819967 }
+    body: !integer_type { bits: 256  signed: true }
   }
 
   @doc:"Unsigned 8-bit integer (0 to 255)."
@@ -125,7 +117,7 @@
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { min: 0  max: 255 }
+    body: !integer_type { bits: 8  signed: false }
   }
 
   @doc:"Unsigned 16-bit integer."
@@ -133,7 +125,7 @@
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { min: 0  max: 65535 }
+    body: !integer_type { bits: 16  signed: false }
   }
 
   @doc:"Unsigned 32-bit integer."
@@ -141,7 +133,7 @@
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { min: 0  max: 4294967295 }
+    body: !integer_type { bits: 32  signed: false }
   }
 
   @doc:"Unsigned 64-bit integer."
@@ -149,7 +141,7 @@
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { min: 0  max: 18446744073709551615 }
+    body: !integer_type { bits: 64  signed: false }
   }
 
   @doc:"Unsigned 128-bit integer."
@@ -157,7 +149,7 @@
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { min: 0  max: 340282366920938463463374607431768211455 }
+    body: !integer_type { bits: 128  signed: false }
   }
 
   @doc:"Unsigned 256-bit integer."
@@ -165,7 +157,7 @@
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { min: 0  max: 115792089237316195423570985008687907853269984665640564039457584007913129639935 }
+    body: !integer_type { bits: 256  signed: false }
   }
 
   @doc:"Integer greater than zero."
@@ -200,20 +192,20 @@
     body: !integer_type { max: 0 }
   }
 
-  @doc:"IEEE 754 single-precision float."
+  @doc:"IEEE 754 binary32. Value set is the binary32 grid plus signed zeros, subnormals, both infinities, and quiet NaN."
+  @ordered:PARTIAL @bounded:false @exact:false @numeric
   float32 => !type_definition {
     kind: ATOM
-    source: real_type
-    supertypes: [real]
-    body: !real_type { min: -3.4028235e+38  max: 3.4028235e+38 }
+    source: float_type
+    body: !float_type { format: BINARY32 }
   }
 
-  @doc:"IEEE 754 double-precision float."
+  @doc:"IEEE 754 binary64. Value set is the binary64 grid plus signed zeros, subnormals, both infinities, and quiet NaN."
+  @ordered:PARTIAL @bounded:false @exact:false @numeric
   float64 => !type_definition {
     kind: ATOM
-    source: real_type
-    supertypes: [real]
-    body: !real_type { min: -1.7976931348623157e+308  max: 1.7976931348623157e+308 }
+    source: float_type
+    body: !float_type { format: BINARY64 }
   }
 
   @doc:"Unicode code point sequence. The universal text type."

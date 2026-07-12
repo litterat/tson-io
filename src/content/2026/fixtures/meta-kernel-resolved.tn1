@@ -1,5 +1,5 @@
-!!id:"http://tson.io/2026/m/meta-kernel-resolved.tn1"
-!!schema:"http://tson.io/2026/m/meta-kernel.tn1"
+!!id:"https://tson.io/2026/m/meta-kernel-resolved.tn1"
+!!schema:"https://tson.io/2026/m/meta-kernel.tn1"
 @doc:"""
   Resolver-output fixture for meta-kernel.tn1 (2026 Revision 32 draft).
   Parse the source schema, run the resolver, canonicalise, compare.
@@ -117,10 +117,13 @@
     constructor: true
     supertypes: [atom top]
     body: !record { supertypes: [atom]  fields: [
-      !record_field { name: min          type: integer  state: OPTIONAL }
-      !record_field { name: max          type: integer  state: OPTIONAL }
-      !record_field { name: multiple_of  type: integer  state: OPTIONAL }
-      !record_field { name: pattern      type: regex    state: OPTIONAL }
+      !record_field { name: bits           type: integer  state: OPTIONAL }
+      !record_field { name: signed         type: boolean  state: OPTIONAL }
+      !record_field { name: min            type: integer  state: OPTIONAL }
+      !record_field { name: max            type: integer  state: OPTIONAL }
+      !record_field { name: exclusive_min  type: integer  state: OPTIONAL }
+      !record_field { name: exclusive_max  type: integer  state: OPTIONAL }
+      !record_field { name: multiple_of    type: integer  state: OPTIONAL }
     ] }
   }
 

@@ -1,6 +1,6 @@
-!!id:"http://tson.io/2026/m/meta.tn1"
-!!meta:"http://tson.io/2026/m/meta-kernel.tn1"
-!!import:"http://tson.io/2026/m/meta-kernel.tn1"
+!!id:"https://tson.io/2026/m/meta.tn1"
+!!meta:"https://tson.io/2026/m/meta-kernel.tn1"
+!!import:"https://tson.io/2026/m/meta-kernel.tn1"
 @doc:"""
   TSON meta-schema — 2026 Revision 32 draft.
 
@@ -25,13 +25,15 @@
      universal `unknown` sum.
 
   3. Constraint vocabulary constructors for atom families that the
-     kernel itself doesn't need: numeric (`real_type`, `decimal_type`,
-     `rational_type`), temporal (`date_type`, `time_type`,
+     kernel itself doesn't need: numeric (`float_type` for the
+     approximate tier, with the `ieee_format` enum; `decimal_type`
+     for the exact tier; `rational_type`; `complex_type`, with the
+     `complex_component` enum), temporal (`date_type`, `time_type`,
      `datetime_type`, `duration_type`), identifier (`uuid_type`),
      network (`ipv4_type`, `ipv6_type`, `cidr4_type`, `cidr6_type`,
      `mac_type`), and text (`email_type`).
 
-  Plus annotation types — `ordered`, `bounded`, `numeric`,
+  Plus annotation types — `ordered`, `bounded`, `exact`, `numeric`,
   `deprecated`, `since`, `todo`, `lang`. Annotation types must
   reside in the governing target's namespace (per Part 2 §6); placing them
   in meta makes them reachable from core and from every schema that
@@ -51,8 +53,9 @@
   @doc:"Binary encoding formats per RFC 4648."
   binary_encoding => !enum [BASE64 BASE64URL BASE32 HEX]
 
-  @doc:"Binary data constructor."
-  binary => ~atom & {
+  @doc:"Binary data constructor. Encoding alphabets are pinned to RFC 4648."
+  binary => ~atom & atom_specification & {
+    spec:        = "https://www.rfc-editor.org/rfc/rfc4648"
     encoding:    binary_encoding
     min_length:  integer?
     max_length:  integer?
@@ -75,29 +78,131 @@
     """
   unknown_type => ~sum & {}
 
-  @doc:"Real constraint vocabulary. Instance is `real` in core."
-  real_type => ~atom & {
-    min:             value?
-    max:             value?
-    allow_nan:       boolean?
-    allow_infinity:  boolean?
-    pattern:         regex?
+  @doc:"""
+    IEEE 754-2019 interchange formats, both radices. Selects the
+    representable grid of an approximate (`float_type`) value. The
+    binary formats are the familiar base-2 floats; the decimal formats
+    (decimal32/64/128) are base-10 *floating-point* — still approximate,
+    with their own special values — and are NOT the exact fixed-point
+    decimals of `decimal_type`.
+    """
+  ieee_format => !enum [
+    BINARY16 BINARY32 BINARY64 BINARY128 BINARY256
+    DECIMAL32 DECIMAL64 DECIMAL128
+  ]
+
+  @doc:"""
+    Approximate-numeric constraint vocabulary (SQL's approximate tier;
+    ISO/IEC 11404 approximate real). Instances in core are `float32`
+    and `float64`. An approximate value is not stored as written: the receiver rounds it
+    onto the discrete IEEE 754-2019 grid named by `format`, so precision
+    may be lost and equality comparison is unsafe (ordering is PARTIAL —
+    NaN is unordered). The `format` radix (binary or decimal) is the ISO
+    11404 radix characteristic of the type. The value set is that grid
+    together with signed zeros, subnormals, the two infinities, and the
+    canonical quiet NaN (Part 1 §5.6); `allow_nan`, `allow_infinity`,
+    `allow_subnormal`, and `allow_negative_zero` default true (the
+    format's full set) and may be set false to exclude those
+    representation artifacts. `min`/`max` are OPTIONAL domain
+    restrictions validated against the value as written, before
+    rounding; they do not bound the special values. Not a narrowing of
+    the exact tier: infinities and NaN are not exact numbers.
+
+    Bounds: `min`/`max` are inclusive, `exclusive_min`/`exclusive_max`
+    exclusive; specifying both an inclusive and an exclusive bound on
+    the same side is a schema error. There is deliberately no
+    `multiple_of` here — a step constraint cannot hold on a binary grid
+    (e.g. 0.05 is not a binary32 value, so nothing is exactly a multiple
+    of it); use the exact tier (`decimal_type`) when a step is required.
+    A value that does not land on the grid is rounded to nearest, ties
+    to even (IEEE 754-2019 roundTiesToEven), the default across the
+    format; loss of precision is expected, not an error.
+    """
+  float_type => ~atom & atom_specification & {
+    spec:                 = "https://ieeexplore.ieee.org/document/8766229"
+    format:               ieee_format
+    min:                  value?
+    max:                  value?
+    exclusive_min:        value?
+    exclusive_max:        value?
+    allow_nan:            boolean?
+    allow_infinity:       boolean?
+    allow_subnormal:      boolean?
+    allow_negative_zero:  boolean?
   }
 
-  @doc:"Decimal constraint vocabulary. Instance is `decimal` in core."
+  @doc:"""
+    Exact-numeric constraint vocabulary (SQL's exact tier; ISO/IEC
+    11404 `scaled`, radix 10). Instance in core is `number` — the
+    unrestricted exact number, which is also the JSON Schema `number`
+    mapping (arbitrary magnitude and precision, finite, no special
+    values). An exact value is preserved as written within its declared
+    precision, so equality is safe and ordering is TOTAL.
+    `total_digits`/`fraction_digits` are the ISO `scaled` precision and
+    scale (SQL `DECIMAL(precision, scale)`): total significant digits
+    and digits after the point.
+
+    Bounds: `min`/`max` are inclusive, `exclusive_min`/`exclusive_max`
+    exclusive; an inclusive and an exclusive bound on the same side is a
+    schema error. `multiple_of` is exact here (e.g. `multiple_of` 0.05
+    admits only nickel steps) and composes with the other constraints —
+    a value must satisfy all present facets. `fraction_digits` and
+    `multiple_of` overlap but are not equivalent: `fraction_digits` 2
+    admits any hundredth, `multiple_of` 0.05 only multiples of a nickel.
+    """
   decimal_type => ~atom & {
     min:              value?
     max:              value?
+    exclusive_min:    value?
+    exclusive_max:    value?
+    multiple_of:      value?
     total_digits:     integer?
     fraction_digits:  integer?
-    pattern:          regex?
   }
 
-  @doc:"Rational constraint vocabulary. Instance is `rational` in core."
+  @doc:"""
+    Rational constraint vocabulary. Instance is `rational` in core.
+    Exact (ℚ; ISO/IEC 11404 `rational`), so bounds and `multiple_of`
+    are exact. `min`/`max` inclusive, `exclusive_min`/`exclusive_max`
+    exclusive; an inclusive and an exclusive bound on the same side is a
+    schema error. `max_denominator` bounds the reduced-form denominator.
+    """
   rational_type => ~atom & {
     min:              value?
     max:              value?
+    exclusive_min:    value?
+    exclusive_max:    value?
+    multiple_of:      value?
     max_denominator:  integer?
+  }
+
+  @doc:"""
+    Allowed component types for a complex value. A closed vocabulary of
+    numeric types (naming their core counterparts): exact `INTEGER`
+    (Gaussian integers ℤ+ℤi), `NUMBER` (exact arbitrary precision),
+    `RATIONAL` (ℚ+ℚi); approximate `FLOAT32`, `FLOAT64`. Being an enum,
+    it restricts `complex_type.component` at schema-load time and is
+    self-contained in meta (no dependency on the core type namespace).
+    """
+  complex_component => !enum [INTEGER NUMBER RATIONAL FLOAT32 FLOAT64]
+
+  @doc:"""
+    Complex constraint vocabulary. Instance is `complex` in core.
+    A complex value is a pair of components (real and imaginary parts).
+    `component` selects the type of both parts from the closed
+    `complex_component` vocabulary; it defaults to `NUMBER`
+    (REQUIRED_DEFAULT, §5.2), so a bare complex has exact components.
+    The enum both enforces that a component is numeric (unlike a free
+    `type_name`, which any token would satisfy) and keeps meta free of
+    any reference to core's type names. Complex has no useful total
+    order (`@ordered:NONE`), so the order-based facets of the other
+    numeric tiers do not apply here. Exactness is inherited from
+    `component` rather than fixed: `INTEGER`/`NUMBER`/`RATIONAL`
+    components give an exact complex, `FLOAT32`/`FLOAT64` an approximate
+    one — which is why `complex` carries no `@exact` marker of its own.
+    """
+  complex_type => ~atom & {
+    component:  complex_component ~ NUMBER
   }
 
   @doc:"Date constraint vocabulary. Instance is `date` in core."
@@ -217,6 +322,9 @@
 
   @doc:"Boundedness annotation."
   bounded => @annotation boolean
+
+  @doc:"Exactness classification (ISO/IEC 11404 characterizing property): true for exact types (values preserved as written), false for approximate types (values rounded to a representation grid)."
+  exact => @annotation boolean
 
   @doc:"Numeric type marker annotation."
   numeric => @annotation void
