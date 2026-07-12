@@ -516,7 +516,7 @@ A token that does not match the named format is a parse error. `date-time` and `
 | `!ipv6`    | IPv6 text representation (RFC 4291 §2.2) | IPv6 address |
 | `!cidr4`   | IPv4 address `/` prefix length 0–32 (RFC 4632) | network |
 | `!cidr6`   | IPv6 address `/` prefix length 0–128 | network |
-| `!mac`     | EUI-48, colon- or hyphen-separated hex octets | MAC address |
+| `!mac`     | EUI-48, colon- or hyphen-separated hex octets (RFC 9542) | MAC address |
 
 A token that does not match the named format is a parse error; a CIDR prefix length outside the address family's range is a validation error, as is an address whose host bits are nonzero under the stated prefix length — the host value is a network, and accept-and-mask would be lossy (§5.2). IPv6 zone identifiers (`fe80::1%eth0`, RFC 4007) are host-local and are not part of the `ipv6` or `cidr6` contracts. URIs with a scheme and IPv6 addresses contain colons, and CIDR values contain `/`; all of these MUST be quoted (§2.4). MAC addresses in the colon-separated form MUST be quoted; the hyphen-separated form is expressible unquoted.
 
@@ -533,14 +533,14 @@ The numeric atoms are defined against the productions of the number grammar (§7
 | `!uint32`  | `integer` / `based-integer`, no sign | 32-bit unsigned range | 32-bit unsigned |
 | `!uint64`  | `integer` / `based-integer`, no sign | 64-bit unsigned range | 64-bit unsigned |
 | `!number`  | `integer` / `float` | exact, preserved as written | exact number |
-| `!float32` | `float` / `hex-float` / `special-value` | approximate, IEEE 754 binary32 grid | 32-bit float |
-| `!float64` | `float` / `hex-float` / `special-value` | approximate, IEEE 754 binary64 grid | 64-bit float |
+| `!float32` | `integer` / `float` / `hex-float` / `special-value` | approximate, IEEE 754 binary32 grid | 32-bit float |
+| `!float64` | `integer` / `float` / `hex-float` / `special-value` | approximate, IEEE 754 binary64 grid | 64-bit float |
 | `!rational` | `rational` | exact; denominator nonzero (by grammar) | rational |
 | `!complex` | `complex` / `float` / `integer` | components per type | complex number |
 
 The atoms are the schemaless parsing primitives; the core type library builds its named types on the meta constructors over the same value sets — `!number` feeds `number` (the exact tier, `decimal_type`), `!float32`/`!float64` feed the approximate `float_type` binary formats, `!rational` feeds `rational`, `!complex` feeds `complex` (`complex_type`). The exact atoms (`!number`, `!rational`, and the integer atoms) preserve the value as written; the approximate atoms (`!float32`, `!float64`) round the parsed value onto the named IEEE 754-2019 grid, so precision may be lost — the atom-level statement of the exact/approximate split the type library records with `@exact` ([TSON-SCHEMA] §9).
 
-The integer atoms accept based forms — `!uint32 0xFF00_0000` is the idiomatic range-checked bitmask — and the annotation is the only schemaless route to the rational, complex, and hex-float forms: complex and hex-float tokens resolve as strings under base resolution (§4.3), and rational content contains `/`, so rational values are always quoted (`!rational "2/3"`). The float atoms give the special values IEEE 754-2019 semantics (`.inf`, `.nan`, signed zeros, subnormals); `!number`, being exact, does not accept the special values — `.inf`/`.nan` are approximate-tier values. NaN payloads are not part of a value's information content: every NaN, however produced, denotes the canonical quiet NaN, so preservation (§5.2) holds by definition; applications that need payload bits should carry them as integers or binary values. Unannotated numeric tokens resolve through base type resolution alone.
+The integer atoms accept based forms — `!uint32 0xFF00_0000` is the idiomatic range-checked bitmask — and the annotation is the only schemaless route to the rational, complex, and hex-float forms: complex and hex-float tokens resolve as strings under base resolution (§4.3), and rational content contains `/`, so rational values are always quoted (`!rational "2/3"`). The float atoms accept plain integer tokens — `!float64 5` parses as 5 and lands on (or rounds onto) the grid like any other value — and give the special values IEEE 754-2019 semantics (`.inf`, `.nan`, signed zeros, subnormals); `!number`, being exact, does not accept the special values — `.inf`/`.nan` are approximate-tier values. NaN payloads are not part of a value's information content: every NaN, however produced, denotes the canonical quiet NaN, so preservation (§5.2) holds by definition; applications that need payload bits should carry them as integers or binary values. Unannotated numeric tokens resolve through base type resolution alone.
 
 
 ## 6. TSON and JSON
@@ -1046,15 +1046,14 @@ Unicode identifiers introduce visually confusable field names — Latin `a` (U+0
 | RFC 5234 | Augmented BNF for Syntax Specifications (ABNF) | https://www.rfc-editor.org/rfc/rfc5234 |
 | RFC 3339 | Date and Time on the Internet: Timestamps | https://www.rfc-editor.org/rfc/rfc3339 |
 | RFC 3986 | Uniform Resource Identifier (URI): Generic Syntax | https://www.rfc-editor.org/rfc/rfc3986 |
-| RFC 8820 | URI Design and Ownership | https://www.rfc-editor.org/rfc/rfc8820 |
 | RFC 4291 | IP Version 6 Addressing Architecture | https://www.rfc-editor.org/rfc/rfc4291 |
 | RFC 4632 | Classless Inter-domain Routing (CIDR) | https://www.rfc-editor.org/rfc/rfc4632 |
 | RFC 4648 | The Base16, Base32, and Base64 Data Encodings | https://www.rfc-editor.org/rfc/rfc4648 |
 | RFC 8259 | The JavaScript Object Notation (JSON) Data Interchange Format | https://www.rfc-editor.org/rfc/rfc8259 |
+| RFC 9542 | IANA Considerations and IETF Protocol and Documentation Usage for IEEE 802 Parameters (EUI-48) | https://www.rfc-editor.org/rfc/rfc9542 |
 | RFC 9562 | Universally Unique IDentifiers (UUIDs) | https://www.rfc-editor.org/rfc/rfc9562 |
 | ISO 8601-1:2019 | Date and time — Representations for information interchange | https://www.iso.org/standard/70907.html |
 | IEEE 754-2019 | Standard for Floating-Point Arithmetic | https://ieeexplore.ieee.org/document/8766229 |
-| ISO/IEC 11404:2007 | General-Purpose Datatypes (GPD) | https://www.iso.org/standard/39479.html |
 | UAX #15 | Unicode Normalization Forms (NFC) | https://www.unicode.org/reports/tr15/ |
 | UAX #31 | Unicode Identifier and Pattern Syntax | https://www.unicode.org/reports/tr31/ |
 
@@ -1072,6 +1071,8 @@ Unicode identifiers introduce visually confusable field names — Latin `a` (U+0
 
 | Reference | Title | URL |
 |-----------|-------|-----|
+| RFC 8820 | URI Design and Ownership | https://www.rfc-editor.org/rfc/rfc8820 |
+| ISO/IEC 11404:2007 | General-Purpose Datatypes (GPD) | https://www.iso.org/standard/39479.html |
 | UTS #39 | Unicode Security Mechanisms | https://www.unicode.org/reports/tr39/ |
 
 

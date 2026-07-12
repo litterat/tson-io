@@ -39,7 +39,7 @@
     Escape hatch primitive. Instance of the unit atom constructor. The
     result of base type resolution ([TSON-DATA] §4) applied to a source token, with
     no further interpretation by the TSON type system. value-typed
-    fields receive whatever §8 produces — null, boolean, integer, float,
+    fields receive whatever [TSON-DATA] §4 produces — null, boolean, integer, float,
     or string — and the host runtime is responsible for type-checking
     values at use site against the field's semantic role. value carries
     no constraint vocabulary and is not narrowable.

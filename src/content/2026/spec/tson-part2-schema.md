@@ -353,7 +353,7 @@ This is why `meta-kernel.tn1`'s `annotation => @annotation void` works: the kern
 
 The one-hop rule determines where annotation types must live:
 
-- **Annotations for schema documents** live in the meta layer. `meta.tn1` declares `deprecated`, `since`, `todo`, `lang`, `ordered`, `bounded`, and `numeric` locally, and carries the kernel's `doc`, `documentation`, and `alias` through its kernel import — so every meta-governed schema can use all of them.
+- **Annotations for schema documents** live in the meta layer. `meta.tn1` declares `deprecated`, `since`, `todo`, `lang`, `ordered`, `bounded`, `exact`, and `numeric` locally, and carries the kernel's `doc`, `documentation`, and `alias` through its kernel import — so every meta-governed schema can use all of them.
 - **Annotations for data documents** live in the governing user schema's namespace. Core re-exports `doc`, `documentation`, `annotation`, and `alias` precisely so that data documents governed by core-importing schemas can write `@doc`. An annotation type declared locally in a user schema is usable by that schema's *data documents* (one hop from them) — but not within the declaring schema document itself, whose governing target is meta. Custom annotations for schema documents therefore require an extended meta-schema; custom annotations for data documents require only a declaration in the user schema.
 
 
@@ -1831,10 +1831,12 @@ The following rows extend the adjacency table of [TSON-DATA] §7.5 for the opera
 | RFC 5234 | Augmented BNF for Syntax Specifications (ABNF) | https://www.rfc-editor.org/rfc/rfc5234 |
 | RFC 3339 | Date and Time on the Internet: Timestamps | https://www.rfc-editor.org/rfc/rfc3339 |
 | RFC 3986 | Uniform Resource Identifier (URI): Generic Syntax | https://www.rfc-editor.org/rfc/rfc3986 |
-| RFC 8820 | URI Design and Ownership | https://www.rfc-editor.org/rfc/rfc8820 |
+| RFC 4291 | IP Version 6 Addressing Architecture | https://www.rfc-editor.org/rfc/rfc4291 |
+| RFC 4632 | Classless Inter-domain Routing (CIDR) | https://www.rfc-editor.org/rfc/rfc4632 |
 | RFC 4648 | The Base16, Base32, and Base64 Data Encodings | https://www.rfc-editor.org/rfc/rfc4648 |
 | RFC 5322 | Internet Message Format (email address syntax) | https://www.rfc-editor.org/rfc/rfc5322 |
 | RFC 9485 | I-Regexp: An Interoperable Regular Expression Format | https://www.rfc-editor.org/rfc/rfc9485 |
+| RFC 9542 | IANA Considerations and IETF Protocol and Documentation Usage for IEEE 802 Parameters (EUI-48) | https://www.rfc-editor.org/rfc/rfc9542 |
 | RFC 9562 | Universally Unique IDentifiers (UUIDs) | https://www.rfc-editor.org/rfc/rfc9562 |
 | ISO 8601-1:2019 | Date and time — Representations for information interchange | https://www.iso.org/standard/70907.html |
 | IEEE 754-2019 | Standard for Floating-Point Arithmetic | https://ieeexplore.ieee.org/document/8766229 |
@@ -1848,6 +1850,7 @@ The following rows extend the adjacency table of [TSON-DATA] §7.5 for the opera
 
 | Reference | Title | URL |
 |-----------|-------|-----|
+| RFC 8820 | URI Design and Ownership | https://www.rfc-editor.org/rfc/rfc8820 |
 | ISO/IEC 11404:2007 | General Purpose Datatypes | https://www.iso.org/standard/39479.html |
 | JSON Schema 2020-12 | JSON Schema: A Media Type for Describing JSON Documents | https://json-schema.org/specification |
 | RFC 5646 | Tags for Identifying Languages (BCP 47) | https://www.rfc-editor.org/rfc/rfc5646 |

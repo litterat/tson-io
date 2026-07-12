@@ -101,9 +101,9 @@
     11404 radix characteristic of the type. The value set is that grid
     together with signed zeros, subnormals, the two infinities, and the
     canonical quiet NaN (Part 1 §5.6); `allow_nan`, `allow_infinity`,
-    `allow_subnormal`, and `allow_negative_zero` default true (the
-    format's full set) and may be set false to exclude those
-    representation artifacts. `min`/`max` are OPTIONAL domain
+    `allow_subnormal`, and `allow_negative_zero` default to true
+    (`~ true` — the format's full set) and may be narrowed to false to
+    exclude those representation artifacts. `min`/`max` are OPTIONAL domain
     restrictions validated against the value as written, before
     rounding; they do not bound the special values. Not a narrowing of
     the exact tier: infinities and NaN are not exact numbers.
@@ -125,10 +125,10 @@
     max:                  value?
     exclusive_min:        value?
     exclusive_max:        value?
-    allow_nan:            boolean?
-    allow_infinity:       boolean?
-    allow_subnormal:      boolean?
-    allow_negative_zero:  boolean?
+    allow_nan:            boolean ~ true
+    allow_infinity:       boolean ~ true
+    allow_subnormal:      boolean ~ true
+    allow_negative_zero:  boolean ~ true
   }
 
   @doc:"""
