@@ -1,7 +1,7 @@
 ---
 title: "TSON Developer Guide"
-draft: "2026 Revision 32 companion"
-status: "Non-normative"
+draft: "2026"
+status: "Working Draft"
 description: >
   Design history, rationale, extended examples, and implementation guidance for the TSON
   specification series. Nothing in this guide is normative; where it appears to disagree

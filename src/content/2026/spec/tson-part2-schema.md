@@ -1,6 +1,6 @@
 ---
 title: "TSON Part 2: Schemas and the Type System"
-draft: "2026 Revision 32"
+draft: "2026"
 status: "Working Draft"
 part: 2
 description: >

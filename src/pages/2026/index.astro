@@ -35,7 +35,6 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
       <ul class="space-y-6">
         {tsonParts.map(entry => (
           <li>
-            <span class="text-xs font-mono text-gray-400 mr-2">Part {entry.data.part}</span>
             <a href={`/2026/${entry.id}`} class="font-medium text-lg hover:underline">
               {entry.data.title}
             </a>
