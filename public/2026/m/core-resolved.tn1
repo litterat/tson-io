@@ -48,7 +48,13 @@
     body: !decimal_type {}
   }
 
-  @doc:"Exact fraction a/b, reduced form, positive denominator. Contains `/`, so data values must be quoted."
+  @doc:"""
+    Exact fraction a/b; positive nonzero denominator by grammar. Not
+    normalized: the token is preserved as written and 2/4 round-trips
+    as 2/4. Equality and constraints operate on the value (2/4 equals
+    1/2); receivers reduce if their representation needs it. Contains
+    `/`, so data values must be quoted.
+    """ 
   @ordered:TOTAL @bounded:false @exact:true @numeric
   rational => !type_definition {
     kind: ATOM
@@ -65,102 +71,115 @@
   }
 
   @doc:"Signed 8-bit integer (-128 to 127)."
+  @ordered:TOTAL @bounded:true @exact:true @numeric
   int8 => !type_definition {
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { bits: 8  signed: true }
+    body: !integer_type { size: { bits: 8  signed: true } }
   }
 
   @doc:"Signed 16-bit integer."
+  @ordered:TOTAL @bounded:true @exact:true @numeric
   int16 => !type_definition {
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { bits: 16  signed: true }
+    body: !integer_type { size: { bits: 16  signed: true } }
   }
 
   @doc:"Signed 32-bit integer."
+  @ordered:TOTAL @bounded:true @exact:true @numeric
   int32 => !type_definition {
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { bits: 32  signed: true }
+    body: !integer_type { size: { bits: 32  signed: true } }
   }
 
   @doc:"Signed 64-bit integer."
+  @ordered:TOTAL @bounded:true @exact:true @numeric
   int64 => !type_definition {
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { bits: 64  signed: true }
+    body: !integer_type { size: { bits: 64  signed: true } }
   }
 
   @doc:"Signed 128-bit integer."
+  @ordered:TOTAL @bounded:true @exact:true @numeric
   int128 => !type_definition {
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { bits: 128  signed: true }
+    body: !integer_type { size: { bits: 128  signed: true } }
   }
 
   @doc:"Signed 256-bit integer."
+  @ordered:TOTAL @bounded:true @exact:true @numeric
   int256 => !type_definition {
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { bits: 256  signed: true }
+    body: !integer_type { size: { bits: 256  signed: true } }
   }
 
   @doc:"Unsigned 8-bit integer (0 to 255)."
+  @ordered:TOTAL @bounded:true @exact:true @numeric
   uint8 => !type_definition {
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { bits: 8  signed: false }
+    body: !integer_type { size: { bits: 8  signed: false } }
   }
 
   @doc:"Unsigned 16-bit integer."
+  @ordered:TOTAL @bounded:true @exact:true @numeric
   uint16 => !type_definition {
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { bits: 16  signed: false }
+    body: !integer_type { size: { bits: 16  signed: false } }
   }
 
   @doc:"Unsigned 32-bit integer."
+  @ordered:TOTAL @bounded:true @exact:true @numeric
   uint32 => !type_definition {
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { bits: 32  signed: false }
+    body: !integer_type { size: { bits: 32  signed: false } }
   }
 
   @doc:"Unsigned 64-bit integer."
+  @ordered:TOTAL @bounded:true @exact:true @numeric
   uint64 => !type_definition {
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { bits: 64  signed: false }
+    body: !integer_type { size: { bits: 64  signed: false } }
   }
 
   @doc:"Unsigned 128-bit integer."
+  @ordered:TOTAL @bounded:true @exact:true @numeric
   uint128 => !type_definition {
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { bits: 128  signed: false }
+    body: !integer_type { size: { bits: 128  signed: false } }
   }
 
   @doc:"Unsigned 256-bit integer."
+  @ordered:TOTAL @bounded:true @exact:true @numeric
   uint256 => !type_definition {
     kind: ATOM
     source: integer_type
     supertypes: [integer]
-    body: !integer_type { bits: 256  signed: false }
+    body: !integer_type { size: { bits: 256  signed: false } }
   }
 
   @doc:"Integer greater than zero."
+  @ordered:TOTAL @bounded:false @exact:true @numeric
   positive_integer => !type_definition {
     kind: ATOM
     source: integer_type
@@ -169,6 +188,7 @@
   }
 
   @doc:"Integer zero or greater."
+  @ordered:TOTAL @bounded:false @exact:true @numeric
   non_negative_integer => !type_definition {
     kind: ATOM
     source: integer_type
@@ -177,6 +197,7 @@
   }
 
   @doc:"Integer less than zero."
+  @ordered:TOTAL @bounded:false @exact:true @numeric
   negative_integer => !type_definition {
     kind: ATOM
     source: integer_type
@@ -185,6 +206,7 @@
   }
 
   @doc:"Integer zero or less."
+  @ordered:TOTAL @bounded:false @exact:true @numeric
   non_positive_integer => !type_definition {
     kind: ATOM
     source: integer_type

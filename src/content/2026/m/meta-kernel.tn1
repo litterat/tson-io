@@ -87,6 +87,16 @@
   boolean => !enum [true false]
 
   @doc:"""
+    Fixed-width integer representation: a bit width paired with its
+    two's-complement signedness. Factored as a record so the pairing
+    is structural — `bits` never appears without `signed`.
+    """
+  integer_size => {
+    bits:    integer
+    signed:  boolean
+  }
+
+  @doc:"""
     Integer constraint vocabulary. Atom constructor whose instance,
     `integer`, is the kernel's arbitrary-precision integer. Field
     types reference `integer` directly; the mutual reference closes
@@ -96,37 +106,35 @@
     case. The `integer` instance reaches meta via that same import; core
     defines its own.
 
-    Bounds: `min`/`max` inclusive, `exclusive_min`/`exclusive_max`
-    exclusive; an inclusive and an exclusive bound on the same side is a
-    schema error. Bound fields are `integer` — an integer's bounds are
+    Bounds: each side is a field group ([TSON-SCHEMA] §5.11) — the
+    inclusive `min` or the exclusive `exclusive_min`; likewise `max`
+    or `exclusive_max` — so at most one bound per side holds by
+    shape. Bound fields are `integer` — an integer's bounds are
     integers — unlike the `value`-typed bounds of the meta numeric
-    tiers, whose values share the constrained atom's family.
+    tiers, whose values share the constrained atom's family. That the
+    lower bound not exceed the upper (across whichever forms are
+    present) is a schema-load coherence check.
 
-    Fixed width: `bits` gives a fixed representation width; when absent
-    the integer is unbounded arbitrary precision (the base `integer`).
-    `signed` is the two's-complement signedness and is required whenever
-    `bits` is present. Width and signedness derive the representable
-    range — signed n-bit is [-2^(n-1), 2^(n-1)-1], unsigned n-bit is
-    [0, 2^n-1] — so `bits`/`signed` and `min`/`max` are equivalent ways
+    Fixed width: `size` gives a fixed representation width; when
+    absent the integer is unbounded arbitrary precision (the base
+    `integer`). Width and signedness derive the representable range —
+    signed n-bit is [-2^(n-1), 2^(n-1)-1], unsigned n-bit is
+    [0, 2^n-1] — so `size` and the bound groups are equivalent ways
     to state a bound; the fixed-width family (int8..uint256) uses
-    `bits`/`signed`, and range-only types (positive_integer and the
-    like) use `min`/`max`. The two compose: `min`/`max`/`multiple_of`
-    narrow within the width-derived range, and a `min`/`max` outside
-    that range is a schema error. Signedness is two's complement, the
-    universal signed encoding (mandated since C23); on the wire an
-    integer is still decimal text — `bits`/`signed` name the target
-    representation a consumer decodes into, not the source form.
-    Resolver output stores `bits`/`signed` as written and does not
-    expand them to `min`/`max`.
+    `size`, and range-only types (positive_integer and the like) use
+    bounds. The two compose: bounds and `multiple_of` narrow within
+    the width-derived range, and a bound outside that range is a
+    schema error. Signedness is two's complement, the universal
+    signed encoding (mandated since C23); on the wire an integer is
+    still decimal text — `size` names the target representation a
+    consumer decodes into, not the source form. Resolver output
+    stores `size` as written and does not expand it to bounds.
     """
   integer_type => ~atom & {
-    bits:           integer?
-    signed:         boolean?
-    min:            integer?
-    max:            integer?
-    exclusive_min:  integer?
-    exclusive_max:  integer?
-    multiple_of:    integer?
+    size:  integer_size?
+    ( min: integer | exclusive_min: integer )?
+    ( max: integer | exclusive_max: integer )?
+    multiple_of:  integer?
   }
 
   integer => !integer_type {}
@@ -205,11 +213,27 @@
     state:        element_state ~ REQUIRED
   }
 
+  @doc:"""
+    Field group — a set of mutually exclusive fields of a record
+    ([TSON-SCHEMA] §5.11). `members` names at least two fields
+    declared in the enclosing record's `fields` list; member fields
+    are uniformly OPTIONAL there, with presence governed by the
+    group's state: REQUIRED admits exactly one member present,
+    OPTIONAL at most one. The flattened fields-plus-groups encoding
+    is canonical; implementations compile membership into a
+    per-record lookup at schema-load time.
+    """
+  field_group => {
+    members:  [field_name]
+    state:    element_state ~ REQUIRED
+  }
+
   @doc:"Constructors — ~ marks type factories."
   record => ~product & {
     access_pattern:  product_access_type = NAMED
     size_type:       product_size_type = FIXED
     fields:          [record_field]
+    groups:          [field_group]?
     supertypes:      [type_name]?
   }
 

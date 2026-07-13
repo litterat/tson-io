@@ -67,13 +67,17 @@
       !record_field { name: spec                 type: uri      state: REQUIRED_FIXED  value: "https://ieeexplore.ieee.org/document/8766229" }
       !record_field { name: format               type: ieee_format }
       !record_field { name: min                  type: value    state: OPTIONAL }
-      !record_field { name: max                  type: value    state: OPTIONAL }
       !record_field { name: exclusive_min        type: value    state: OPTIONAL }
+      !record_field { name: max                  type: value    state: OPTIONAL }
       !record_field { name: exclusive_max        type: value    state: OPTIONAL }
       !record_field { name: allow_nan            type: boolean  state: REQUIRED_DEFAULT  value: true }
       !record_field { name: allow_infinity       type: boolean  state: REQUIRED_DEFAULT  value: true }
       !record_field { name: allow_subnormal      type: boolean  state: REQUIRED_DEFAULT  value: true }
       !record_field { name: allow_negative_zero  type: boolean  state: REQUIRED_DEFAULT  value: true }
+    ]
+    groups: [
+      !field_group { members: [min exclusive_min]  state: OPTIONAL }
+      !field_group { members: [max exclusive_max]  state: OPTIONAL }
     ] }
   }
 
@@ -84,12 +88,16 @@
     supertypes: [atom top]
     body: !record { supertypes: [atom]  fields: [
       !record_field { name: min              type: value    state: OPTIONAL }
-      !record_field { name: max              type: value    state: OPTIONAL }
       !record_field { name: exclusive_min    type: value    state: OPTIONAL }
+      !record_field { name: max              type: value    state: OPTIONAL }
       !record_field { name: exclusive_max    type: value    state: OPTIONAL }
       !record_field { name: multiple_of      type: value    state: OPTIONAL }
       !record_field { name: total_digits     type: integer  state: OPTIONAL }
       !record_field { name: fraction_digits  type: integer  state: OPTIONAL }
+    ]
+    groups: [
+      !field_group { members: [min exclusive_min]  state: OPTIONAL }
+      !field_group { members: [max exclusive_max]  state: OPTIONAL }
     ] }
   }
 
@@ -99,11 +107,15 @@
     constructor: true
     supertypes: [atom top]
     body: !record { supertypes: [atom]  fields: [
-      !record_field { name: min              type: value    state: OPTIONAL }
-      !record_field { name: max              type: value    state: OPTIONAL }
-      !record_field { name: exclusive_min    type: value    state: OPTIONAL }
-      !record_field { name: exclusive_max    type: value    state: OPTIONAL }
-      !record_field { name: multiple_of      type: value    state: OPTIONAL }
+      !record_field { name: min            type: value  state: OPTIONAL }
+      !record_field { name: exclusive_min  type: value  state: OPTIONAL }
+      !record_field { name: max            type: value  state: OPTIONAL }
+      !record_field { name: exclusive_max  type: value  state: OPTIONAL }
+      !record_field { name: multiple_of    type: value  state: OPTIONAL }
+    ]
+    groups: [
+      !field_group { members: [min exclusive_min]  state: OPTIONAL }
+      !field_group { members: [max exclusive_max]  state: OPTIONAL }
     ] }
   }
 

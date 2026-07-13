@@ -111,19 +111,31 @@
     body: !enum { members: [true false] }
   }
 
+  @doc:"Fixed-width integer representation: bit width paired with two's-complement signedness."
+  integer_size => !type_definition {
+    kind: PRODUCT
+    body: !record { fields: [
+      !record_field { name: bits    type: integer }
+      !record_field { name: signed  type: boolean }
+    ] }
+  }
+
   @doc:"Integer constraint vocabulary. Its instance `integer` is the kernel's arbitrary-precision integer."
   integer_type => !type_definition {
     kind: ATOM
     constructor: true
     supertypes: [atom top]
     body: !record { supertypes: [atom]  fields: [
-      !record_field { name: bits           type: integer  state: OPTIONAL }
-      !record_field { name: signed         type: boolean  state: OPTIONAL }
+      !record_field { name: size           type: integer_size  state: OPTIONAL }
       !record_field { name: min            type: integer  state: OPTIONAL }
-      !record_field { name: max            type: integer  state: OPTIONAL }
       !record_field { name: exclusive_min  type: integer  state: OPTIONAL }
+      !record_field { name: max            type: integer  state: OPTIONAL }
       !record_field { name: exclusive_max  type: integer  state: OPTIONAL }
       !record_field { name: multiple_of    type: integer  state: OPTIONAL }
+    ]
+    groups: [
+      !field_group { members: [min exclusive_min]  state: OPTIONAL }
+      !field_group { members: [max exclusive_max]  state: OPTIONAL }
     ] }
   }
 
@@ -305,6 +317,15 @@
     ] }
   }
 
+  @doc:"Field group — a set of mutually exclusive fields of a record (Part 2 Section 5.11)."
+  field_group => !type_definition {
+    kind: PRODUCT
+    body: !record { fields: [
+      !record_field { name: members  type: "[field_name]" }
+      !record_field { name: state    type: element_state  state: REQUIRED_DEFAULT  value: REQUIRED }
+    ] }
+  }
+
   @doc:"Constructors — ~ marks type factories."
   record => !type_definition {
     kind: PRODUCT
@@ -314,6 +335,7 @@
       !record_field { name: access_pattern  type: product_access_type  state: REQUIRED_FIXED  value: NAMED }
       !record_field { name: size_type       type: product_size_type    state: REQUIRED_FIXED  value: FIXED }
       !record_field { name: fields          type: "[record_field]" }
+      !record_field { name: groups          type: "[field_group]"  state: OPTIONAL }
       !record_field { name: supertypes      type: "[type_name]"  state: OPTIONAL }
     ] }
   }
@@ -419,10 +441,22 @@
   }
 
   @doc:"Synthetic entries materialised from inline forms."
+  "[field_name]" => !type_definition {
+    kind: PRODUCT
+    source: array
+    body: !array { element_type: @alias:field_name token }
+  }
+
   "[record_field]" => !type_definition {
     kind: PRODUCT
     source: array
     body: !array { element_type: record_field }
+  }
+
+  "[field_group]" => !type_definition {
+    kind: PRODUCT
+    source: array
+    body: !array { element_type: field_group }
   }
 
   "[type_name]" => !type_definition {

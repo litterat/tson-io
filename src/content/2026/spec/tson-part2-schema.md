@@ -387,7 +387,7 @@ translations   => map<text, text>                          ; generic application
 
 ### 5.2 Field States
 
-Each field in a record definition has a state determined by two independent axes: **presence** (required vs optional) and **mutability** (free, default, or fixed).
+Each field in a record definition has a state determined by two independent axes: **presence** (required vs optional) and **mutability** (free, default, or fixed). A record body may also contain **field groups** — sets of mutually exclusive labelled fields — defined in §5.11.
 
 The presence axis is determined by the type suffix: `type` is **required**, `type?` is **optional**. The mutability axis is determined by the value modifier that optionally follows the type expression: no modifier — the field is **free**; `~ token` — the value is a **default**, used when no value is supplied but overridable by narrowing or instantiation; `= token` — the value is **fixed**, immutable from this point down. Whitespace around `~` and `=` is optional.
 
@@ -428,7 +428,7 @@ In data, a REQUIRED_FIXED field may be provided with a value matching the fixed 
 
 **Type-name resolution.** Type names used as type-refs (field positions, type arguments, choice variants, composition targets, narrowing sources) resolve against the type-name namespace; instantiation and narrowing targets, generic-application heads, and the desugar targets of the sugar forms resolve through the structure namespace per §3.3.1. Bare names always refer to types — there is no field-name shadowing of type names.
 
-**Inline atom narrowings and bare records are prohibited.** Atom narrowings (`!number { min: -273.15 max: 10000 }`) and bare records (`{ name: text }`) MUST be introduced via named declarations and referenced by name; they MAY NOT appear inline in field-type, tuple-element, array-element, choice-variant, type-argument, or composition positions. Implementations MAY warn on permitted inline forms that exceed a configurable nesting depth.
+**Inline atom narrowings and bare records are prohibited.** Atom narrowings (`!number { min: -273.15 max: 10000 }`) and bare records (`{ name: text }`) MUST be introduced via named declarations and referenced by name; they MAY NOT appear inline in field-type, field-group-member, tuple-element, array-element, choice-variant, type-argument, or composition positions. Implementations MAY warn on permitted inline forms that exceed a configurable nesting depth.
 
 
 ### 5.3 Type Expressions
@@ -486,6 +486,8 @@ contact_method => (email | phone | address)
 A choice MUST contain at least two variants; each variant is a type reference. At the data level, a value matching a choice type MUST carry a type annotation (`!variant`) selecting the variant — the validator does not infer the variant from structure. The choice name is then used like any other type name in field definitions, and choices MAY also appear inline in type-ref positions: `contact: (email | phone)`.
 
 **Resolution.** `(A | B | ...)` desugars to `!choice { variants: [A B ...] }` — a SUM-kind `type_definition`. The resolver validates that each variant names a distinct type in the schema's type map.
+
+A choice discriminates by variant *type name*; for labelled disjunction — mutually exclusive alternatives distinguished by field label, including alternatives of the same underlying type — see field groups (§5.11).
 
 
 ### 5.5 Constructor Instantiation and Instance Narrowing
@@ -691,6 +693,40 @@ The resolver MUST detect and handle cycles in type references. A self-referentia
 **Recursive template materialisation.** When a parameterized type is referenced with concrete arguments, the resolver materialises it as a single named entry, named by the canonical rendering of the reference expression (§8.2): `linked_list<integer>` → `"linked_list<integer>"`. Recursive references within the body resolve to that name, producing one entry per unique canonical rendering. The same model applies to non-recursive templates: `box<integer>` and `box<text>` are two distinct entries.
 
 
+### 5.11 Field Groups
+
+A record body may declare a **field group**: a parenthesised, `|`-separated set of labelled members occupying one logical position, of which at most one may be present in conforming data. The field name is the discriminator; the wire form of instances is unchanged by grouping.
+
+```
+integer_type => ~atom & {
+  size:  integer_size?
+  ( min: integer | exclusive_min: integer )?
+  ( max: integer | exclusive_max: integer )?
+  multiple_of:  integer?
+}
+```
+
+A group MUST contain at least two members. Each member is a `field-name`/`type-ref` pair. Member labels share the enclosing record's field namespace: a label MUST be unique across the record's plain fields and all groups' members, including fields contributed by supertypes (§5.8's disjointness rule extends to member labels).
+
+**Group state.** The `?` suffix applies to the group as a whole: a bare group is REQUIRED — exactly one member MUST be present; a group with `?` is OPTIONAL — at most one member MAY be present. These are the only group states; a group has no default or fixed form in v1.
+
+**Member positions are deliberately bare.** A member takes a type-ref and nothing else: the `?` suffix, the `~`/`=` value modifiers, and the subtraction marker are parse errors on a member — selection belongs to the label, presence belongs to the group. A group is not a type-ref: it cannot appear in field-type, element, argument, or variant positions, so multiplicity around a group (`[( a: T | b: U )]`) is not expressible; repetition of alternatives is written as an array of a named choice type (§5.4).
+
+**Resolution.** Groups flatten. Each member becomes an ordinary `record_field` in the body's `fields` list — in source order, contiguous with its sibling members — with `state: OPTIONAL` regardless of group state. The grouping is recorded in the body's `record.groups` list as a `field_group { members  state }` entry, members in source order (the default `REQUIRED` is omitted in output, per §8.1's convention). The flattened fields-plus-groups form is canonical: group membership is fully derivable from `groups` in one local pass, and implementations SHOULD compile it into a per-record lookup at schema-load time, per the eager-resolution convention of §5.2 and §7.4 — the output form is canonical, not operational.
+
+**Validation.** For each group of a record type, the validator counts present members after ordinary field validation: a REQUIRED group with zero or with two or more present members is a validation error; an OPTIONAL group errs only on two or more. A present member is validated as an ordinary field of its declared type.
+
+**Narrowing and composition.** In a narrowing or composition body, members are addressable by name as ordinary fields under §5.7's rules — an inherited member is OPTIONAL, so it may be tightened to any state the transition table permits, including `= _` (removing that alternative). Group presence rules are checked against the narrowed states at schema load: a narrowing under which two members of one group are always present (both in a REQUIRED-family state) is a schema-load error. A body entry may also restate a group: the restated group MUST have the same member labels in the same order (member type-refs restated verbatim), and may tighten state OPTIONAL→REQUIRED; REQUIRED→OPTIONAL is a resolver error, and changing membership is a resolver error. Supertypes contribute their groups whole; the composed entry's `groups` lists inherited groups in supertype order followed by the body's own. A field belongs to at most one group — guaranteed by label disjointness. Subtraction (`member: _`) removes the member from `fields` and from its group's `members`; a group reduced to one member is dissolved, and the surviving field takes the group's state (REQUIRED group → field REQUIRED, OPTIONAL group → field OPTIONAL).
+
+**The labelled-sum pattern** (informative). A record whose entire body is a single REQUIRED group admits exactly one field — a labelled sum in record clothing:
+
+```
+timestamps => { ( created: timestamp | modified: timestamp | accessed: timestamp ) }
+```
+
+An instance is `{ modified: 2026-05-21T13:05:00Z }`; the label is both the semantic role and the discriminator. Where `choice` (§5.4) discriminates by variant type name via a mandatory `!variant` annotation and requires distinct variant types, a single-group record discriminates by label and permits variants of the same underlying type. The pattern's kind is PRODUCT; host bindings MAY recognise the shape (one REQUIRED group, no other fields) and lower it to a native sum. [TSON-GUIDE] discusses the pattern and the design history.
+
+
 ## 6. Annotations as Types
 
 [TSON-DATA] §3.1 defines annotation syntax and preservation. This section defines annotation semantics: an annotation is a typed metadata attachment, resolved and validated against a type reachable through the schema chain.
@@ -883,6 +919,7 @@ The `type_definition` record captures the resolver's output for any type. Its fi
 | Template `<T> ...` | `parameters` non-empty; not instantiable (§5.10) | `container` |
 | Inline container (synthetic) | kind from the implied constructor; `source: <ctor>`; no supertypes | `"[text]"` (§8.2) |
 | Choice `(A \| B)` | SUM; `body: !choice { variants: [...] }` | `contact_method` |
+| Field group `( a: T \| b: U )` | members flattened into `fields` as OPTIONAL; grouping in `record.groups` (§5.11) | `integer_type` |
 | Reference `name` | REFERENCE; `body: !reference { target: name }`; no supertypes | `id => uuid` (§8.3) |
 
 The `schema` type is a map from type names (the bare leaf names of types in the schema) to type definitions; schema lookup is by name, not by parameterized reference.
@@ -892,7 +929,7 @@ The `schema` type is a map from type names (the bare leaf names of types in the 
 
 When a definition uses an inline type-expression form — container (`[T]`, `[T; n]`, `[T, U]`, `set<T>`, `map<K, V>`), choice (`(A | B)`), or a generic application (`linked_list<integer>`) — at a position whose runtime type is not otherwise named, the resolver synthesizes an entry in the schema's namespace, named by the **canonical rendering** of the source expression.
 
-*Trigger positions.* Synthesis fires at positions that accept a type-ref and contain an inline structural form or generic application: record field types, tuple element types, array element types, choice variants, type arguments, and generic applications themselves (including a top-level type-def body that is a generic application, which materialises the applied form and resolves the declaration to a REFERENCE entry targeting it, §8.3). Composition targets and narrowing sources are restricted to named type references; inline structural forms there are resolver errors. A top-level body that is a bracket or paren sugar form (`scores => [integer; +]`) is not a synthesis site — the declaration names the result, and the desugared form becomes the body directly.
+*Trigger positions.* Synthesis fires at positions that accept a type-ref and contain an inline structural form or generic application: record field types, field-group member types, tuple element types, array element types, choice variants, type arguments, and generic applications themselves (including a top-level type-def body that is a generic application, which materialises the applied form and resolves the declaration to a REFERENCE entry targeting it, §8.3). Composition targets and narrowing sources are restricted to named type references; inline structural forms there are resolver errors. A top-level body that is a bracket or paren sugar form (`scores => [integer; +]`) is not a synthesis site — the declaration names the result, and the desugared form becomes the body directly.
 
 *Canonical rendering.* The canonical rendering of an inline form is a **whitespace-free** string over source-level names:
 
@@ -949,7 +986,7 @@ Two pre-loaded schemas form the meta layer. Implementations MUST pre-load both (
 
 | Schema | Role | Declares |
 |--------|------|----------|
-| `2026/m/meta-kernel.tn1` | Self-referencing bootstrap; its `!!id` and `!!meta` reference its own URL | `top`, the base kinds `atom`/`product`/`sum`, `reference`; the `record`/`array`/`set`/`map`/`tuple`/`enum`/`choice` constructors; the `record_field`/`tuple_element`/`parameter`/`type_definition`/`schema` supporting records; the `unit` constructor and its instances `value`/`token`/`void`; the atom-constructor/instance pairs `integer_type`/`integer`, `text_type`/`text`, `uri_type`/`uri`, `regex_type`/`regex`; `boolean`; `atom_specification`; the internal enums; the annotation types `annotation`, `documentation`, `doc`, `alias` |
+| `2026/m/meta-kernel.tn1` | Self-referencing bootstrap; its `!!id` and `!!meta` reference its own URL | `top`, the base kinds `atom`/`product`/`sum`, `reference`; the `record`/`array`/`set`/`map`/`tuple`/`enum`/`choice` constructors; the `record_field`/`tuple_element`/`field_group`/`parameter`/`type_definition`/`schema` supporting records; the `unit` constructor and its instances `value`/`token`/`void`; the atom-constructor/instance pairs `integer_type`/`integer` (with the `integer_size` supporting record), `text_type`/`text`, `uri_type`/`uri`, `regex_type`/`regex`; `boolean`; `atom_specification`; the internal enums; the annotation types `annotation`, `documentation`, `doc`, `alias` |
 | `2026/m/meta.tn1` | Canonical meta-schema; chains to the kernel and imports it | `binary` (with `binary_encoding`), `extern`, `unknown_type`; the constraint-vocabulary constructors for numeric (`float_type` with `ieee_format`, `decimal_type`, `rational_type`, `complex_type` with `complex_component`), temporal (`date_type`, `time_type`, `datetime_type`, `duration_type`), identifier (`uuid_type`), network (`ipv4_type`, `ipv6_type`, `cidr4_type`, `cidr6_type`, `mac_type`), and text (`email_type`) families; the annotation types `ordered`, `bounded`, `exact`, `numeric`, `deprecated`, `since`, `todo`, `lang` |
 
 Each constraint-bearing atom family is a constructor/instance pair (§4.2): the constructor lists the family's constraint fields; the canonical empty instance lives in the kernel or in core (`integer`, `text`, `uri`, `regex`; `number`, `float32`, `float64`, `rational`, `complex`, `date`, and the rest in `core.tn1`). Meta's kernel import is doubly load-bearing: it supplies the kernel types meta's own declarations use and delivers the kernel's structural vocabulary to every meta-governed schema (§3.3.1). Annotation types live in the chain because of the one-hop rule (§3.3.3, §6); core re-exports `void`, `doc`, `documentation`, `annotation`, and `alias` for data documents governed by core-importing schemas, and adds `complex` (`!complex_type {}`).
@@ -1070,7 +1107,8 @@ composed-def = type-ref 1*(ws "&" ws type-ref) [ws record-def]
 
 narrowed-def = type-name [ws "<" type-args ">"] ws record-def
 
-record-def   = "{" ws [field-def *(separator field-def)] ws "}"
+record-def   = "{" ws [record-entry *(separator record-entry)] ws "}"
+record-entry = field-def / group-def
 
 instance     = "!" type-name ws data-value
 
@@ -1087,6 +1125,13 @@ field-type     = type-ref ["?"]
 field-modifier = ws ("~" / "=") ws ( token / absent )
 
 subtraction-marker = "_"   ; bare _ marks the field for removal (§5.9)
+
+; ── Field Groups (§5.11) ──────────────────────────────────
+
+group-def    = *annotation "(" ws group-member
+               1*( ws "|" ws group-member ) ws ")" ["?"]
+group-member = *annotation field-name ws ":" ws type-ref
+               ; no "?", no modifier, no subtraction on members
 
 ; ── Type References (any type position) ───────────────────
 
@@ -1121,7 +1166,8 @@ Notes:
 
 - The `type-params` slot declares type parameters (§5.10); parameters take precedence over schema-namespace lookup, and references to a parameterized type MUST supply matching type arguments.
 - `paren-type` produces choice types; choices require at least two variants — `(T)` is a parse error.
-- The `?` suffix marks field-level, tuple-position-level, or array-element-level optionality and is valid only in those positions, recording `state: OPTIONAL` on the containing `record_field`, `tuple_element`, or `array`. There is no generic "optional type" in TSON.
+- `group-def` produces field groups (§5.11); a group requires at least two members. Inside a record body, `(` at entry position (after any leading annotations) opens a group; `(` after a `field-name ":"` opens a `paren-type`. The two never collide — a group is an entry, a choice is a type-ref. The `?` after the closing `)` sets the group's state; member positions reject `?`, modifiers, and `_` by grammar.
+- The `?` suffix marks field-level, tuple-position-level, array-element-level, or group-level optionality and is valid only in those positions, recording `state: OPTIONAL` on the containing `record_field`, `tuple_element`, `array`, or `field_group`. There is no generic "optional type" in TSON.
 - The trailing record-def in `composed-def` is optional (`customer => address & contact` is valid). When a `{` follows a `&`-chain, it always belongs to the composed-def's record-def.
 - The narrowed-def target is restricted to a bare type-name, optionally with type-args. Narrowing an inline instance, a choice, or an array is a parse error — these have no field list to tighten.
 - Type arguments inside `<>` may be separated by comma or whitespace: `map<text, integer>` and `map<text integer>` are both valid.
@@ -1158,6 +1204,10 @@ This section is informative.
 ;   name <         → generic
 ;   name ? / name  → simple ref
 ;
+; record-def entry position (after leading annotations):
+;   (              → group-def (field group, §5.11)
+;   name ":"       → field-def
+;
 ; array-def internal disambiguation:
 ;   [type sep type  → tuple (whitespace or comma)
 ;   [type ; spec    → array with size constraint
@@ -1184,11 +1234,11 @@ The following rows extend the adjacency table of [TSON-DATA] §7.5 for the opera
 | Operator | Type | Context | Rule |
 |---|---|---|---|
 | `!` | prefix | type-def body (constructor instantiation) | MUST be adjacent to the following unquoted-token (constructor or instance name) |
-| `?` | suffix | field type, tuple position, array element | MUST be adjacent to the preceding token (type name or closing bracket) |
+| `?` | suffix | field type, tuple position, array element, field group | MUST be adjacent to the preceding token (type name or closing bracket/paren) |
 | `&` | binary | composition | whitespace on either side optional |
 | `~` | prefix/modifier | constructor marker, default value | whitespace optional |
 | `=` | modifier | fixed value | whitespace optional |
-| `\|` | separator | choice variant | whitespace optional |
+| `\|` | separator | choice variant; field-group member | whitespace optional |
 | `;` | separator | array size spec | whitespace optional |
 | `=>` | separator | schema declaration; data map entry | whitespace optional (compound token from lexer) |
 
@@ -1213,9 +1263,7 @@ The following rows extend the adjacency table of [TSON-DATA] §7.5 for the opera
 | ISO 8601-1:2019 | Date and time — Representations for information interchange | https://www.iso.org/standard/70907.html |
 | IEEE 754-2019 | Standard for Floating-Point Arithmetic | https://ieeexplore.ieee.org/document/8766229 |
 
-
 ### 13.2 Series References
-
 
 | Reference | Title | URL |
 |-----------|-------|-----|
@@ -1224,7 +1272,6 @@ The following rows extend the adjacency table of [TSON-DATA] §7.5 for the opera
 | meta-kernel.tn1 | TSON Meta-Kernel (companion artifact) | https://tson.io/2026/m/meta-kernel.tn1?sha256=&lt;pinned at publication&gt; |
 | meta.tn1 | TSON Meta-Schema (companion artifact) | https://tson.io/2026/m/meta.tn1?sha256=&lt;pinned at publication&gt; |
 | core.tn1 | TSON Core Type Library (companion artifact) | https://tson.io/2026/m/core.tn1?sha256=&lt;pinned at publication&gt; |
-
 
 ### 13.3 Informative References
 

@@ -14,7 +14,7 @@
 
   Narrowings overlay literal values via the instance form:
 
-      uint8            => !integer { min: 0  max: 255 }
+      uint8            => !integer { size: { bits: 8  signed: false } }
       non_empty_text   => !text { min_length: 1 }
 
   Annotation types (`@ordered`, `@bounded`, `@exact`, `@numeric`,
@@ -90,51 +90,67 @@
   complex => !complex_type {}
 
   @doc:"Signed 8-bit integer (-128 to 127)."
-  int8 => !integer { bits: 8  signed: true }
+  @ordered:TOTAL @bounded:true @exact:true @numeric
+  int8 => !integer { size: { bits: 8  signed: true } }
 
   @doc:"Signed 16-bit integer."
-  int16 => !integer { bits: 16  signed: true }
+  @ordered:TOTAL @bounded:true @exact:true @numeric
+  int16 => !integer { size: { bits: 16  signed: true } }
 
   @doc:"Signed 32-bit integer."
-  int32 => !integer { bits: 32  signed: true }
+  @ordered:TOTAL @bounded:true @exact:true @numeric
+  int32 => !integer { size: { bits: 32  signed: true } }
 
   @doc:"Signed 64-bit integer."
-  int64 => !integer { bits: 64  signed: true }
+  @ordered:TOTAL @bounded:true @exact:true @numeric
+  int64 => !integer { size: { bits: 64  signed: true } }
 
   @doc:"Signed 128-bit integer."
-  int128 => !integer { bits: 128  signed: true }
+  @ordered:TOTAL @bounded:true @exact:true @numeric
+  int128 => !integer { size: { bits: 128  signed: true } }
 
   @doc:"Signed 256-bit integer."
-  int256 => !integer { bits: 256  signed: true }
+  @ordered:TOTAL @bounded:true @exact:true @numeric
+  int256 => !integer { size: { bits: 256  signed: true } }
 
   @doc:"Unsigned 8-bit integer (0 to 255)."
-  uint8 => !integer { bits: 8  signed: false }
+  @ordered:TOTAL @bounded:true @exact:true @numeric
+  uint8 => !integer { size: { bits: 8  signed: false } }
 
   @doc:"Unsigned 16-bit integer."
-  uint16 => !integer { bits: 16  signed: false }
+  @ordered:TOTAL @bounded:true @exact:true @numeric
+  uint16 => !integer { size: { bits: 16  signed: false } }
 
   @doc:"Unsigned 32-bit integer."
-  uint32 => !integer { bits: 32  signed: false }
+  @ordered:TOTAL @bounded:true @exact:true @numeric
+  uint32 => !integer { size: { bits: 32  signed: false } }
 
   @doc:"Unsigned 64-bit integer."
-  uint64 => !integer { bits: 64  signed: false }
+  @ordered:TOTAL @bounded:true @exact:true @numeric
+  uint64 => !integer { size: { bits: 64  signed: false } }
 
   @doc:"Unsigned 128-bit integer."
-  uint128 => !integer { bits: 128  signed: false }
+  @ordered:TOTAL @bounded:true @exact:true @numeric
+  uint128 => !integer { size: { bits: 128  signed: false } }
 
   @doc:"Unsigned 256-bit integer."
-  uint256 => !integer { bits: 256  signed: false }
+  @ordered:TOTAL @bounded:true @exact:true @numeric
+  uint256 => !integer { size: { bits: 256  signed: false } }
 
   @doc:"Integer greater than zero."
+  @ordered:TOTAL @bounded:false @exact:true @numeric
   positive_integer => !integer { min: 1 }
 
   @doc:"Integer zero or greater."
+  @ordered:TOTAL @bounded:false @exact:true @numeric
   non_negative_integer => !integer { min: 0 }
 
   @doc:"Integer less than zero."
+  @ordered:TOTAL @bounded:false @exact:true @numeric
   negative_integer => !integer { max: -1 }
 
   @doc:"Integer zero or less."
+  @ordered:TOTAL @bounded:false @exact:true @numeric
   non_positive_integer => !integer { max: 0 }
 
   @doc:"IEEE 754 binary32. Value set is the binary32 grid plus signed zeros, subnormals, both infinities, and quiet NaN."

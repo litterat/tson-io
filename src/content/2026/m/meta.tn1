@@ -48,6 +48,13 @@
   not defined in meta-kernel or meta. Where the type is integer, the
   field uses `integer?` directly (available through this schema's
   kernel import).
+
+  The ordered numeric families state their bounds as field groups
+  ([TSON-SCHEMA] §5.11): one inclusive-or-exclusive group per side,
+  so an inclusive and an exclusive bound on the same side is
+  unrepresentable rather than a prose rule. Value-level coherence
+  (the lower bound not exceeding the upper) remains a schema-load
+  check.
   """
 {
   @doc:"Binary encoding formats per RFC 4648."
@@ -103,14 +110,15 @@
     canonical quiet NaN (Part 1 §5.6); `allow_nan`, `allow_infinity`,
     `allow_subnormal`, and `allow_negative_zero` default to true
     (`~ true` — the format's full set) and may be narrowed to false to
-    exclude those representation artifacts. `min`/`max` are OPTIONAL domain
+    exclude those representation artifacts. The bounds are OPTIONAL domain
     restrictions validated against the value as written, before
     rounding; they do not bound the special values. Not a narrowing of
     the exact tier: infinities and NaN are not exact numbers.
 
-    Bounds: `min`/`max` are inclusive, `exclusive_min`/`exclusive_max`
-    exclusive; specifying both an inclusive and an exclusive bound on
-    the same side is a schema error. There is deliberately no
+    Bounds: each side is a field group ([TSON-SCHEMA] §5.11) — the
+    inclusive `min` or the exclusive `exclusive_min`; likewise `max`
+    or `exclusive_max` — so at most one bound per side holds by
+    shape. There is deliberately no
     `multiple_of` here — a step constraint cannot hold on a binary grid
     (e.g. 0.05 is not a binary32 value, so nothing is exactly a multiple
     of it); use the exact tier (`decimal_type`) when a step is required.
@@ -121,10 +129,8 @@
   float_type => ~atom & atom_specification & {
     spec:                 = "https://ieeexplore.ieee.org/document/8766229"
     format:               ieee_format
-    min:                  value?
-    max:                  value?
-    exclusive_min:        value?
-    exclusive_max:        value?
+    ( min: value | exclusive_min: value )?
+    ( max: value | exclusive_max: value )?
     allow_nan:            boolean ~ true
     allow_infinity:       boolean ~ true
     allow_subnormal:      boolean ~ true
@@ -142,19 +148,18 @@
     scale (SQL `DECIMAL(precision, scale)`): total significant digits
     and digits after the point.
 
-    Bounds: `min`/`max` are inclusive, `exclusive_min`/`exclusive_max`
-    exclusive; an inclusive and an exclusive bound on the same side is a
-    schema error. `multiple_of` is exact here (e.g. `multiple_of` 0.05
+    Bounds: each side is a field group ([TSON-SCHEMA] §5.11) — the
+    inclusive `min` or the exclusive `exclusive_min`; likewise `max`
+    or `exclusive_max` — so at most one bound per side holds by
+    shape. `multiple_of` is exact here (e.g. `multiple_of` 0.05
     admits only nickel steps) and composes with the other constraints —
     a value must satisfy all present facets. `fraction_digits` and
     `multiple_of` overlap but are not equivalent: `fraction_digits` 2
     admits any hundredth, `multiple_of` 0.05 only multiples of a nickel.
     """
   decimal_type => ~atom & {
-    min:              value?
-    max:              value?
-    exclusive_min:    value?
-    exclusive_max:    value?
+    ( min: value | exclusive_min: value )?
+    ( max: value | exclusive_max: value )?
     multiple_of:      value?
     total_digits:     integer?
     fraction_digits:  integer?
@@ -163,18 +168,17 @@
   @doc:"""
     Rational constraint vocabulary. Instance is `rational` in core.
     Exact (ℚ; ISO/IEC 11404 `rational`), so bounds and `multiple_of`
-    are exact. `min`/`max` inclusive, `exclusive_min`/`exclusive_max`
-    exclusive; an inclusive and an exclusive bound on the same side is a
-    schema error. Constraints operate on the value, not the written
+    are exact. Bounds: each side is a field group ([TSON-SCHEMA]
+    §5.11) — inclusive `min` or exclusive `exclusive_min`; `max` or
+    `exclusive_max` — at most one bound per side by shape.
+    Constraints operate on the value, not the written
     token: tokens are not normalized, so `"2/4"` and `"1/2"` satisfy
     the same constraints.
     """
   rational_type => ~atom & {
-    min:              value?
-    max:              value?
-    exclusive_min:    value?
-    exclusive_max:    value?
-    multiple_of:      value?
+    ( min: value | exclusive_min: value )?
+    ( max: value | exclusive_max: value )?
+    multiple_of:  value?
   }
 
   @doc:"""
