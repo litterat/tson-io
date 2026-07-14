@@ -17,6 +17,7 @@ const [seriesId, slug] = entry.id.split('/');
 const originalDateFormatted = originalDate
   ? originalDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   : null;
+const originalDateIso = originalDate ? originalDate.toISOString() : undefined;
 
 // Build sorted list of all entries in this series for prev/next nav
 const allEntries = await getCollection('research', e => e.data.series === series);
@@ -43,7 +44,7 @@ const rawUrl = `/raw/research/${entry.id}.md`;
 const { Content } = await render(entry);
 ---
 
-<Layout title={subtitle} description={description}>
+<Layout title={subtitle} description={description} type="article" publishedTime={originalDateIso}>
   <div class="max-w-3xl mx-auto px-6 py-10">
 
     <!-- Breadcrumb -->

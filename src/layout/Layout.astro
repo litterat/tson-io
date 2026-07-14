@@ -1,13 +1,20 @@
 ---
 import '../styles/global.css';
+import SEO from '../components/SEO.astro';
 
 interface Props {
   title: string;
   description?: string;
+  image?: string;
+  type?: 'website' | 'article';
+  publishedTime?: string;
+  modifiedTime?: string;
+  noindex?: boolean;
 }
 
-const { title, description } = Astro.props;
+const { title, description, image, type, publishedTime, modifiedTime, noindex } = Astro.props;
 const siteTitle = 'tson.io';
+const home = title === siteTitle;
 ---
 
 <!doctype html>
@@ -15,8 +22,16 @@ const siteTitle = 'tson.io';
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title === siteTitle ? title : `${title} — ${siteTitle}`}</title>
-    {description && <meta name="description" content={description} />}
+    <SEO
+      title={title}
+      description={description}
+      image={image}
+      type={type}
+      home={home}
+      publishedTime={publishedTime}
+      modifiedTime={modifiedTime}
+      noindex={noindex}
+    />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
   <body class="bg-white text-gray-900 min-h-screen flex flex-col">
