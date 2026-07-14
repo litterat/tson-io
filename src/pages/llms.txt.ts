@@ -11,6 +11,7 @@
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { resolveBase, specLine } from '../lib/llmsTxt';
+import { CURRENT_REVISION } from '../lib/spec';
 import about from '../lib/llms-about.txt?raw';
 import otherTsons from '../lib/llms-other-tsons.txt?raw';
 
@@ -37,9 +38,9 @@ export const GET: APIRoute = async ({ site }) => {
       : []),
     '## Schema Source Files',
     '',
-    `- [meta-kernel.tn1](${base}/2026/m/meta-kernel.tn1): Base kind constructors and the IS-A lattice root`,
-    `- [meta.tn1](${base}/2026/m/meta.tn1): Annotation types and schema-level directives`,
-    `- [core.tn1](${base}/2026/m/core.tn1): Core type library for data interchange`,
+    `- [meta-kernel.tn1](${base}/2026/${CURRENT_REVISION}/m/meta-kernel.tn1): Base kind constructors and the IS-A lattice root`,
+    `- [meta.tn1](${base}/2026/${CURRENT_REVISION}/m/meta.tn1): Annotation types and schema-level directives`,
+    `- [core.tn1](${base}/2026/${CURRENT_REVISION}/m/core.tn1): Core type library for data interchange`,
     '',
     otherTsons.trim(),
     '',

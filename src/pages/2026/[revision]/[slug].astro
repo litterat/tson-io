@@ -1,17 +1,18 @@
 ---
-import Layout from '../../layout/Layout.astro';
+import Layout from '../../../layout/Layout.astro';
 import { getCollection, render } from 'astro:content';
 
 export async function getStaticPaths() {
   const entries = await getCollection('spec');
-  return entries.map(entry => ({
-    params: { slug: entry.id },
-    props: { entry },
-  }));
+  return entries.map(entry => {
+    const [revision, slug] = entry.id.split('/');
+    return { params: { revision, slug }, props: { entry } };
+  });
 }
 
 const { entry } = Astro.props;
 const { title, draft, status, part, description } = entry.data;
+const [revision] = entry.id.split('/');
 const rawUrl = `/raw/2026/${entry.id}.md`;
 
 const { Content } = await render(entry);
@@ -22,7 +23,7 @@ const { Content } = await render(entry);
 
     <!-- Breadcrumb -->
     <nav class="text-sm text-gray-500 mb-8 flex items-center gap-1.5">
-      <a href="/2026" class="hover:text-gray-900">Specification</a>
+      <a href={`/2026/${revision}`} class="hover:text-gray-900">Specification</a>
       <span>/</span>
       <span class="text-gray-700">{title}</span>
     </nav>
@@ -48,7 +49,7 @@ const { Content } = await render(entry);
     </article>
 
     <div class="mt-16 pt-8 border-t border-gray-200">
-      <a href="/2026" class="text-sm text-gray-500 hover:text-gray-900">← Back to Specification</a>
+      <a href={`/2026/${revision}`} class="text-sm text-gray-500 hover:text-gray-900">← Back to Specification</a>
     </div>
 
   </div>

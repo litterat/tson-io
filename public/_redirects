@@ -1,0 +1,3 @@
+# /2026 always points at the current working-draft revision.
+# Update the target here (and CURRENT_REVISION in src/lib/spec.ts) when starting a new revision.
+/2026 /2026/32 302

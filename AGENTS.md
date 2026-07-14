@@ -22,16 +22,37 @@ astro dev --background
 
 Manage the background server with `astro dev stop`, `astro dev status`, and `astro dev logs`.
 
+## Revision-scoped `/2026` paths
+
+The spec/schema files live under a revision number so a hash-pinned reference never breaks:
+`src/content/2026/{revision}/*.md` (Part 1/2, the guide), `src/content/2026/{revision}/m/*.tn1`
+(meta-kernel, meta, core), and `src/content/2026/{revision}/fixtures/*.tn1` (their resolved-output
+fixtures). `CURRENT_REVISION` in `src/lib/spec.ts` is the single source of truth for which
+revision is "current" — the home page, `/llms.txt`, `/sitemap.xml`, and `public/_redirects` all
+key off it. `/2026` itself is a redirect (real 302 via `public/_redirects`, plus a static
+meta-refresh fallback page for local preview) to `/2026/{CURRENT_REVISION}` — it is never itself a
+real, hash-pinnable document.
+
+**Starting a new revision** (e.g. 32 -> 33):
+1. Copy `src/content/2026/32/` to `src/content/2026/33/` (all three subtrees).
+2. Update the copies' self-referencing `!!id`/`!!meta`/`!!import`/`!!schema` URLs from
+   `/2026/32/...` to `/2026/33/...`.
+3. Bump `CURRENT_REVISION` in `src/lib/spec.ts` to `'33'`.
+4. Add a `/2026/33/m/*.tn1` block to `public/_headers` (leave the old revision's block in place —
+   it's still served).
+5. Update the target in `public/_redirects` to `/2026/33`.
+6. Run the public-sync step below for the new revision's files.
+
 ## Schema files and public sync
 
-`src/content/2026/m/*.tn1` (meta-kernel, meta, core) and `src/content/2026/fixtures/*.tn1`
-(their resolved-output fixtures) are the sources of truth, but they're served live from
-`public/2026/m/` as static files outside Astro's content-collection pipeline. After editing any
-of them, copy the changed files into `public/2026/m/` — otherwise the deployed site serves stale
-schemas even though the source and the build both look correct:
+`src/content/2026/{revision}/m/*.tn1` and `src/content/2026/{revision}/fixtures/*.tn1` are the
+sources of truth, but they're served live from `public/2026/{revision}/m/` as static files outside
+Astro's content-collection pipeline. After editing any of them, copy the changed files into
+`public/2026/{revision}/m/` — otherwise the deployed site serves stale schemas even though the
+source and the build both look correct:
 
 ```
-cp src/content/2026/m/*.tn1 src/content/2026/fixtures/*.tn1 public/2026/m/
+cp src/content/2026/32/m/*.tn1 src/content/2026/32/fixtures/*.tn1 public/2026/32/m/
 ```
 
 Run `npx astro build` before committing spec or schema changes — it's the only check that

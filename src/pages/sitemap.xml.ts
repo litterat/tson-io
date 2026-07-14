@@ -10,6 +10,7 @@
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { resolveBase } from '../lib/llmsTxt';
+import { CURRENT_REVISION } from '../lib/spec';
 
 export const GET: APIRoute = async ({ site }) => {
   const base = resolveBase(site);
@@ -23,7 +24,7 @@ export const GET: APIRoute = async ({ site }) => {
     `${base}/`,
     `${base}/research`,
     ...researchEntries.map(e => `${base}/research/${e.id}`),
-    `${base}/2026`,
+    `${base}/2026/${CURRENT_REVISION}`,
     ...specEntries.map(e => `${base}/2026/${e.id}`),
   ];
 

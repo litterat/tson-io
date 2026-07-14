@@ -162,8 +162,8 @@ The task-tracking schema from [TSON-SCHEMA] §1.6, taken all the way through res
 
 ```
 !!id:"https://example.com/task.tn1"
-!!meta:"https://tson.io/2026/m/meta.tn1"
-!!import:"https://tson.io/2026/m/core.tn1"
+!!meta:"https://tson.io/2026/32/m/meta.tn1"
+!!import:"https://tson.io/2026/32/m/core.tn1"
 @doc:"Task-tracking example schema."
 {
   priority => !integer { min: 1  max: 5 }
@@ -200,7 +200,7 @@ Note that `priority` and `status` restate their default values: a document that 
 Resolution derives a schema value, serialized as resolver output — a data document governed by the meta-schema, in which every declaration has desugared to the canonical `!C { bindings }` form and fields at their default values are omitted (`constructor: false`, `state: REQUIRED`):
 
 ```
-!!schema:"https://tson.io/2026/m/meta.tn1"
+!!schema:"https://tson.io/2026/32/m/meta.tn1"
 !schema {
   priority => !type_definition {
     kind: ATOM

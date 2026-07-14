@@ -62,9 +62,10 @@ unrelated to each other and tson.io:
 src/
   content/
     2026/
-      spec/            # TSON Part 1/2 and companion docs (tson-guide.md), 2026 working draft
-      m/                # .tn1 schema source files (meta-kernel, meta, core)
-      fixtures/          # Non-normative resolved-output fixtures for the schema source files
+      32/                # A revision-scoped draft — see "Revision-scoped paths" below
+        *.md             # TSON Part 1/2 and companion docs (tson-guide.md)
+        m/                # .tn1 schema source files (meta-kernel, meta, core)
+        fixtures/          # Non-normative resolved-output fixtures for the schema source files
     research/
       deep-dive-into-json/   # "A Deep Dive into JSON" article series
       proto-schema/           # "Proto-Schema" article series
@@ -72,19 +73,22 @@ src/
   layout/
     Layout.astro       # Shared page shell (header, footer, license notice)
   pages/
-    index.astro                     # Home page — TSON vs JSON comparison
-    research/index.astro            # Research index
-    research/[series]/[slug].astro  # Research article pages
-    2026/index.astro                 # Specification index
-    2026/[slug].astro                # Specification document pages
-    raw/[collection]/[...slug].ts   # Serves raw markdown (frontmatter stripped) for LLMs/tools
-    llms.txt.ts                     # /llms.txt — spec + schema index for LLMs
-    research-llms.txt.ts            # /research-llms.txt — research index (optional/background)
-    sitemap.xml.ts                   # /sitemap.xml — canonical page index
+    index.astro                       # Home page — TSON vs JSON comparison
+    research/index.astro              # Research index
+    research/[series]/[slug].astro    # Research article pages
+    2026/index.astro                   # /2026 — static redirect fallback to the current revision
+    2026/[revision]/index.astro        # Specification index for one revision
+    2026/[revision]/[slug].astro       # Specification document pages
+    raw/[collection]/[...slug].ts     # Serves raw markdown (frontmatter stripped) for LLMs/tools
+    llms.txt.ts                       # /llms.txt — spec + schema index for LLMs
+    research-llms.txt.ts              # /research-llms.txt — research index (optional/background)
+    sitemap.xml.ts                     # /sitemap.xml — canonical page index
   lib/
     llmsTxt.ts          # Shared helpers for the llms.txt endpoints
+    spec.ts             # CURRENT_REVISION — the single source of truth for "the latest draft"
 public/
-  2026/m/               # Static .tn1 schema + resolved-fixture files served as-is
+  2026/32/m/             # Static .tn1 schema + resolved-fixture files served as-is
+  _redirects              # /2026 -> /2026/{current revision}, a real 302
   images/                # Images extracted from the research articles
   robots.txt             # Content-Signal preferences + sitemap reference
   _headers                # Cloudflare response headers (content types, Link header, etc.)
@@ -97,9 +101,17 @@ base type resolution, and built-in type vocabulary) and **Part 2: Schemas and th
 the **TSON Developer Guide** (`tson-guide.md`), a non-normative collection of design history and
 rationale.
 
+### Revision-scoped paths
+
+The spec/schema files are drafted directly at a revision-scoped path (`/2026/32/...`) so that once
+a revision is finalized enough to hash-pin, its URL never changes — no rename, no broken pins.
+Starting a new revision is a copy-forward (`src/content/2026/32/` → `src/content/2026/33/`), never
+an in-place rewrite of a published one. `/2026` itself is not a document — it's a redirect (a real
+302 via `public/_redirects`) to whichever revision is current.
+
 Every research article and specification document is available both as rendered HTML and as raw
-markdown at `/raw/research/<series>/<slug>.md` or `/raw/2026/<slug>.md`, so the content is
-readable by both humans and LLMs/tools.
+markdown at `/raw/research/<series>/<slug>.md` or `/raw/2026/<revision>/<slug>.md`, so the content
+is readable by both humans and LLMs/tools.
 
 ## Development
 
@@ -121,7 +133,7 @@ automatically on push to `main` via the Cloudflare Workers & Pages GitHub integr
 The **source code** in this repository (Astro components, scripts, configuration, and styles) is
 licensed under the [MIT License](./LICENSE).
 
-The **written content** under `src/content/research/` and `src/content/2026/spec/` (the
+The **written content** under `src/content/research/` and `src/content/2026/` (the
 research articles, the TSON specification, and any companion specifications) is licensed
 separately under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). This covers the
 specification *text* only — implementations of TSON (parsers, encoders, libraries) may be

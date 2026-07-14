@@ -1,0 +1,125 @@
+---
+import Layout from '../../../layout/Layout.astro';
+import { getCollection } from 'astro:content';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('spec');
+  const revisions = [...new Set(entries.map(e => e.id.split('/')[0]))];
+
+  return revisions.map(revision => ({
+    params: { revision },
+    props: { entries: entries.filter(e => e.id.split('/')[0] === revision) },
+  }));
+}
+
+const { revision } = Astro.params;
+const { entries } = Astro.props;
+
+const tsonParts = entries
+  .filter(e => e.data.part !== undefined)
+  .sort((a, b) => (a.data.part ?? 0) - (b.data.part ?? 0));
+
+const otherDocs = entries.filter(e => e.data.part === undefined);
+---
+
+<Layout title="Specification" description="The TSON specification, in two parts.">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <h1 class="text-3xl font-bold mb-2">Specification</h1>
+    <p class="text-gray-600 mb-4">
+      The TSON specification, split into two parts, plus room for companion specifications
+      developed alongside it.
+    </p>
+    <p class="text-sm text-gray-500 mb-4 max-w-2xl border border-gray-200 rounded-md px-4 py-3">
+      These documents describe the specification text. Implementations of TSON — parsers,
+      encoders, libraries — may be licensed however you choose; the specification's license
+      applies to the written text, not to code that implements it.
+    </p>
+    <p class="text-sm text-gray-500 mb-12 max-w-2xl">
+      Spot an error, or have a comment on the specification? Open an issue on{' '}
+      <a href="https://github.com/litterat/tson-io/issues" rel="noopener" target="_blank" class="underline hover:text-gray-700">
+        GitHub
+      </a>.
+    </p>
+
+    <section class="mb-12">
+      <h2 class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200">TSON Specification</h2>
+      <ul class="space-y-6">
+        {tsonParts.map(entry => (
+          <li>
+            <a href={`/2026/${entry.id}`} class="font-medium text-lg hover:underline">
+              {entry.data.title}
+            </a>
+            <div class="flex items-center gap-3 mt-1 text-sm text-gray-500">
+              <span>Draft {entry.data.draft}</span>
+              <span>·</span>
+              <span>{entry.data.status}</span>
+              <span>·</span>
+              <a href={`/raw/2026/${entry.id}.md`} class="hover:text-gray-900 font-mono">view raw ↗</a>
+            </div>
+            {entry.data.description && (
+              <p class="text-sm text-gray-500 mt-1">{entry.data.description}</p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    {otherDocs.length > 0 && (
+      <section class="mb-12">
+        <h2 class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200">Companion Specifications</h2>
+        <ul class="space-y-6">
+          {otherDocs.map(entry => (
+            <li>
+              <a href={`/2026/${entry.id}`} class="font-medium text-lg hover:underline">
+                {entry.data.title}
+              </a>
+              <div class="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                <span>Draft {entry.data.draft}</span>
+                <span>·</span>
+                <span>{entry.data.status}</span>
+                <span>·</span>
+                <a href={`/raw/2026/${entry.id}.md`} class="hover:text-gray-900 font-mono">view raw ↗</a>
+              </div>
+              {entry.data.description && (
+                <p class="text-sm text-gray-500 mt-1">{entry.data.description}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    <section class="mb-12">
+      <h2 class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200">Schema Source Files</h2>
+      <p class="text-sm text-gray-600 mb-4">
+        The normative TSON schema source files in <code class="font-mono bg-gray-100 px-1 rounded">.tn1</code> format.
+      </p>
+      <ul class="space-y-2 font-mono text-sm">
+        {['meta-kernel.tn1', 'meta.tn1', 'core.tn1'].map(file => (
+          <li>
+            <a href={`/2026/${revision}/m/${file}`} class="text-gray-700 hover:text-gray-900 hover:underline">
+              {file}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200">Resolved Fixtures</h2>
+      <p class="text-sm text-gray-600 mb-4">
+        Non-normative resolver output for the schema source files above — parse the source, run the
+        resolver, canonicalise, and compare against these fixtures.
+      </p>
+      <ul class="space-y-2 font-mono text-sm">
+        {['meta-kernel-resolved.tn1', 'meta-resolved.tn1', 'core-resolved.tn1'].map(file => (
+          <li>
+            <a href={`/2026/${revision}/m/${file}`} class="text-gray-700 hover:text-gray-900 hover:underline">
+              {file}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  </div>
+</Layout>
