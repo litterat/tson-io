@@ -1,0 +1,32 @@
+## About
+
+TSON (Tagged Structure Object Notation) is a schema and data format for data interchange, built
+around strong semantic definitions and closed-world, verifiable schemas. Where JSON-like formats
+optimise for visual readability, minimal syntax, and convention, TSON optimises for the opposite
+priorities — semantic transparency, explicit structure, and verifiable schemas. That makes it a
+natural fit for systems where correctness matters more than terseness, including AI and LLM
+pipelines that must read and write structured data without ambiguity.
+
+TSON is built from an abstract data model and type system — a proto-schema — for serialized data,
+derived from the physical constraints of serialization itself. The name reflects that foundation:
+"Proto-" (first, original, primitive — the model from which concrete schemas are derived) and
+"Schema" (an outline of a plan or theory in the form of a model).
+
+The format and its schema layer are defined in two parts: Part 1 — Data Format (the data model and
+its text encoding: lexer, data grammar, base type resolution, built-in type vocabulary) and Part 2
+— Schemas and the Type System (the schema layer and type system, which is self-hosting — a resolved
+schema is ordinary data of type map<type_name, type_definition> in TSON's own model).
+
+On the surface, TSON can look like just another JSON format. It isn't: it rests on extensive
+first-principles research, published as 18 articles on this site. And unlike the recent
+LLM-oriented formats that prioritise reducing token counts — such as TOON, and the several
+token-focused projects that also use the name "TSON" (see Other TSONs below) — TSON is focused on
+semantic correctness and comprehension. Its schemas are closed-world and SHA-256 verifiable, and
+data is pinned to a specific, hash-identified schema rather than trading correctness away for loose
+validation across many schema versions.
+
+This site hosts the specification, background research, a developer guide, and the SHA-256-pinned
+schemas: meta-kernel (the self-referencing meta-schema), meta (the extended meta-schema with the
+core type constructors), and core (the common types required for data interchange, based on RFC
+standards). The specification is a 2026 working draft, with revisions actively underway; when
+ready, it will be pinned as version 1.

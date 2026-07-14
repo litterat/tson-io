@@ -1,0 +1,10 @@
+## Other TSONs
+
+The TSON acronym has been used by a number of unrelated projects. These other JSON-like formats
+have different priorities. The following is not exhaustive and all of them are unrelated to each
+other and tson.io:
+
+- [tercen/TSON](https://github.com/tercen/TSON) — Typed JSON, a binary-encoded serialization of JSON-like document that support javascript typed data.
+- [tsonformat.com](https://tsonformat.com/) — Token Serialized Object Notation by Muhammad Yasir is columnar notation of JSON designed to reduce token usage by 30-60% while improving readability for both humans and AI.
+- [zenoaihq/tson](https://github.com/zenoaihq/tson) — Token-efficient Structured Object Notation by Zeno AI is a compact, delimiter-based serialization format that also targets LLMs with 11-18% token savings over compact JSON.
+- [thevpc/tson](https://github.com/thevpc/tson/) — Human-Friendly, Strongly-Typed Superset of JSON is a structured text format for data that preservers human readability while providing built-in type safety, rich literals, and DSL-friendly constructs. It is a configuration format and data interchange format with strong typing baked into the syntax.
