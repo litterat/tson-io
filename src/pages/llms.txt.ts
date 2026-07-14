@@ -26,13 +26,6 @@ export const GET: APIRoute = async ({ site }) => {
   const lines = [
     '# tson.io',
     '',
-    '> TSON (Tagged Structure Object Notation) is a Unicode text-based data interchange format',
-    '> that extends JSON with richer structural types, optional type annotations, references,',
-    '> structural composition, and a layered type system. This file indexes the specification',
-    '> and schema source files needed to read, write, and validate TSON. The specification text',
-    '> is CC BY-SA 4.0; implementations (parsers, encoders, libraries) may be licensed however',
-    '> you choose.',
-    '',
     about.trim(),
     '',
     '## Specification',
@@ -53,6 +46,10 @@ export const GET: APIRoute = async ({ site }) => {
     '## Optional',
     '',
     `- [Research & Papers](${base}/research-llms.txt): Background research articles that led to TSON's design — not required to use TSON, useful for understanding why it's designed the way it is.`,
+    '',
+    '## Licensing',
+    '',
+    'The specification text is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/); implementations (parsers, encoders, libraries) may be licensed however their authors choose.',
     '',
   ];
 
