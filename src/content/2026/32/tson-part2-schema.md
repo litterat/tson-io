@@ -1317,9 +1317,9 @@ The following rows extend the adjacency table of [TSON-DATA] §7.5 for the opera
 |-----------|-------|-----|
 | TSON-DATA | TSON Part 1: Data Format | https://tson.io/2026/32/tson-part1-data |
 | TSON-GUIDE | TSON Developer Guide (non-normative) | https://tson.io/2026/32/tson-guide |
-| meta-kernel.tn1 | TSON Meta-Kernel (companion artifact) | https://tson.io/2026/32/m/meta-kernel.tn1?sha256=&lt;pinned at publication&gt; |
-| meta.tn1 | TSON Meta-Schema (companion artifact) | https://tson.io/2026/32/m/meta.tn1?sha256=&lt;pinned at publication&gt; |
-| core.tn1 | TSON Core Type Library (companion artifact) | https://tson.io/2026/32/m/core.tn1?sha256=&lt;pinned at publication&gt; |
+| meta-kernel.tn1 | TSON Meta-Kernel (companion artifact) | https://tson.io/2026/32/m/meta-kernel.tn1 (hash pin to be published) |
+| meta.tn1 | TSON Meta-Schema (companion artifact) | https://tson.io/2026/32/m/meta.tn1 (hash pin to be published) |
+| core.tn1 | TSON Core Type Library (companion artifact) | https://tson.io/2026/32/m/core.tn1 (hash pin to be published) |
 
 ### 13.3 Informative References
 
@@ -1332,12 +1332,3 @@ The following rows extend the adjacency table of [TSON-DATA] §7.5 for the opera
 | W3C XSD Part 2 | XML Schema Part 2: Datatypes Second Edition | https://www.w3.org/TR/xmlschema-2/ |
 | Resolver Output Fixtures | meta-kernel-resolved.tn1, meta-resolved.tn1, core-resolved.tn1 (non-normative) | &lt;published alongside this document&gt; |
 
-
-## Appendix A: Open Issues
-
-This appendix is informative and tracks known unresolved design questions in this revision.
-
-1. **Import cycles vs two-pass ordering.** §2.2.3 permits import cycles, but the resolution order of §3.4.1 (imports fully resolved before the importer's Pass 1) does not terminate on a cycle as written. Either the algorithm needs an explicit cycle-breaking rule (e.g. interleaved Pass-1 name population across the strongly connected component) or the permission should be withdrawn.
-2. **Parameterized constructors in resolver output.** `array`, `set`, and `map` declare type parameters, and §5.10 forbids templates as data type annotations — yet resolver-output bodies are annotated `!array { ... }` etc., and the parameter-typed fields (`element_type: T`, `key_type: K`) have no defined validation contract when read as data. A rule is needed (e.g. parameter-typed constructor fields validate as `type_name` in data mode) or those field types should be redeclared.
-3. **`extern` as a field type.** §7.8 recommends `attachments: [extern]`, but `extern` lives in meta (structure namespace, not reachable as a type-ref from user schemas), carries a REQUIRED `schema` field that a bare use leaves unfilled, and — read under §7.2 — a constructor as a data type validates constructor-shaped records, not foreign values. The same reachability question applies to `value` in the permissive-type list.
-4. **`require_timezone` on `time_type`/`datetime_type`.** The parsing contracts pin RFC 3339 `full-time`/`date-time`, in which the offset is mandatory, leaving the field with no effect. Either the base contracts should admit offset-less forms or the field should be removed.
