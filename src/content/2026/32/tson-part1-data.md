@@ -435,7 +435,7 @@ Numeric values are arbitrary precision; how values map to host-language numeric 
 ### 4.4 String
 
 
-Any quoted token resolves to a string value. Any unquoted token that does not match null, boolean, or the `number` production resolves to a string value — including the single-character tokens `-`, `+`, and `.`, near-miss numeric forms such as `007` and `1.2.3` (leading zeros and second dots fail the number grammar), and the complex form `3+4i` (§4.3). There are no exceptions: every string-resolving token is one whose complete text failed the null, boolean, and number rules.
+Any quoted token resolves to a string value. Any unquoted token that does not match null, boolean, or the `number` production resolves to a string value — including near-miss numeric forms such as `007` and `1.2.3` (leading zeros and second dots fail the number grammar) and the complex form `3+4i` (§4.3). There are no exceptions: every string-resolving token is one whose complete text failed the null, boolean, and number rules. The bare tokens `-`, `+`, and `.` do not exist (§7.2.4); write the single-character strings quoted.
 
 
 ### 4.5 Resolution Order
@@ -596,7 +596,7 @@ Continue = XID_Continue ∪ { - + . }
 
 The three extension characters are all `Pattern_Syntax` and therefore immutable, so the profile itself is frozen. The property-based components grow with the Unicode version: new scripts enter `XID_Start`/`XID_Continue` and new digits enter `Nd` as they are encoded. Growth is monotone — characters that were lexer errors become token characters, and valid documents remain valid under later versions. Underscore (U+005F) is in `XID_Continue` but not `XID_Start`: it may appear within or at the end of a token (`my_type`) but cannot start one. Token-initial underscore is reserved to the format and occupied by the absent sentinel `_` (§2.9); names with a leading underscore (`_id`) MUST be quoted.
 
-**Rationale.** The profile is the UAX #31 identifier profile plus exactly what base type resolution consumes: `Nd` for numbers, `-`/`+` for signs and exponent signs, `.` for the decimal point and `.inf`/`.infinity`/`.nan` — every extension character is required by a production of the number grammar (§7.6). Content kinds the profile cannot cover totally (paths, URIs, monetary amounts, rationals, networks, percentages) are excluded entirely, so their quoting rule is *always*, never a per-character scan (full derivation in [TSON-GUIDE]).
+**Rationale.** The profile is the UAX #31 identifier profile plus exactly what base type resolution consumes: `Nd` for numbers, `-`/`+` for signs and exponent signs, `.` for the decimal point and `.inf`/`.infinity`/`.nan` — every extension character is required by a production of the number grammar (§7.6). The extension characters remain profile members, but their bare single-character forms are claimed by the grammar or excluded: `-` alone is the subtraction operator ([TSON-SCHEMA] §5.9), `..` is the range token (§7.2.4), and bare `+` and `.` have no role — the single-character strings are written quoted (`"-"`, `"+"`, `"."`). Content kinds the profile cannot cover totally (paths, URIs, monetary amounts, rationals, networks, percentages, ranges) are excluded entirely, so their quoting rule is *always*, never a per-character scan (full derivation in [TSON-GUIDE]).
 
 **Quoting by kind.** The profile makes the quoting decision a property of what a value *is*, not of the characters it happens to contain. A generator's decision procedure is two clauses: quote if any character falls outside the profile, and quote if the bare token would resolve to something other than the intended string (`"true"`, `"42"`, `"0x71C7…"`, §4).
 
@@ -618,19 +618,19 @@ The lexer produces a stream of tokens from the input, classifying each token by 
 
 2. **Quoted token** — `"` begins a quoted token. If the next two characters are also `"`, the lexer enters multi-line mode; otherwise single-line mode. This is the first of the lexer's three lookahead rules.
 
-3. **Unquoted token** — A character in the unquoted start set of the profile (§7.1) begins an unquoted token; the lexer consumes characters while they match the continuation set.
+3. **Unquoted token** — A character in the unquoted start set of the profile (§7.1) begins an unquoted token; the lexer consumes characters while they match the continuation set, with one termination rule: a `.` whose immediately following character is also `.` is not consumed — the token ends before the first dot, which then begins a range token (§7.2.4). Consecutive dots never appear inside an unquoted token.
 
 4. **Structural delimiter** — One of `{` `}` `[` `]` `:` `,` is emitted as a single-character structural delimiter token. The colon is the field separator in records and in annotation and directive arguments; the comma is the optional value separator. Parentheses `(` `)` are **not** structural delimiters — they are special tokens (§7.2.5).
 
 5. **Absent sentinel** — The underscore `_` is emitted as a single-character absent token.
 
-6. **Compound special token** — `=` and `!` trigger lookahead **before** unquoted token mode or special token mode is attempted (§7.2.4).
+6. **Compound special token** — `=`, `!`, `.`, `-`, and `+` trigger lookahead **before** unquoted token mode or special token mode is attempted (§7.2.4).
 
-7. **Special token** — One of the twelve characters `!` `@` `&` `<` `>` `?` `~` `=` `|` `;` `(` `)` is emitted as a single-character special token. This set is closed (§7.2.5).
+7. **Special token** — One of the fourteen characters `!` `@` `&` `<` `>` `?` `~` `=` `|` `;` `(` `)` `^` `-` is emitted as a single-character special token. This set is closed (§7.2.5).
 
 8. **Unrecognised character** — Any other character is a lexer error (§7.2.6).
 
-Every input character falls into exactly one category. The lookahead rules (quotation mark, equals sign, exclamation mark) are the only cases where the lexer examines more than one character to determine a token.
+Every input character falls into exactly one category. The lookahead rules (quotation mark, equals sign, exclamation mark, full stop, hyphen-minus, plus sign) are the only cases where the lexer examines more than one character to determine a token.
 
 **Token positions.** Every token carries its source position. The parser uses position adjacency to enforce no-whitespace rules: the prefix operators `!`, `@`, and `!!` MUST be adjacent to their operand. See §7.5.
 
@@ -692,16 +692,23 @@ Multi-line tokens follow these whitespace rules:
 
 **Directive.** On `!` at a token boundary, the lexer checks for a second `!`; if present, both are consumed and emitted as the single directive token `!!`. Otherwise `!` is emitted as a special token (the type prefix).
 
+**Range.** On `.` at a token boundary, the lexer checks the next character: another `.` — both are consumed and emitted as the single range token `..`; a character in the continuation set — an unquoted token begins (`.5`, `.inf`, `.nan`); anything else — a lexer error: a bare `.` has no grammar role.
+
+**Sign characters.** On `-` or `+` at a token boundary, the lexer checks the next character: a character in the continuation set — an unquoted token begins (`-42`, `+0.5`; a mid-token `-` as in `a-b` is consumed by the continuation scan, so this rule fires only at boundaries); anything else — `-` is emitted as a single-character special token (the subtraction operator, [TSON-SCHEMA] §5.9) and `+` is a lexer error: a bare `+` has no grammar role.
+
 ```
 map-arrow-token = "=" ">"
 directive-token = "!" "!"
+range-token     = "." "."
 ```
+
+The termination rule of §7.2 pairs with the range rule: `1..100` lexes as `1`, `..`, `100`, and `.5..2` as `.5`, `..`, `2`. No production of the number grammar (§7.6) contains consecutive dots, so no numeric, temporal, or version-shaped token changes its lexing. The range token has no role in data values; content containing `..` is quoted (§7.1).
 
 
 #### 7.2.5 Special Tokens
 
 
-The special-token set is **closed**: a character is emitted as a single-character special token if and only if it has a grammar role somewhere in the TSON series. Twelve characters qualify, all of them `Pattern_Syntax`; since `Pattern_Syntax` is immutable, the set of characters that can serve as TSON syntax operators is stable across all Unicode versions.
+The special-token set is **closed**: a character is emitted as a single-character special token if and only if it has a grammar role somewhere in the TSON series. Fourteen characters qualify, all of them `Pattern_Syntax`; since `Pattern_Syntax` is immutable, the set of characters that can serve as TSON syntax operators is stable across all Unicode versions.
 
 Two special characters have grammar roles in data values:
 
@@ -710,13 +717,13 @@ Two special characters have grammar roles in data values:
 @     — annotation prefix
 ```
 
-The remaining ten — `&` `<` `>` `?` `~` `=` `|` `;` `(` `)` — are reserved by the schema grammar of [TSON-SCHEMA] and have no role in data values; in a data value, each is a parse error.
+The remaining twelve — `&` `<` `>` `?` `~` `=` `|` `;` `(` `)` `^` `-` — are reserved by the schema grammar of [TSON-SCHEMA] and have no role in data values; in a data value, each is a parse error. (`-` reaches special-token mode only through the boundary rule of §7.2.4: followed by a continuation-set character it begins an ordinary unquoted token, so negative numbers and hyphenated names are unaffected.)
 
 
 #### 7.2.6 Unrecognised Characters
 
 
-Any character that falls into no token-producing category is an **unrecognised character**, and its appearance outside a quoted token is a lexer error. This includes control characters, unassigned code points, currency symbols (`$` `€` `¥` …), and every `Pattern_Syntax` character outside the special-token set — among them `/` `#` `%` `*` `^` `'` `` ` `` `\` — which are deliberately unused anywhere in the series (within quoted tokens, `\` is the escape character). Content requiring any of these — `$19.99`, `10%`, `2/3`, `/usr/bin`, `#tag` — is written as a quoted token.
+Any character that falls into no token-producing category is an **unrecognised character**, and its appearance outside a quoted token is a lexer error. This includes control characters, unassigned code points, currency symbols (`$` `€` `¥` …), and every `Pattern_Syntax` character outside the special-token set — among them `/` `#` `%` `*` `'` `` ` `` `\` — which are deliberately unused anywhere in the series (within quoted tokens, `\` is the escape character). A bare `+` or bare `.` that the §7.2.4 dispatch cannot classify is likewise a lexer error. Content requiring any of these — `$19.99`, `10%`, `2/3`, `/usr/bin`, `#tag`, `"+"`, `"."` — is written as a quoted token.
 
 
 ### 7.3 Lexical Grammar
@@ -728,7 +735,7 @@ Every token is a single character except quoted tokens, unquoted tokens, and the
 token-stream  = *( ws / quoted-token / unquoted-token
                  / structural-delimiter / absent-token
                  / map-arrow-token / directive-token
-                 / special-token )
+                 / range-token / special-token )
 
 ; ── Quoted tokens ──────────────────────────────────────────
 
@@ -801,16 +808,22 @@ absent-token = "_"
 
 map-arrow-token    = "=" ">"
 directive-token    = "!" "!"
+range-token        = "." "."
+                   ; unquoted tokens terminate before
+                   ; consecutive dots (§7.2, rule 3)
 
 ; ── Special tokens ────────────────────────────────────────
 
 special-token = special-char
 special-char  = "!" / "@" / "&" / "<" / ">" / "?"
               / "~" / "=" / "|" / ";" / "(" / ")"
+              / "^" / "-"
                 ; the closed special-token set (§7.2.5).
                 ; In data values: ! (type prefix), @ (annotation).
-                ; The other ten are reserved by [TSON-SCHEMA] and
-                ; are parse errors in data values.
+                ; The other twelve are reserved by [TSON-SCHEMA]
+                ; and are parse errors in data values. "-" and
+                ; "." reach the lexer's special and compound
+                ; modes only via the boundary dispatch of §7.2.4.
                 ; Any character matching no token rule is an
                 ; unrecognised character — a lexer error (§7.2.6).
 

@@ -12,10 +12,10 @@
       date    => !date_type {}
       ...
 
-  Narrowings overlay literal values via the instance form:
+  Refinements overlay literal values via the ^ operator:
 
-      uint8            => !integer { size: { bits: 8  signed: false } }
-      non_empty_text   => !text { min_length: 1 }
+      uint8            => !integer ^ { size: { bits: 8  signed: false } }
+      non_empty_text   => !text ^ { min_length: 1 }
 
   Annotation types (`@ordered`, `@bounded`, `@exact`, `@numeric`,
   `@deprecated`, `@since`, `@todo`, `@lang`) live in meta.tn1 — they
@@ -91,67 +91,67 @@
 
   @doc:"Signed 8-bit integer (-128 to 127)."
   @ordered:TOTAL @bounded:true @exact:true @numeric
-  int8 => !integer { size: { bits: 8  signed: true } }
+  int8 => !integer ^ { size: { bits: 8  signed: true } }
 
   @doc:"Signed 16-bit integer."
   @ordered:TOTAL @bounded:true @exact:true @numeric
-  int16 => !integer { size: { bits: 16  signed: true } }
+  int16 => !integer ^ { size: { bits: 16  signed: true } }
 
   @doc:"Signed 32-bit integer."
   @ordered:TOTAL @bounded:true @exact:true @numeric
-  int32 => !integer { size: { bits: 32  signed: true } }
+  int32 => !integer ^ { size: { bits: 32  signed: true } }
 
   @doc:"Signed 64-bit integer."
   @ordered:TOTAL @bounded:true @exact:true @numeric
-  int64 => !integer { size: { bits: 64  signed: true } }
+  int64 => !integer ^ { size: { bits: 64  signed: true } }
 
   @doc:"Signed 128-bit integer."
   @ordered:TOTAL @bounded:true @exact:true @numeric
-  int128 => !integer { size: { bits: 128  signed: true } }
+  int128 => !integer ^ { size: { bits: 128  signed: true } }
 
   @doc:"Signed 256-bit integer."
   @ordered:TOTAL @bounded:true @exact:true @numeric
-  int256 => !integer { size: { bits: 256  signed: true } }
+  int256 => !integer ^ { size: { bits: 256  signed: true } }
 
   @doc:"Unsigned 8-bit integer (0 to 255)."
   @ordered:TOTAL @bounded:true @exact:true @numeric
-  uint8 => !integer { size: { bits: 8  signed: false } }
+  uint8 => !integer ^ { size: { bits: 8  signed: false } }
 
   @doc:"Unsigned 16-bit integer."
   @ordered:TOTAL @bounded:true @exact:true @numeric
-  uint16 => !integer { size: { bits: 16  signed: false } }
+  uint16 => !integer ^ { size: { bits: 16  signed: false } }
 
   @doc:"Unsigned 32-bit integer."
   @ordered:TOTAL @bounded:true @exact:true @numeric
-  uint32 => !integer { size: { bits: 32  signed: false } }
+  uint32 => !integer ^ { size: { bits: 32  signed: false } }
 
   @doc:"Unsigned 64-bit integer."
   @ordered:TOTAL @bounded:true @exact:true @numeric
-  uint64 => !integer { size: { bits: 64  signed: false } }
+  uint64 => !integer ^ { size: { bits: 64  signed: false } }
 
   @doc:"Unsigned 128-bit integer."
   @ordered:TOTAL @bounded:true @exact:true @numeric
-  uint128 => !integer { size: { bits: 128  signed: false } }
+  uint128 => !integer ^ { size: { bits: 128  signed: false } }
 
   @doc:"Unsigned 256-bit integer."
   @ordered:TOTAL @bounded:true @exact:true @numeric
-  uint256 => !integer { size: { bits: 256  signed: false } }
+  uint256 => !integer ^ { size: { bits: 256  signed: false } }
 
   @doc:"Integer greater than zero."
   @ordered:TOTAL @bounded:false @exact:true @numeric
-  positive_integer => !integer { min: 1 }
+  positive_integer => !integer ^ { min: 1 }
 
   @doc:"Integer zero or greater."
   @ordered:TOTAL @bounded:false @exact:true @numeric
-  non_negative_integer => !integer { min: 0 }
+  non_negative_integer => !integer ^ { min: 0 }
 
   @doc:"Integer less than zero."
   @ordered:TOTAL @bounded:false @exact:true @numeric
-  negative_integer => !integer { max: -1 }
+  negative_integer => !integer ^ { max: -1 }
 
   @doc:"Integer zero or less."
   @ordered:TOTAL @bounded:false @exact:true @numeric
-  non_positive_integer => !integer { max: 0 }
+  non_positive_integer => !integer ^ { max: 0 }
 
   @doc:"IEEE 754 binary32. Value set is the binary32 grid plus signed zeros, subnormals, both infinities, and quiet NaN."
   @ordered:PARTIAL @bounded:false @exact:false @numeric
@@ -166,7 +166,7 @@
   text => !text_type {}
 
   @doc:"Text with at least one character."
-  non_empty_text => !text { min_length: 1 }
+  non_empty_text => !text ^ { min_length: 1 }
 
   @doc:"Interoperable regular expression pattern per RFC 9485 (I-Regexp)."
   @ordered:NONE @bounded:false

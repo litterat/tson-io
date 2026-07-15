@@ -248,7 +248,7 @@
     max_items:       integer?
   }
 
-  set => <T> ~array<T> {
+  set => <T> ~array<T> ^ {
     state:        = REQUIRED
     unordered:    = true
     unique_items: = true
