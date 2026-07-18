@@ -20,5 +20,8 @@ pnpm-debug.log*
 # macOS-specific files
 .DS_Store
 
+# JetBrains IDE files
+.idea/
+
 # original unsplit source articles (superseded by src/content/research/*/*.md)
 src/content/research/*.md
