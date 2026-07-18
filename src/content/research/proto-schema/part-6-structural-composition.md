@@ -57,32 +57,36 @@ Technically there’s a fourth, which is to add one or more beads to the bracele
 
 The simplest form of composition is including all elements from one definition in another. In [Part 8](/research/deep-dive-into-json/part-8-references-and-structural-composition) of the JSON series, this was demonstrated using the spread operator. The spread operator is a good choice as it is common in numerous programming languages, including JavaScript /TypeScript where it works with arrays, objects, strings, maps, and sets. Here the spread operator will be used in the slowly evolving schema syntax. Consider two Record definitions:
 
-address: { street: \!string, city: \!string, postcode: \!string }  
-contact: { name: \!string, email: \!string }
+```
+address: { street: !string, city: !string, postcode: !string }
+contact: { name: !string, email: !string }
+```
 
 A new definition that includes both could be expressed as:
 
-customerRecord: { ...address, ...contact }
+`customerRecord: { ...address, ...contact }`
 
 The result is a new Record with five fields:
 
-customerRecord: { street: \!string, city: \!string, postcode: \!string, name: \!string, email: \!string }
+`customerRecord: { street: !string, city: !string, postcode: !string, name: !string, email: !string }`
 
 The spread operator (...) takes all the fields from the referenced definition and inserts them into the new definition. The original address and contact definitions are unchanged. The customerRecord is a new, independent definition that happens to have been constructed from existing pieces.
 
 This is different from referencing the type, consider the result without the spread operator:
 
-customerRecord: { address: \!address, contact: \!contact }
+`customerRecord: { address: !address, contact: !contact }`
 
 The address and contact are now fields of the customer record instead of being copied directly into the new definition. Both are useful modeling techniques. This works naturally with Records because each field has a name that carries over. For Tuples, inclusion concatenates positions:
 
-header: ( \!uint16, \!uint16 )  
-payload: ( \!byte, \!byte, \!byte, \!byte )  
+```
+header: ( !uint16, !uint16 )
+payload: ( !byte, !byte, !byte, !byte )
 packet: ( ...header, ...payload )
+```
 
 Resulting in:
 
-packet: ( \!uint16, \!uint16, \!byte, \!byte, \!byte, \!byte )
+`packet: ( !uint16, !uint16, !byte, !byte, !byte, !byte )`
 
 For Arrays, inclusion also concatenates, but this is less useful in schema definitions since Arrays describe a repeating pattern rather than specific positions. Where inclusion works best is in Record and Tuple definitions where the structure is fixed and each position or field carries specific meaning.
 
@@ -94,15 +98,15 @@ At this point in the series, we’re most interested in the capabilities, rather
 
 Override builds on inclusion by allowing specific elements to be replaced. This is where composition becomes particularly powerful for schema design. Consider a base configuration:
 
-baseConfig: { host: \!string, port: \!integer, debug: \!boolean }
+`baseConfig: { host: !string, port: !integer, debug: !boolean }`
 
 A development configuration that changes one value’s type constraint while keeping the rest:
 
-devConfig: { ...baseConfig, debug: true }
+`devConfig: { ...baseConfig, debug: true }`
 
 The result:
 
-devConfig: { host: \!string, port: \!integer, debug: true }
+`devConfig: { host: !string, port: !integer, debug: true }`
 
 Here “debug: true” replaces the original “debug: \!boolean” field. In the spectrum of completeness from [Part 5](/research/proto-schema/part-5-templates), the baseConfig had a blank for debug (any boolean), while devConfig filled that blank with a specific value. Override moves a definition further along the spectrum of completeness.
 
@@ -110,24 +114,30 @@ It’s worth being a little clearer on the concept of “override”, in this ca
 
 Override resolves conflicts by position. For Records, a field name determines position. If the same field name appears in the spread source and in the new definition, the new definition wins. This is a last-write-wins rule applied at the field level:
 
-base: { timeout: \!integer, retries: \!integer, debug: \!boolean }  
-production: { ...base, timeout: 60, debug: false }  
+```
+base: { timeout: !integer, retries: !integer, debug: !boolean }
+production: { ...base, timeout: 60, debug: false }
 development: { ...base, debug: true }
+```
 
 Resulting in:
 
-production: { timeout: 60, retries: \!integer, debug: false }  
-development: { timeout: \!integer, retries: \!integer, debug: true }
+```
+production: { timeout: 60, retries: !integer, debug: false }
+development: { timeout: !integer, retries: !integer, debug: true }
+```
 
 For Tuples, override must work by index position since there are no names. This creates an awkward syntax question. In practice, if you need to override individual positions in a Tuple, it may be a sign that the definition should be a Record instead. The proto-schema should support Tuple override for completeness, but Record override is the common and natural case. When multiple spreads are combined, order matters:
 
-defaults: { timeout: 30, retries: 3, debug: false }  
-overrides: { timeout: 60, ssl: true }  
+```
+defaults: { timeout: 30, retries: 3, debug: false }
+overrides: { timeout: 60, ssl: true }
 final: { ...defaults, ...overrides }
+```
 
 Resulting in:
 
-final: { timeout: 60, retries: 3, debug: false, ssl: true }
+`final: { timeout: 60, retries: 3, debug: false, ssl: true }`
 
 In this situation we would need to come up with a rule, something like the same last-write-wins rule applied across multiple sources, evaluated left to right. The second spread’s timeout of 60 replaces the first spread’s timeout of 30\. Fields not present in the second spread (retries, debug) are preserved from the first. Fields only in the second spread (ssl) are added. In most cases this seems like a natural way of working, but there’s a bigger question of what is the relationship between the resulting type and the included type.
 
@@ -135,12 +145,14 @@ In this situation we would need to come up with a rule, something like the same 
 
 The final operation is removal. In [Part 8](/research/deep-dive-into-json/part-8-references-and-structural-composition) of the JSON series, the underscore syntax was used to indicate removal of a field:
 
-fullRecord: { id: \!integer, name: \!string, email: \!string, password: \!string, internalNotes: \!string }  
-publicRecord: { ...fullRecord, password: \_, internalNotes: \_ }
+```
+fullRecord: { id: !integer, name: !string, email: !string, password: !string, internalNotes: !string }
+publicRecord: { ...fullRecord, password: _, internalNotes: _ }
+```
 
 The resulting publicRecord would have the following fields:
 
-publicRecord: { id: \!integer, name: \!string, email: \!string }
+`publicRecord: { id: !integer, name: !string, email: !string }`
 
 The concepts of Inclusion, Override and Removal allow reuse with modification. However, there’s some interesting properties that the proto-schema can take advantage of if it limits what modifications are allowed.
 
@@ -148,13 +160,15 @@ The concepts of Inclusion, Override and Removal allow reuse with modification. H
 
 So far, composition has been presented as a construction convenience: a way to avoid retyping fields. But it has a deeper consequence that affects how types relate to each other. Consider the earlier example:
 
-address: { street: \!string, city: \!string, postcode: \!string }  
-contact: { name: \!string, email: \!string }  
+```
+address: { street: !string, city: !string, postcode: !string }
+contact: { name: !string, email: !string }
 customerRecord: { ...address, ...contact }
+```
 
 Now imagine an Array of addresses:
 
-addressList: \[ \!address \]
+`addressList: [ !address ]`
 
 Is a customerRecord a valid entry in this array? The customerRecord has every field that address has, with the same types, plus additional fields from contact. It satisfies every constraint that address imposes. Any code that expects an address and accesses street, city, or postcode will find those fields present and correctly typed in a customerRecord.
 
@@ -166,44 +180,52 @@ The is-a and has-a relationship between types and their sub-types is very useful
 
 The problem with Removal and some Overrides is that they break the is-a relationship.
 
-fullRecord: { id: \!integer, name: \!string, email: \!string, password: \!string, internalNotes: \!string }  
-publicRecord: { ...fullRecord, password: \_, internalNotes: \_ }
+```
+fullRecord: { id: !integer, name: !string, email: !string, password: !string, internalNotes: !string }
+publicRecord: { ...fullRecord, password: _, internalNotes: _ }
+```
 
 The publicRecord that now only contains the id, name and email have been removed with the \_ syntax and is no longer a valid fullRecord type. If I was to create:
 
-records: \[ \!fullRecord \]
+`records: [ !fullRecord ]`
 
 Unlike the addressList above, which can contain customerRecord values, these records can’t contain the publicRecord type. The other example of Override is more nuanced. Take another look at the following:
 
-defaults: { timeout: 30, retries: 3, debug: false }  
-overrides: { timeout: 60, ssl: true }  
+```
+defaults: { timeout: 30, retries: 3, debug: false }
+overrides: { timeout: 60, ssl: true }
 final: { ...defaults, ...overrides }
+```
 
 It seems to make complete sense that this would be a useful capability, the final result first initiates timeout to the value 30, but then overrides sets the final timeout value to 60\. While it might be a little contrived, having an array of defaults:
 
-defaultsList: \[ \!defaults \]
+`defaultsList: [ !defaults ]`
 
 My expectation would be that all entries in the array would have a timeout value of 30\. However, if a final value was allowed under the is-a relationship, an instance of “final” would break that assertion.
 
 While override and removal might have some utility, at least initially, it is better to be able to rely on the is-a relationship and not allow Removal at all. With Override, the type value needs to narrow. Consider the following:
 
-config: { timeout: \!integer, retries: \!integer, debug: \!boolean }  
-production: { …config, timeout: \!integer( min:0, max:200 ), debug: false }  
-prodClusterA: { …production, retries: 3 }  
-prodA1: { …production, timeout: 100 }
+```
+config: { timeout: !integer, retries: !integer, debug: !boolean }
+production: { ...config, timeout: !integer( min:0, max:200 ), debug: false }
+prodClusterA: { ...production, retries: 3 }
+prodA1: { ...production, timeout: 100 }
+```
 
 In this case prodA1 continues to hold the is-a relationship with config. Each successive step narrows but continues to hold true to fit the bounds of the previous definition.
 
 There’s an important exclusion to this narrowing rule. Default values can be used and modified at any point in the chain as they are not realised until the resulting record is created. What was previously considered invalid under the narrowing rule can become valid using defaults:
 
-config: { timeout: \!integer, retries: \!integer, debug: \!boolean, ssl: \!boolean }  
-defaults: { …config, timeout: default 30, retries: default 3, debug: default false }  
-overrides: { …config, timeout: 60, ssl: true }  
+```
+config: { timeout: !integer, retries: !integer, debug: !boolean, ssl: !boolean }
+defaults: { ...config, timeout: default 30, retries: default 3, debug: default false }
+overrides: { ...config, timeout: 60, ssl: true }
 final: { ...defaults, ...overrides }
+```
 
 The result is a final with the following values:
 
-final: { timeout: 60, retries: 3, debug: false, ssl: true }
+`final: { timeout: 60, retries: 3, debug: false, ssl: true }`
 
 This shows that it is important to be able to distinguish between fixing a value in the schema versus providing default values for fields. While fixing a value narrows it, a default value does not change the shape of the type. Also notice that even though the definition of *defaults* and *overrides* both include *config*, they both come together in the *final* definition. This creates a diamond structure in the types where both type chains hold true; *final* is-a *overrides* and is-a *config*, but it is also true that *final* is-a *defaults* and is-a *config*.
 
@@ -213,21 +235,25 @@ Open ended Removal and Override could be both convenient in various situations, 
 
 Composition and Templates are complementary but distinct. Templates create parameterised definitions with blanks to be filled. Composition combines concrete definitions into new definitions. However, they interact in useful ways. Consider a Template for an API response:
 
-apiResponse: \<T\> { status: \!integer, data: T, timestamp: \!datetime }
+`apiResponse: <T> { status: !integer, data: T, timestamp: !datetime }`
 
 And a set of domain types:
 
-user: { id: \!integer, name: \!string, email: \!string }  
-error: { code: \!string, message: \!string }
+```
+user: { id: !integer, name: !string, email: !string }
+error: { code: !string, message: !string }
+```
 
 Templates produce concrete types:
 
-userResponse: \!apiResponse { data: \!user }  
-errorResponse: \!apiResponse { data: \!error }
+```
+userResponse: !apiResponse { data: !user }
+errorResponse: !apiResponse { data: !error }
+```
 
 Composition can then extend those concrete types:
 
-detailedUserResponse: { ...userResponse, metadata: \!requestMetadata }
+`detailedUserResponse: { ...userResponse, metadata: !requestMetadata }`
 
 Here composition and Templates chain together. The userResponse was produced by filling a Template blank. The detailedUserResponse then composes the result, adding a metadata field. The type relationships are clean: detailedUserResponse is-a userResponse, and userResponse is-a apiResponse (with T filled). Each step is resolved in order: Templates first (filling blanks), then composition (combining definitions). The final result is always a concrete definition with no blanks and no spread operators remaining.
 
@@ -235,7 +261,7 @@ This ordering is important. Templates are resolved first because they produce th
 
 The type compatibility chain also follows the resolution order. If we define:
 
-responses: \[ \!apiResponse \]
+`responses: [ !apiResponse ]`
 
 Then both userResponse and errorResponse are valid entries because they were produced by filling the Template’s blank, making them members of the apiResponse family (as discussed in [Part 5](/research/proto-schema/part-5-templates)). And detailedUserResponse is also valid because it composed userResponse with additional fields, making it a subtype. The is-a relationships compose transitively: detailedUserResponse is-a userResponse is-a apiResponse.
 
@@ -245,9 +271,11 @@ The examples of Templates and Composition show how important it is that the prot
 
 The examples above have been using the spread operator and template syntax to show how definitions are constructed. But there is a distinction between what the author writes and what the proto-schema stores; the proto-schema is the internal model. The spread operators, template parameters, and composition directives are instructions for how to build definitions. Once resolved, what remains need to be the definitions and the relationships between them. Consider the chain from earlier:
 
-config: { timeout: \!integer, retries: \!integer, debug: \!boolean }  
-production: { …config, timeout: \!integer( min:0, max:200 ), debug: false }  
-prodClusterA: { …production, retries: 3 }
+```
+config: { timeout: !integer, retries: !integer, debug: !boolean }
+production: { ...config, timeout: !integer( min:0, max:200 ), debug: false }
+prodClusterA: { ...production, retries: 3 }
+```
 
 A schema system needs to be able to read the syntax, resolve the spread operators and validate the schema. The proto-schema model then contains three definitions. Each is a Record with its fields fully expanded without spread operators or template syntax. The proto-schema needs to retain the is-a relationships; a prodClusterA is substitutable for production, which is substitutable for config. Capturing this information ensures that we’re able to enforce when and how types are used and where they can be substituted.
 
@@ -296,4 +324,3 @@ The proto-schema needs to be generated by a preprocessor that can resolve and cr
 * **Structural Composition** \- combining existing definitions via inclusion
 
 Part 7 will explore Choice. In theoretical terms this is the Sum type and answers the question which of these types can follow.
-

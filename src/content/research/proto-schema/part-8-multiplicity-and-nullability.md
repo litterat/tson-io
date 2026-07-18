@@ -181,27 +181,19 @@ The desired behaviour is a mix of optional and required, hence the internal name
 
 Finally, let’s take a look at Apache Avro, Avro uses JSON as the format to define its schemas.
 
+```json
 {
-
-   “type”: “record”,
-
-   “name”: “SensorReading”,
-
-   “fields”: \[
-
-      { “name”: “id”, “type”: “string” },
-
-      { “name”: “label”, “type”: \[”null”, “string”\], 
-
-        “default”: null },
-
-      { “name”: “readings”, 
-
-        “type”: { “type”: “array”, “items”: “float” } }
-
-   \]
-
+  "type": "record",
+  "name": "SensorReading",
+  "fields": [
+    { "name": "id", "type": "string" },
+    { "name": "label", "type": ["null", "string"],
+      "default": null },
+    { "name": "readings",
+      "type": { "type": "array", "items": "float" } }
+  ]
 }
+```
 
 An important difference with Avro over other systems is that instead of marking a field optional it has the type of a Choice/Union between “null” and “string”, which promotes “null” to a type. In Avro, the “default” value must match the first type in the union. Since null comes first, the default must be null, not a string value.
 
@@ -291,35 +283,28 @@ The question of presence naturally leads to null. What does it mean for a value 
 
 JSON Schema illustrates this gap:
 
+```json
 {
-
-	“type”: “object”,
-
-	“properties”: {
-
-		“name”: { “type”: \[”string”, “null”\] }
-
-	},
-
-	“required”: \[”name”\]
-
+  "type": "object",
+  "properties": {
+    "name": { "type": ["string", "null"] }
+  },
+  "required": ["name"]
 }
+```
 
 This schema says two things. The **required** array says the key “name” must exist in the object, while the type array says the value can be a “**string or null**”. This breaks the traditional concept of required and optional into two different questions. Does the field need to be present, and can the value be empty. Allowing a field to be present and be null is an important capability that can be used to express that a database field should be set to NULL, or in patch semantics that a field should have any previous value cleared.
 
 XML Schema (XSD) further demonstrates the interaction between optional fields and the need for a “null” sentinel. Where JSON Schema uses type **\[ “string”, “null”\]** to express that a value can be null, XML Schema uses **nillable=”true”**.
 
-\<xs:complexType name=”MyObject”\>
-
-	\<xs:sequence\>
-
-		\<xs:element name=”name” type=”xs:string”
-
-		    nillable=”true”/\>
-
-	\</xs:sequence\>
-
-\</xs:complexType\>
+```xml
+<xs:complexType name="MyObject">
+  <xs:sequence>
+    <xs:element name="name" type="xs:string"
+        nillable="true"/>
+  </xs:sequence>
+</xs:complexType>
+```
 
 This is the only way of marking that the field needs to be present but allows a null value. XML Schema doesn’t include a “null” type, so an additional method was required. Once again, it separates the question of does the field exist from can the value be null. This is a precise treatment of absence, but the interaction between nillable, minOccurs, and default creates a confusing matrix of behaviours.
 

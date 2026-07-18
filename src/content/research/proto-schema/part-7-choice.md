@@ -131,117 +131,95 @@ The variant mechanisms can therefore be narrowed down to having two properties t
 
 The classic [tagged union](https://en.wikipedia.org/wiki/Tagged_union) or sum-type is the obvious first variant mechanism to explore. It’s incredibly well understood, found in every schema system in one way or another, and has some very useful properties. At the same time, there is a lot of variation in how it has been handled in existing schema systems. For the proto-schema, it won’t be as simple as just choosing a compatible mechanism so there’s plenty to explore. In schemas, a closed Choice declares a fixed, exhaustive set of variants, for example in Protobufs:
 
+```protobuf
 message Event {
-
-oneof payload {
-
-string text \= 1;
-
-int32 count \= 2;
-
-UserInfo user \= 3;
-
-} }
+  oneof payload {
+    string text = 1;
+    int32 count = 2;
+    UserInfo user = 3;
+  }
+}
+```
 
 In the case of Protobufs, the choice can only be defined from within another message (Record) structure. An alternative is to allow the type itself to be defined at the top level. For example in ASN.1 the structure looks very similar, but is defined at the top level:
 
+```
 Message ::= CHOICE {
-
-request \[0\] Request,
-
-response \[1\] Response,
-
-error \[2\] ErrorInfo,
-
-...
-
+  request  [0] Request,
+  response [1] Response,
+  error    [2] ErrorInfo,
+  ...
 }
+```
 
 For completeness, it’s worth also showing the equivalent in XML Schema. XML Schema allows choice to be used within complexTypes, sequences, groups and other choices. But XML Schema choices don’t become a first class type like in ASN.1. Here’s the first example in XML Schema:
 
-\<xs:complexType name=”Event”\>
-
-\<xs:choice\>
-
-\<xs:element name=”text” type=”xs:string”/\>
-
-\<xs:element name=”count” type=”xs:int”/\>
-
-\<xs:element name=”user” type=”UserInfo”/\>
-
-\</xs:choice\>
-
-\</xs:complexType\>
+```xml
+<xs:complexType name="Event">
+  <xs:choice>
+    <xs:element name="text" type="xs:string"/>
+    <xs:element name="count" type="xs:int"/>
+    <xs:element name="user" type="UserInfo"/>
+  </xs:choice>
+</xs:complexType>
+```
 
 These tagged choices are a natural fit for data schemas when defining the shape of an API response, a configuration value, or a message format; the schema author knows exactly what forms the data can take. It’s also useful to point out that these are exclusive or (XOR) options, where only one can be selected in the data. In the first two examples the variants are listed with three values, the type, a label and a tag (ordinal). Tags and labels often get used interchangeably, but as we’ll discover later, they do hold different purposes.
 
 If you ignore the ordinal for a moment, you’re left with a label and a type in all the examples. This is exactly the same structure as records that each field has a label and type. However, instead of filling the values for each of the labels as is done with records, the labelled choice says that only one of the fields can be selected and a value provided. This idea of a label for choice means that it is possible to represent the same type with different labels. Here’s another ASN.1 example:
 
+```
 Timestamps ::= CHOICE {
-
-created \[0\] GeneralizedTime,
-
-modified \[1\] GeneralizedTime,
-
-accessed \[2\] GeneralizedTime
-
+  created  [0] GeneralizedTime,
+  modified [1] GeneralizedTime,
+  accessed [2] GeneralizedTime
 }
+```
 
 In this example the timestamp value could be exactly the same (e.g. 2026/05/15 12:58pm), but the label assigns meaning to the timestamp. This is exactly the same mechanism as if the labels were within a Record, except only one label/value combination can be used in the space at one time.
 
 An alternative to a labelled or tagged choice is an untagged choice or union. Here’s an example from JSON Schema using the anyOf structure:
 
-{ “anyOf”: \[
-
-{ “type”: “string” },
-
-{ “type”: “integer” },
-
-{ “type”: “object”,
-
-“properties”: {
-
-“id”: { “type”: “string” },
-
-“role”: { “type”: “string” }
-
-},
-
-“required”: \[”id”\]
-
-}
-
-\] }
+```json
+{ "anyOf": [
+  { "type": "string" },
+  { "type": "integer" },
+  { "type": "object",
+    "properties": {
+      "id": { "type": "string" },
+      "role": { "type": "string" }
+    },
+    "required": ["id"]
+  }
+] }
+```
 
 The difference here is that the only thing being defined is the allowed types/schemas. There’s no additional information about the semantic meaning of the data. Also notice that JSON Schema also allows an object type to be anonymously defined directly as an alternative. Here’s another more concise example from TypeScript which states the same structure:
 
-type Payload \=
-
-string |
-
-number |
-
-UserInfo;
+```typescript
+type Payload =
+  string |
+  number |
+  UserInfo;
+```
 
 This says, a Payload type can be either a string, number, or a UserInfo type. The “|” character represents “or” and is commonly used in many programming languages. In this case, instead of an anonymous object, the third option is a reference to the UserInfo type that is defined elsewhere. The untagged version only defines the shape of the data, while the labelled version provides semantic meaning to the data. Imagine the ASN.1 example of created, modified, accessed above without the labels, in TypeScript it would become:
 
-type Timestamps \=
-
-GeneralizedTime |
-
-GeneralizedTime |
-
-GeneralizedTime
+```typescript
+type Timestamps =
+  GeneralizedTime |
+  GeneralizedTime |
+  GeneralizedTime
+```
 
 This loses the meaning without the labels, so labels provide important meaning to the data. One way to potentially solve this is to define new types, created, modified and accessed all as GeneralizedTime. The definition then becomes:
 
-type Timestamps \=
-
-created |
-
-modified |
-
-accessed
+```typescript
+type Timestamps =
+  created |
+  modified |
+  accessed
+```
 
 The solution pushes the semantic meaning of the timestamps into the type system and creates generalised types that could be reused. It has the disadvantage of losing locality of semantic meaning that can be found in record data structures. Neither solution is better than the other, but does demonstrate the fuzzy line between field labels and types that programmers and schema designers always come across.
 
@@ -267,13 +245,14 @@ From a proto-schema point of view there’s two choices we can make early on. Th
 
 Before creating a proposal on how the proto-schema should deal with the concepts of Labelling and Tagging in choice, let’s investigate how Choice might be modelled in the proto-schema. With the two decisions of defining choice at the top level and referencing other types we can test some of the basic concepts. Consider a list that can either be strings or integers, a definition might look like:
 
-someList: \[ (\!string | \!integer) \]
+`someList: [ (!string | !integer) ]`
 
 If the internal model of an Array is a record that carries some information then the proto-schema will attempt to decompose the concepts. For the choice to be supported, the array must support both a singular Type and the choice of string or integer. One way to accomplish this, is to pre-process the types into a normalised form, for example:
 
-choice\#string\#integer: Choice( \!string | \!integer )
-
-someList: Array( \!choice\#string\#integer )
+```
+choice#string#integer: Choice( !string | !integer )
+someList: Array( !choice#string#integer )
+```
 
 The choice of string or integer is given its own synthetic name within the proto-schema. This has the benefit that Choice is normalised into a single type, but can still be defined inline within a schema.
 
@@ -281,63 +260,56 @@ Normalisation is a powerful tool in creating an internal model that is simpler t
 
 Most of the systems that were surveyed above end up having a single form of either labelled or unlabelled choices. A label creates a form that has a sort of parity with Records. Both a labelled choice and record use a label for each of the fields. The difference being that in a Record all the values are supplied, while in a Labelled choice only one of them are provided. This parity with Records is an interesting and useful property, but data formats don’t always integrate well with them. Consider the timestamps definition previously converted to a potential proto-schema model:
 
+```
 timestamps : ( created: timestamp | modified: timestamp | accessed: timestamp )
 
 dataRecord: {
-
-id: string,
-
-lastAction: timestamps
-
+  id: string,
+  lastAction: timestamps
 }
+```
 
 What’s the right way to encode an instance of this in JSON? This is a problem that ASN.1 faced when creating the JER (JSON Encoding Rules) for ASN.1. They concluded that labelled choices had to become single field json objects. For example and instance of the previous dataRecord might look like:
 
+```json
 {
-
-“Id”: “someRecordId”,
-
-“lastAction”: { “modified”: “2026-05-21 13:05:00” }
-
+  "Id": "someRecordId",
+  "lastAction": { "modified": "2026-05-21 13:05:00" }
 }
+```
 
 The JER also has a modifier called “unwrapped” which allows the “lastAction” label to be replaced by the “modified” label:
 
+```json
 {
-
-“Id”: “someRecordId”,
-
-“modified”: “2026-05-21 13:05:00”
-
+  "Id": "someRecordId",
+  "modified": "2026-05-21 13:05:00"
 }
+```
 
 This unwrapping creates more complexity in the record structure and loses the “lastAction” label which a normal reader might expect to see. This is a completely reasonable and useful way to define choice, but we already highlighted that by switching the label to a type we could define something similar:
 
+```
 created: timestamp
-
 modified: timestamp
-
 accessed: timestamp
 
 timestamps: ( created | modified | accessed )
 
 dataRecord: {
-
-id: string,
-
-lastAction: timestamps
-
+  id: string,
+  lastAction: timestamps
 }
+```
 
 Shifting the names into the type system naming instead of being part of a label allows using a type identifier instead:
 
+```json
 {
-
-“id”: “someRecordId”,
-
-“lastAction”: \!modified “2026-05-21 13:05:00”
-
+  "id": "someRecordId",
+  "lastAction": !modified "2026-05-21 13:05:00"
 }
+```
 
 This looks a little cleaner than the previous solution, but the proto-schema isn’t attempting to be a JSON schema only, it’s working towards understanding the underlying concepts that make up schemas. From this view point, picking a winner from labelled or unlabelled solutions would be the wrong decision. To quote a very old [meme](https://knowyourmeme.com/memes/why-not-both-why-dont-we-have-both), “¿Por qué no los dos?” (Why can’t we have both?)
 
@@ -347,9 +319,10 @@ At one stage, I explored the idea that maybe types without labels could collapse
 
 Using the normalisation method and with two constructs, the proto-schema would then contain two possible constructs. For example:
 
-typedChoice: ( \!integer | \!string | \!UserInfo )
-
-labelledChoice: ( created: \!timestamp | modified: \!timestamp | accessed: \!timestamp)
+```
+typedChoice: ( !integer | !string | !UserInfo )
+labelledChoice: ( created: !timestamp | modified: !timestamp | accessed: !timestamp)
+```
 
 Both forms of choice provide something different; a labelled choice provides a structure that localises semantic meaning without forcing everything to become a type, while a typed choice provides a faster more concise form where types already provide clear meaning. These are two choice structures that should be treated distinctly in the proto-schema.
 
@@ -359,29 +332,28 @@ These two definitions provide structures to a schema, but do not state specific 
 
 The examples above show that the type system naming is an integral part of the discrimination (tagging) mechanism. The scalar (timestamp, strings, integers) examples are convenient but things get more complicated when you introduce templates and composition back into the mix. Consider a labelled choice that includes a template type (this example from Part 5):
 
-person: \<T\> { name: T, age: \!int }
+```
+person: <T> { name: T, age: !int }
+fullName: { firstName: !string, lastName: !string }
+simpleName: !person<T:!string> { }
+complexName: !person<T:!fullName> { }
 
-fullName: { firstName: \!string, lastName: \!string }
-
-simpleName: \!person\<T:\!string\> { }
-
-complexName: \!person\<T:\!fullName\> { }
-
-contact: ( name: \!person | phone: \!string )
+contact: ( name: !person | phone: !string )
+```
 
 This rather contrived example shows that the “contact” type can be either a name (person) which has subtypes of “simpleName” and “complexName” or a “phone” as a string. Applying the JER rules defined earlier, you might get:
 
-contact: { name: \!complexName { firstName: “David”, lastName: “Ryan” } }
+`contact: { name: !complexName { firstName: "David", lastName: "Ryan" } }`
 
 It’s not enough for the discrimination system to identify the type as “person”, instead it has to use the sub-type name “complexName”. Of course using the complexName type ensures a very fast and direct resolution of the type as it’s a simple test to check if complexName is-a person type. The alternative would be to use the structure itself and find a sub-type that includes field names with “firstName” and “lastName”:
 
-contact: { name: { firstName: “David”, lastName: “Ryan” } }
+`contact: { name: { firstName: "David", lastName: "Ryan" } }`
 
 Without anything to specify what type of person is being set to “name”, you’re left with attempting to read the values then backtrack against all possibilities to find if the type is correct and validates against the schema. This is the solution JSON Schema chose and it adds more work and complexity to the reader. There’s no right or wrong way to go about it, but it does demonstrate that both the schema and the data format can’t operate completely independently. In this case the labelled choice having the “name” label in the contact choice helps narrow down the search space considerably.
 
 This same issue of discrimination also affects the typed choices (unlabelled). However, with a type choice ensuring you have the right variant of the choice could be more difficult. As discussed early in the article, there’s the concept of types being disjoint that is especially useful when using structural discrimination. An “(integer | string )” is disjoint at the value level, and while an “(email | url )” is also conceptually disjoint, they are both encoded using strings which requires structural discrimination to employ regex expression testing to decide which is which. From this point of view it is a lot easier for the data format to self identify the type:
 
-emailOrUrl: \!url “http://litterat.io”
+`emailOrUrl: !url "http://litterat.io"`
 
 With the “\!url” type identifier, the reader only has to test if the string conforms to a valid URL. The alternative would be to check if the string is an email and then test if it’s a url. It’s also possible that the types are not disjoint, consider “( email | string )” or ( positiveInteger | integer ). In both cases the first type is completely covered by the second type.
 

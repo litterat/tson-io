@@ -117,8 +117,10 @@ Generally, as the number of participants or size of the systems increase and wha
 
 Did you notice Ruth’s specification? It was a bit clunky. The phrase “then up to ten green | red then a blue” was mentioned three times. There’s just one more concept that is really required; it would be useful to give parts of the specification a name so we don’t need to repeat it over and over. We could call the phrase “then up to ten green | red then a blue” a GreenRedSegment. Then Ruth’s specification would be a Bracelet is a blue bead followed by three GreenRedSegment. A GreenRedSegment is up to ten green | red then a blue. Ruth could formalise this with two rules:
 
-Bracelet: blue × GreenRedSegment x GreenRedSegment x GreenRedSegment  
-GreenRedSegment: { green | red } \[0..10\] × blue
+```
+Bracelet: blue × GreenRedSegment x GreenRedSegment x GreenRedSegment
+GreenRedSegment: { green | red } [0..10] × blue
+```
 
 But remember that with all good ideas comes another problem that we should acknowledge. Ruth has been able to reduce her specification down to two very compact lines of mathematical precision, but it requires something new. Everyone that reads this description must learn and understand the formal description. What if there’s ambiguity or they miss-interpret the notation. This is an important element of schema design, but as we saw above, there’s so many advantages to a compact formal notation, the new knowledge most of the time outweighs the disadvantages.
 
@@ -140,23 +142,27 @@ While the syntax for BNF, EBNF, ABNF as well as a multitude of other grammar syn
 
 Grammars and formal languages have been well studied since Backus and Chomsky’s work in the late 1950s. But grammars answer a narrow question: *“Is this a valid sequence of tokens?”* Grammars are used to define programming languages and data formats alike. Here’s the grammar for JSON as an example:
 
-json-text ::= ws value ws  
-value ::= object | array | string | number | “true” | “false” | “null”  
-object ::= “{” ws \[ member { ws “,” ws member } \] ws “}”  
-member ::= string ws “:” ws value  
-array ::= “\[” ws \[ value { ws “,” ws value } \] ws “\]”  
-string ::= ‘”’ \*(\*(%x20-%x21 / %x23-%x5B / %x5D-%xFF) | escape) ‘”’  
-escape ::= “\\” (”\\”“ / “/” / “b” / “f” / “n” / “r” / “t” / “u” 4HEXDIG)  
-number ::= \[ “-” \] ( “0” | \[ “1”-”9” \] { \[ “0”-”9” \] } ) \[ “.” { \[ “0”-”9” \] } \] \[ ( “e” | “E” ) \[ “+” | “-” \] { \[ “0”-”9” \] } \]  
-ws ::= \* ( %x20 | %x09 | %x0A | %x0D ) ; Space, horizontal tab, line feed, carriage return
+```
+json-text ::= ws value ws
+value    ::= object | array | string | number | "true" | "false" | "null"
+object   ::= "{" ws [ member { ws "," ws member } ] ws "}"
+member   ::= string ws ":" ws value
+array    ::= "[" ws [ value { ws "," ws value } ] ws "]"
+string   ::= '"' *(*(%x20-%x21 / %x23-%x5B / %x5D-%xFF) | escape) '"'
+escape   ::= "\" (""\"" / "/" / "b" / "f" / "n" / "r" / "t" / "u" 4HEXDIG)
+number   ::= [ "-" ] ( "0" | [ "1"-"9" ] { [ "0"-"9" ] } ) [ "." { [ "0"-"9" ] } ] [ ( "e" | "E" ) [ "+" | "-" ] { [ "0"-"9" ] } ]
+ws       ::= * ( %x20 | %x09 | %x0A | %x0D ) ; Space, horizontal tab, line feed, carriage return
+```
 
-The JSON grammar above can validate that **{ “lat”: \-37, “lon”: 144 }** is syntactically valid JSON. However, it doesn’t tell you whether that JSON represents a valid Point, whether lat must be an integer, or whether \-37 falls within an acceptable range; this is the role of a schema, here’s a made up schema:
+The JSON grammar above can validate that `{ "lat": -37, "lon": 144 }` is syntactically valid JSON. However, it doesn’t tell you whether that JSON represents a valid Point, whether lat must be an integer, or whether \-37 falls within an acceptable range; this is the role of a schema, here’s a made up schema:
 
-PointsOfInterest: Array \[ { Point | Circle } \]  
-Point: Object { “lat” : Latitude, “lon” : Longitude }  
-Circle: Object { “point”: Point, “radius”: Integer }  
-Latitude: Integer( min: \-90, max: 90 )  
-Longitude: Integer( min: \-180, max: 180 )
+```
+PointsOfInterest: Array [ { Point | Circle } ]
+Point: Object { "lat" : Latitude, "lon" : Longitude }
+Circle: Object { "point": Point, "radius": Integer }
+Latitude: Integer( min: -90, max: 90 )
+Longitude: Integer( min: -180, max: 180 )
+```
 
 A schema has the same rule based structure of grammars and uses both sequence and choice as core concepts, but they go further, schemas combine:
 

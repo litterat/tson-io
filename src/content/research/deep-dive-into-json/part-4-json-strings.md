@@ -21,15 +21,17 @@ abstract: >
 
 Consider this JSON response:
 
-`{`  
-`"id": "550e8400-e29b-41d4-a716-446655440000",`  
-`"created": "2024-12-19",`  
-`"priority": "high",`  
-`"content": "First line\nSecond line\nThird line",`  
-`"image": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYfFcSJ...",`  
-`"query": "SELECT * FROM users WHERE active = true",`  
-`"description": "A product with \"special\" features"`  
-`}`
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "created": "2024-12-19",
+  "priority": "high",
+  "content": "First line\nSecond line\nThird line",
+  "image": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYfFcSJ...",
+  "query": "SELECT * FROM users WHERE active = true",
+  "description": "A product with \"special\" features"
+}
+```
 
 Every string field here represents a different kind of data: a UUID, an ISO 8601 date, enumerated value, multi-line text with escaped newlines, Base64 encoded binary data, SQL code, and text with escaped quotes. Some values have a specific standard or syntax while others are free text. The string type has become the universal value container, a catch-all for structured data that JSON can't otherwise express.
 
@@ -39,20 +41,22 @@ This overloading isn't accidental, it's a direct consequence of JSON's minimalis
 
 The formal definition of JSON strings is simple enough. According to RFC 8259, a string is a sequence of [Unicode](https://en.wikipedia.org/wiki/Unicode) code points wrapped in quotation marks, with certain characters requiring escape sequences:
 
-string \= quotation-mark \*char quotation-mark  
-char \= unescaped / escape (  
-%x22 / ; " quotation mark U+0022  
-%x5C / ; \\ reverse solidus U+005C  
-%x2F / ; / solidus U+002F  
-%x62 / ; b backspace U+0008  
-%x66 / ; f form feed U+000C  
-%x6E / ; n line feed U+000A  
-%x72 / ; r carriage return U+000D  
-%x74 / ; t tab U+0009  
-%x75 4HEXDIG ) ; uXXXX U+XXXX  
-escape \= %x5C ; \\  
-quotation-mark \= %x22 ; "  
-unescaped \= %x20-21 / %x23-5B / %x5D-10FFFF
+```abnf
+string = quotation-mark *char quotation-mark
+char = unescaped / escape (
+  %x22 /          ; "  quotation mark  U+0022
+  %x5C /          ; \  reverse solidus U+005C
+  %x2F /          ; /  solidus         U+002F
+  %x62 /          ; b  backspace       U+0008
+  %x66 /          ; f  form feed       U+000C
+  %x6E /          ; n  line feed       U+000A
+  %x72 /          ; r  carriage return U+000D
+  %x74 /          ; t  tab             U+0009
+  %x75 4HEXDIG )  ; uXXXX              U+XXXX
+escape = %x5C           ; \
+quotation-mark = %x22   ; "
+unescaped = %x20-21 / %x23-5B / %x5D-10FFFF
+```
 
 JSON strings are sequences of Unicode code points, not bytes. This was progressive for 2001, when many formats were still ASCII-centric.
 
@@ -66,29 +70,37 @@ JSON provides only one escape format for arbitrary Unicode characters: \\uXXXX. 
 
 One of JSON's most visible limitations is the lack of multi-line string literals. Any string containing line breaks must use \\n escapes. For example:
 
-`{`  
-`"poem": "Roses are red\nViolets are blue\nJSON is simple\nBut multi-line strings aren't true"`  
-`}`
+```json
+{
+  "poem": "Roses are red\nViolets are blue\nJSON is simple\nBut multi-line strings aren't true"
+}
+```
 
 This design choice prioritizes parsing simplicity over human readability. Compare this to YAML's and other programming languages approaches to multi-line strings.
 
-`poem: |`  
-`Roses are red`  
-`Violets are blue`  
-`YAML handles multi-line`  
-`Without much ado`
+```yaml
+poem: |
+  Roses are red
+  Violets are blue
+  YAML handles multi-line
+  Without much ado
+```
 
 Python's triple-quoted strings:
 
-`poem = """Roses are red`  
-`Violets are blue`  
-`Python makes multi-line`  
-`Easy for you"""`
+```python
+poem = """Roses are red
+Violets are blue
+Python makes multi-line
+Easy for you"""
+```
 
 ECON allows continuation of quotes on the next line.
 
-`string = "The quick brown fox\n"`  
-`"jumps over the lazy dog.";`
+```
+string = "The quick brown fox\n"
+  "jumps over the lazy dog.";
+```
 
 There’s various approaches to multi-line syntax, but in effect they all provide a similar level of visual improvement over JSON’s single line method. Since JavaScript (ES6) released in 2015, it’s been possible to use back-ticks to create multi-line strings. Java introduced a similar method to Python in Java 15 in 2020\. The Java specification for text blocks ([JEP378](https://openjdk.org/jeps/378)) is a good example of how nuanced the treatment of multi-line strings when it comes to white space. C\# also allows multiple-quotes for [raw string literals](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/tokens/raw-string). It seems clear that it would be insane not to provide multi-line string support in a new data format (apologies to Crockford :). The Python/Java/C\# syntax seems like the preferred approach with Python now being the most popular programming languages.
 
@@ -98,8 +110,10 @@ Choosing syntax is not always a simple choice for building a new data format. A 
 
 Since JavaScript was created, it has supported both double-quotes and single-quotes for strings. Given JSON was derived from JavaScript, it's a little surprising that it wasn’t included. I guess the “being minimal” is the likely driver behind the decision to use one. Python, Ruby, Perl, Bash, PHP are examples of other programming languages that allow both single quotes and double quotes. The advantage to allowing both is that it allows the opposite quote to be added instead of using an escape sequence. For example:
 
-"He said 'hello'"  
+```
+"He said 'hello'"
 'She said "goodbye"'
+```
 
 While this is visually appealing, it adds complexity to the parser and possibly more to the writer. The string needs to be written to a buffer, checked for quotes and then choosing which quote to use on the final output and escape the right quote if the string uses both. Using a single method, allows the implementation to simply escape required characters as the string is written; no temporary buffers or checking required.
 
@@ -215,10 +229,12 @@ If you’ve followed along through numbers, enumerated types, and this article, 
 
 In number formats, Crockford’s quote that “it would be insane to put quotes around numbers” has been reverberating. The quotes or lack of quotes are just a syntactic sugar around a value. If we remove the question of quotes all together we’re left with a series of unicode characters that represent a value. The question I’m currently pondering is, what if all types could be represented by a string of unicode characters and the question of quotes is only a syntactic choice. Let’s for argument sake, allow any number to also be put into quotes.
 
-`{`  
-`“age”: “22”,`  
-`“date”: “2025-07-20”`  
-`}`
+```json
+{
+  "age": "22",
+  "date": "2025-07-20"
+}
+```
 
 The keen observer will point out that the reason we have syntax at all is so that we can distinguish between what type of value we’re looking at. In JSON, there’s only numbers, boolean, null and strings which represent atomic value types. It’s very easy to distinguish between them. Numbers are unquoted and start with “\[minus\] int”; that is an optional minus or integer character \[0-9\]. A string always starts with a quote, which leaves boolean values starting with a letter. There’s absolutely no issue with knowing what type is following with just a single unicode character. While, we as humans can see that “22” is an integer and “2025-07-20” is a date, without further information, the parser can’t.
 
@@ -226,19 +242,21 @@ So this is the crux of the issue; JSON’s syntax is minimal and reduced to a sm
 
 The dilemma is, does a data format strictly support a set number of types or does it provide a method to specify a type. Those that are familiar with YAML, might be aware that YAML has the ability to specify the type. For example, also thanks to claude.ai:
 
-*\# Built-in types (global tags with \!\!)*  
-name: \!\!str "Alice"  
-age: \!\!int 29  
-active: \!\!bool true
+```yaml
+# Built-in types (global tags with !!)
+name: !!str "Alice"
+age: !!int 29
+active: !!bool true
 
-*\# Built-in types using full tag URIs (same as above)*  
-email: \!\<tag:yaml.org,2002:str\> "alice@company.com"
+# Built-in types using full tag URIs (same as above)
+email: !<tag:yaml.org,2002:str> "alice@company.com"
 
-*\# Local/custom types (single \!)*  
-user\_id: \!uuid 550e8400-e29b-41d4-a716-446655440000
+# Local/custom types (single !)
+user_id: !uuid 550e8400-e29b-41d4-a716-446655440000
 
-*\# Custom types using domain-based tag URIs*  
-employee\_id: \!\<tag:mycompany.com,2024:employee\_id\> EMP-12345
+# Custom types using domain-based tag URIs
+employee_id: !<tag:mycompany.com,2024:employee_id> EMP-12345
+```
 
 The \!\! is an interesting syntax. The first exclamation is the marker for a type, and the second exclamation is shorthand \<tag:yaml.org,2002:\>. Notice that “\!uuid” is a custom type and “\!\<tag:mycompany.com,2024:employee\_id\>” allows reference to an external tag definition.
 
@@ -246,19 +264,21 @@ The \!\! is an interesting syntax. The first exclamation is the marker for a typ
 
 What would it look like to use a similar syntax to YAML on a JSON like syntax. Let’s take the very first example from this article and add some type information:
 
-`{`  
-`"id": !uuid 550e8400-e29b-41d4-a716-446655440000,`  
-`"created": !date 2024-12-19,`  
-`"priority": !priority high,`  
-`"content": !text """`  
-`First line`  
-`Second line`  
-`Third line””",`  
-`"image": !base64`  
-`iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ...,`  
-`"query": !sql "SELECT * FROM users WHERE active = true",`  
-`"description": !text ‘A product with "special" features’`  
-`}`
+```
+{
+  "id": !uuid 550e8400-e29b-41d4-a716-446655440000,
+  "created": !date 2024-12-19,
+  "priority": !priority high,
+  "content": !text """
+  First line
+  Second line
+  Third line""",
+  "image": !base64
+    iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ...,
+  "query": !sql "SELECT * FROM users WHERE active = true",
+  "description": !text 'A product with "special" features'
+}
+```
 
 If you look closely, I’ve removed the quotes from the uuid, date, priority, and base64 types as an example. If we know that the value doesn’t include white space and doesn’t use characters like { or : in the value then we don’t need the double quotes from a syntax perspective. The quotes are syntactic sugar and are completely optional as we’ve been told by the format which type and sub-parser to use. I’ve also thrown in triple quoted multi-line string and a single quoted text using double quotes in the text. As an experiment, what’s your first reaction to this syntax?
 

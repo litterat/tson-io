@@ -37,57 +37,67 @@ As we’re exploring different syntax, one other thing that [Crockford has said]
 
 Take for example a situation where two database configurations are the same; using JSON would require copy/pasting the same configuration. An anchor/reference pair could allow:
 
-{  
-database\_config: \&dbConfig {  
-host: "localhost",  
-port: 5432  
-},  
-primary\_db: \*dbConfig,  
-backup\_db: \*dbConfig  
+```
+{
+  database_config: &dbConfig {
+    host: "localhost",
+    port: 5432
+  },
+  primary_db: *dbConfig,
+  backup_db: *dbConfig
 }
+```
 
 Resulting in the output:
 
-{  
-database\_config: {  
-host: "localhost",  
-port: 5432  
-},  
-primary\_db: {  
-host: "localhost",  
-port: 5432  
-},  
-backup\_db: {  
-host: "localhost",  
-port: 5432  
-}  
+```
+{
+  database_config: {
+    host: "localhost",
+    port: 5432
+  },
+  primary_db: {
+    host: "localhost",
+    port: 5432
+  },
+  backup_db: {
+    host: "localhost",
+    port: 5432
+  }
 }
+```
 
 This idea of creating an anchor and reference seems simple enough, but it does open the door to a few interesting problems. One of the important things that this allows is for cyclic graphs to be written. For example:
 
-{  
-a: \&a { someField: \*a }  
+```
+{
+  a: &a { someField: *a }
 }
+```
 
 The output if taken as copying the value would result in an endless loop:
 
-{  
-a: { someField: { someField: { someField: { someField: { someField: ….
+```
+{
+  a: { someField: { someField: { someField: { someField: { someField: ...
+```
 
 To resolve this, the value of “someField” would need to wait until \&a is resolved before setting “someField” with a pointer to the object. A natural restriction is that the target language must allow “someField” to be mutable and unset and then set after \&a is resolved.
 
 The second is the idea of scope. Are forward references allowed and what happens if an anchor is defined twice. Consider:
 
-{  
-commonValue: \&cVal “localhost”,  
-configA: {  
-overrideValue: \&cVal “some.host”,  
-host: \*cVal  
-}  
-configB: {  
-host: \*cVal  
-}  
+```
+{
+  commonValue: &cVal "localhost",
+  configA: {
+    overrideValue: &cVal "some.host",
+    host: *cVal
+  }
+  configB: {
+    host: *cVal
+  }
 }
+```
 
 Tracking and maintaining the scope of \&v in this instance is not completely trivial. What would you consider to be the correct answer for “host” in configA and configB? Using a global scope for all anchors would mean both have the same value, but a local scope where overrideValue is only applied in the scope of configA means that configB should have the commonValue. Once again, resolving this is not incredibly difficult but must be considered and adds complication to the data format. My guess is that not allowing forward references and using scoped values is likely the most common sense solution.
 
@@ -103,77 +113,87 @@ In [Part 5](/research/deep-dive-into-json/part-5-arrays-and-objects), I presente
 
 The example shows relative path based selection. \*a\[2\] selected the second value in the array which happens to be the number 2\. The \*b.y selected the value 34 which also provides an example of path based referencing. The output of the object being:
 
-{  
-name1: 2,  
-name2: “value”,  
-name3: 34  
+```
+{
+  name1: 2,
+  name2: "value",
+  name3: 34
 }
+```
 
 While this does show a new structure being made up from other values, it is an extension of the references concept and the ideas presented by JSON Path or JSON Pointer. The idea of structural composition is about being able to bring together and combine compound data structures. YAML provides a method to perform structural composition. Take for example:
 
-default\_config: \&defaults  
-timeout: 30  
-retries: 3  
-debug: false  
-development:  
-\<\<: \*defaults  
-debug: true  
-production:  
-\<\<: \*defaults  
-timeout: 60
+```yaml
+default_config: &defaults
+  timeout: 30
+  retries: 3
+  debug: false
+development:
+  <<: *defaults
+  debug: true
+production:
+  <<: *defaults
+  timeout: 60
+```
 
 In the above examples, the development and production objects are merged with the default\_config. Interestingly, the \<\< is not part of the YAML syntax and specification but is instead listed as the [merge key](https://yaml.org/type/merge.html) type.
 
 Implementing structural composition in a JSON like syntax was not as straightforward as the previous referencing syntax and I explored a few different alternatives. The first was to use a similar approach to annotations and place the reference outside the object or array.
 
-{  
-baseConfig: \&commonConfig {  
-host: “localhost”,  
-port: 1234  
-},  
-production: \*commonConfig {  
-host: “xba.abc”  
-},  
-testing: \*commonConfig {  
-port: 2345  
-}  
+```
+{
+  baseConfig: &commonConfig {
+    host: "localhost",
+    port: 1234
+  },
+  production: *commonConfig {
+    host: "xba.abc"
+  },
+  testing: *commonConfig {
+    port: 2345
+  }
 }
+```
 
 The idea above is that \*commonConfig reference is combined into the production and testing objects. With all the potential things including \!type and @annotation as well as \&anchor that has been explored previously, this was feeling like I only had one solution and the space before the value was getting increasingly crowded.
 
 While discussing the issue with AI, it pointed me in the direction of the spread operator from JavaScript. This could provide a better example of structural composition. As well as trying out the spread operator, I’ve also tried exploring the idea that all keys in scope are valid references. This would cut down on duplication where the key and reference are likely to share the same name. Here’s an example of those changes;
 
-{  
-baseConfig: {  
-host: “localhost”,  
-port: 1234  
-},  
-production: {  
-…baseConfig,  
-host: “xba.abc”  
-},  
-testing: {  
-…baseConfig,  
-port: 2345  
-}  
+```
+{
+  baseConfig: {
+    host: "localhost",
+    port: 1234
+  },
+  production: {
+    ...baseConfig,
+    host: "xba.abc"
+  },
+  testing: {
+    ...baseConfig,
+    port: 2345
+  }
 }
+```
 
 The spread operator is applying the data pairs to the target object. The output would then be:
 
-{  
-baseConfig: {  
-host: “localhost”,  
-port: 1234  
-},  
-production: {  
-host: “xba.abc”,  
-port: 1234  
-},  
-testing: {  
-host: “localhost”,  
-port: 2345  
-}  
+```
+{
+  baseConfig: {
+    host: "localhost",
+    port: 1234
+  },
+  production: {
+    host: "xba.abc",
+    port: 1234
+  },
+  testing: {
+    host: "localhost",
+    port: 2345
+  }
 }
+```
 
 As you can see, the Production and Testing object values have combined the baseConfig values and then overridden a value each to create the final output. This type of structural composition creates additional capabilities that can’t be accomplished by references alone.
 
@@ -181,115 +201,131 @@ The concept of using the in scope keys as valid anchor points feels natural in t
 
 To demonstrate the difference between a pure reference and a spread operator, see the following example of using arrays:
 
-{  
-base: \[ 1, 2, 3 \],  
-reference: \[ \*base, 4, 5 \],  
-spread: \[ …base, 4, 5 \]  
+```
+{
+  base: [1, 2, 3],
+  reference: [*base, 4, 5],
+  spread: [...base, 4, 5]
 }
+```
 
 The output being:
 
-{  
-base: \[1, 2, 3 \],  
-reference: \[ \[ 1, 2, 3 \], 4, 5\],  
-spread: \[ 1, 2, 3, 4, 5 \]  
+```
+{
+  base: [1, 2, 3],
+  reference: [[1, 2, 3], 4, 5],
+  spread: [1, 2, 3, 4, 5]
 }
+```
 
 In the output, “reference” has three values with the first being the sub-array \[1,2,3\], while the “spread” value has included the base values into the output. The spread operator can only apply to compound structures like arrays and objects.
 
 For JSON objects introducing the spread operator allows combining one or more previously defined object key/value pairs into an output. If more than one spread operator is present it would be easiest to assume any conflicts mean that the last one applied wins. It might also be possible to unset a value. In [Part 6](/research/deep-dive-into-json/part-6-syntax), the idea of using the underscore was explored. So something like the following might be possible:
 
-{  
-base: {  
-host: “localhost”,  
-port: 1234  
-},  
-options: {  
-port: 2345,  
-ssl: true,  
-clientAuth: true  
-},  
-config: {  
-…base,  
-…options,  
-clientAuth: \_  
-}  
+```
+{
+  base: {
+    host: "localhost",
+    port: 1234
+  },
+  options: {
+    port: 2345,
+    ssl: true,
+    clientAuth: true
+  },
+  config: {
+    ...base,
+    ...options,
+    clientAuth: _
+  }
 }
+```
 
 The output being:
 
-{  
-base: {  
-host: “localhost”,  
-port: 1234  
-},  
-options: {  
-port: 2345,  
-ssl: true,  
-clientAuth: true  
-},  
-config: {  
-host: “localhost”,  
-port: 2345,  
-ssl: true,  
-}  
+```
+{
+  base: {
+    host: "localhost",
+    port: 1234
+  },
+  options: {
+    port: 2345,
+    ssl: true,
+    clientAuth: true
+  },
+  config: {
+    host: "localhost",
+    port: 2345,
+    ssl: true,
+  }
 }
+```
 
 The combination of the spread operator and ability to override and unset provides a full set of operations to add and remove properties from previously defined objects.
 
 Given the ordered nature of arrays, it would require more advanced syntax to allow indexing into the array. A potential syntax might look like:
 
-{  
-data: \[10, 20, 30, 40, 50, 60, 70, 80, 90, 100\],  
-subset: \*data\[1:3, 5, 7:9\],  
-mixed: \[...data\[0, 2\], 100, ...data\[6:8\]\]  
+```
+{
+  data: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+  subset: *data[1:3, 5, 7:9],
+  mixed: [...data[0, 2], 100, ...data[6:8]]
 }
+```
 
 The output of the above being:
 
-{  
-data: \[10, 20, 30, 40, 50, 60, 70, 80, 90, 100\],  
-subset: \[20, 30, 40, 60, 80, 90, 100\],  
-mixed: \[10, 30, 100, 70, 80, 90\]  
+```
+{
+  data: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+  subset: [20, 30, 40, 60, 80, 90, 100],
+  mixed: [10, 30, 100, 70, 80, 90]
 }
+```
 
 The example demonstrates the concept of being able to select sub-sequences of arrays. Similar to being able to unset a value from an object above, it provides the ability to remove elements from an array before inclusion. The downside of this is the additional complexity that is introduced to the parser. However, it could be possible to introduce a similar syntax to objects too:
 
-{  
-profile: {  
-id: 123,  
-name: "Alice",  
-email: "alice@co.com",  
-password: "secret",  
-internal\_notes: "Alice is great"  
-},
+```
+{
+  profile: {
+    id: 123,
+    name: "Alice",
+    email: "alice@co.com",
+    password: "secret",
+    internal_notes: "Alice is great"
+  },
 
-public: \*profile\["id", "name", "email"\],  
-response: {...profile\["id", "name"\], "timestamp": "2025-01-20"}  
+  public: *profile["id", "name", "email"],
+  response: {...profile["id", "name"], "timestamp": "2025-01-20"}
 }
+```
 
 The output being:
 
-{  
-user: {  
-id: 123,  
-name: "Alice",  
-email: "alice@co.com",  
-password: "secret",  
-internal\_notes: "Alice is great"  
-},
+```
+{
+  user: {
+    id: 123,
+    name: "Alice",
+    email: "alice@co.com",
+    password: "secret",
+    internal_notes: "Alice is great"
+  },
 
-public: {  
-id: 123,  
-name: "Alice",  
-email: "alice@co.com",  
-},  
-response: {  
-id: 123,  
-name: "Alice",  
-timestamp: "2025-01-20"  
-}  
+  public: {
+    id: 123,
+    name: "Alice",
+    email: "alice@co.com",
+  },
+  response: {
+    id: 123,
+    name: "Alice",
+    timestamp: "2025-01-20"
+  }
 }
+```
 
 If you’re starting to wonder if structural composition is starting to become more than a data format, you’re not wrong. The …reference syntax is not just a reference, but it is also performing an action. We’re standing at the precipice of a much bigger world of programming languages. While hidden behind a simple syntax, the spreading capability is now performing a function between a source and destination data. That’s not something that has been previously explored in this series. Everything else was static and the syntax was a representation of that data. Even references didn’t change the data, only provided a pointer towards data that was previously defined.
 
@@ -299,44 +335,49 @@ Let’s take a pause. This is probably a good place to stop as a data format. Ba
 
 While I just argued this is a good stopping point, let's consciously step over the line to see what lies beyond. Structural composition is a thread we can pull that brings us further into the world of functions and modification. It’s a very slippery slope into computation and functional programming. To start, if you remember the idea of the \!type syntax in [Part 4](/research/deep-dive-into-json/part-4-json-strings), it was to allow custom parsing of data formats that were not natively understood by the data format. It was proposed to use a syntax like:
 
+```
 {
-
-someUUID: \!uuid 550e8400-e29b-41d4-a716-446655440000  
+  someUUID: !uuid 550e8400-e29b-41d4-a716-446655440000
 }
+```
 
 At first glance the idea being explored was that \!uuid was providing a type identifier and plug-in parser for taking the string provided and returning a UUID value in the native language. However, taken another way, the syntax could be described as being a function that takes a string and returns a UUID value in the native language.
 
 Using that interpretation, the previous syntax that was used for indexing arrays (ie \*data\[1:3, 5, 7:9\] ), could be modified to use a slice function (e.g. \!slice( \*data, “\[1:3, 5, 7:9\]” ) that is passed in a tuple value. Using the previous example:
 
-{  
-data: \[10, 20, 30, 40, 50, 60, 70, 80, 90, 100\],  
-subset: \!slice (\*data, “\[1:3, 5, 7:9\]” ),  
-mixed: \[...\!slice( \*data, \[0, 2\] ), 100, ...\!slice( \*data, “\[6:8\]” )  
+```
+{
+  data: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+  subset: !slice(*data, "[1:3, 5, 7:9]"),
+  mixed: [...!slice(*data, [0, 2]), 100, ...!slice(*data, "[6:8]")
 }
+```
 
 This combines the \!type syntax from Part 4 with the ability to process \*data with additional parameters using the tuple syntax. In this case, a \!slice is passed with the specific indexes to return. This starts to go beyond a data format and into having a data processing capability. Consider:
 
-{  
-\_config: {  
-timeout: 30,  
-retries: 3,  
-debug: false  
-},
+```
+{
+  _config: {
+    timeout: 30,
+    retries: 3,
+    debug: false
+  },
 
-\_raw\_data: \!fetch "https://api.example.com/users",  
-\_filtered: \!filter (\*\_raw\_data, {status: "active"}),  
-\_enriched: \!join (\*\_filtered, \*departments, "dept\_id"),
+  _raw_data: !fetch "https://api.example.com/users",
+  _filtered: !filter(*_raw_data, {status: "active"}),
+  _enriched: !join(*_filtered, *departments, "dept_id"),
 
-summary: \!aggregate ( \*\_enriched, {count: "count()", avg\_salary: "avg(salary)"}),  
-report: \!transform (\*\_enriched, "table\_format"),
+  summary: !aggregate(*_enriched, {count: "count()", avg_salary: "avg(salary)"}),
+  report: !transform(*_enriched, "table_format"),
 
-dev\_config: {...\_config, debug: true, log\_level: "verbose"},  
-prod\_config: {...\_config, timeout: 60, monitoring: true},
+  dev_config: {...\_config, debug: true, log_level: "verbose"},
+  prod_config: {...\_config, timeout: 60, monitoring: true},
 
-admins: \["alice", "bob"\],  
-all\_users: \[...admins, "charlie", "diana"\],  
-user\_report: \!generate\_report (\*all\_users, \*prod\_config)  
+  admins: ["alice", "bob"],
+  all_users: [...admins, "charlie", "diana"],
+  user_report: !generate_report(*all_users, *prod_config)
 }
+```
 
 The ideas being explored above brings together the \!function idea, but also demonstrates an interesting property of JSON files. A data format like JSON is read in sequence, as such, there is little difference between that and a scripting language. Each field becomes a statement and the object itself is now a statement block. This is just a continuation of the fact that a data file is read and processed from start to end.
 
@@ -353,4 +394,3 @@ What has been fascinating to discover, is that once references and actions have 
 The challenge for any new data format is knowing where to draw the line. Perhaps JSON could have included “just one more feature” at the start, but it may have never reached wide adoption with the added complexity. In this exploration phase, the addition of anchors, references and spread operator seem simple enough; it will be interesting to see if the implementation also unveils the teeth of angry dragons.
 
 This should be the final article in the exploratory phase of the series, however, there is an eighth structural primitive which was identified while writing this article. Templates (or otherwise known as generics and macros) provide structure without values and also often have unknown gaps in the structure that will be made whole through further refinement. It also opens the door to types, schemas and type systems which have many dragons with sharp teeth. There might be enough in that topic that it is better left to its own series. You’ll just have to read the next article to find out what comes next.
-

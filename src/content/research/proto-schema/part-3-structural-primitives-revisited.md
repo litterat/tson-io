@@ -153,26 +153,30 @@ While hierarchical containment can be used to create tree structures in serial f
 
 Comments, XML attributes and annotations are all forms of sticky notes that are placed alongside the core structural elements of data. In [Part 7](/research/deep-dive-into-json/part-7-annotations) of the deep dive into JSON, the idea of annotations as first class data structures was explored. This has the potential to unify annotations within the type system. An example might be:
 
-{  
-“patient”: “1234”,  
-“blood\_pressure”:  
-@Measurement: {  
-“timestamp:”2025-01-15T09:30:00Z”,  
-“device”:”Omron-HEM-7121”  
-}  
-@ClinicalNote:”Patient anxious”  
-{  
-“systolic”: 120,  
-“diastolic”: 80  
-}  
+```
+{
+  "patient": "1234",
+  "blood_pressure":
+    @Measurement: {
+      "timestamp": "2025-01-15T09:30:00Z",
+      "device": "Omron-HEM-7121"
+    }
+    @ClinicalNote:"Patient anxious"
+    {
+      "systolic": 120,
+      "diastolic": 80
+    }
 }
+```
 
 From a schema perspective, it could allow the annotations to also be defined:
 
-PatientBloodPressure: Record { patient: String, blood\_pressure: BloodPresure }  
-BloodPresure: Record { systolic: Integer, diastolic: Integer }  
-Measurement: Record { timestamp: IsoTimestamp, device: string }  
+```
+PatientBloodPressure: Record { patient: String, blood_pressure: BloodPresure }
+BloodPresure: Record { systolic: Integer, diastolic: Integer }
+Measurement: Record { timestamp: IsoTimestamp, device: string }
 ClinicalNote: String
+```
 
 There’s still a question if the schema should indicate that it expects an annotation to be present. If this is allowed, it creates the same quandary as XML attributes where a developer needs to make a choice of if a data belongs as part of a record or as an annotation. It would blur the line between annotations and fields, which would defeat their purpose as “sticky notes”. This needs further exploration in later articles.
 

@@ -29,37 +29,42 @@ Right from the beginning, JSON was restricted to the most basic of number types,
 
 Without octal and hex, the JSON specifications ([RFC8259](https://datatracker.ietf.org/doc/html/rfc8259) and ECMA-404), defines numbers with a simple grammar:
 
-number \= \[ minus \] int \[ frac \] \[ exp \]  
-decimal-point \= %x2E  ; .  
-digit1-9 \= %x31-39    ; 1-9  
-e \= %x65 / %x45       ; e E  
-exp \= e \[ minus / plus \] 1\*DIGIT  
-frac \= decimal-point 1\*DIGIT  
-int \= zero / ( digit1-9 \*DIGIT )  
-minus \= %x2D          ; \-  
-plus \= %x2B           ; \+
-
-zero \= %x30           ; 0
+```abnf
+number        = [ minus ] int [ frac ] [ exp ]
+decimal-point = %x2E  ; .
+digit1-9      = %x31-39  ; 1-9
+e             = %x65 / %x45  ; e E
+exp           = e [ minus / plus ] 1*DIGIT
+frac          = decimal-point 1*DIGIT
+int           = zero / ( digit1-9 *DIGIT )
+minus         = %x2D  ; -
+plus          = %x2B  ; +
+zero          = %x30  ; 0
+```
 
 This grammar allows for:
 
-integer: 42  
-negative: \-17  
-zero: 0  
-decimal: 3.14159  
-scientific: 2.5e-4  
-large: 1.23E+10  
+```
+integer: 42
+negative: -17
+zero: 0
+decimal: 3.14159
+scientific: 2.5e-4
+large: 1.23E+10
 precise: 0.123456789012345
+```
 
 Some of the obvious omissions that the grammar does not allow:
 
-leading\_zero: 007 Leading zeros forbidden  
-positive\_sign: \+42 Positive signs not allowed  
-decimal\_only: .5 Must have digit before decimal  
-trailing\_decimal: 42\. Must have digit after decimal  
-hex: 0xFF Only base-10 supported  
-infinity: \-Infinity No special values  
-not\_a\_number: NaN No special values
+```
+leading_zero: 007       Leading zeros forbidden
+positive_sign: +42      Positive signs not allowed
+decimal_only: .5        Must have digit before decimal
+trailing_decimal: 42.   Must have digit after decimal
+hex: 0xFF               Only base-10 supported
+infinity: -Infinity     No special values
+not_a_number: NaN       No special values
+```
 
 One of the commonly cited criticisms of JSON is that it doesn't provide representation for mathematical concepts standard in IEEE 754, Infinity, NaN (Not a Number) or signed 0\. [JSON5](https://json5.org/) and [YAML](https://yaml.org/) both provide support. Programming languages also provide support for these concepts. While it probably made sense to "not be tied to any internal representation", it seems clear that these special values have use beyond the IEEE 754 internal representation.
 

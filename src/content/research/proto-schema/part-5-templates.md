@@ -59,37 +59,37 @@ The first example is the classic JSON object with two fields, “name” and “
 
 ![](/images/proto-schema/part-5-templates-image21.png)
 
-**{ “name”: “bob”, “age”: 25 }**
+`{ name: "bob", age: 25 }`
 
 In the second example, the two fields, “name” and “age” are present, but instead of values we provide the types we’re expecting in the future. This is what we would expect to see in a schema such as JSON schema; it provides a template from which to verify values. In this way, we could use it to verify that the first example is valid.
 
 ![](/images/proto-schema/part-5-templates-image22.png)
 
-**{ “name”: \!string, “age”: \!int }**
+`{ name: !string, age: !int }`
 
 The third example is a partial type; the value “bob” is provided for the name, but the “age” just has the type \!int. Really, there’s only one thing missing in this example, the “name” field has both a type \!string and value “bob”, while the “age” field has the type \!integer but we don’t know what the value will be yet. It’s a bit contrived, but this can actually be useful in some scenarios.
 
 ![](/images/proto-schema/part-5-templates-image23.png)
 
-**{ “name”: “bob”, “age”: \!int }**
+`{ name: "bob", age: !int }`
 
 The fourth example takes the schema concept even further. Instead of providing a type for the “name” field, it specifies a yet to be specified type T. This is the concept of generics in many programming languages. Before using this template the type T would need to be provided.
 
 ![](/images/proto-schema/part-5-templates-image24.png)
 
-**{ “name”: T, “age”: \!int }**
+`{ name: T, age: !int }`
 
 The fifth example is to really drive the point home. In this model of beads there’s no reason why a partial type couldn’t include a situation where the “name” field type and value are not known. At the same time the “age” field has a known type \!integer and value 25\.
 
 ![](/images/proto-schema/part-5-templates-image25.png)
 
-**{ “name”: T, “age”: 25 }**
+`{ name: T, age: 25 }`
 
 The sixth example is an extension of the second example. The “name” field type is expected to be of one or more other types. In this case a \!string or a type called \!name. The \!name type might be a compound object with fields like “firstName” and “familyName”.
 
 ![](/images/proto-schema/part-5-templates-image26.png)
 
-**{ “name”: (\!string | \!name), “age”: \!int }**
+`{ name: (!string | !name), age: !int }`
 
 All of these examples represent valid structural arrangements using the beads analogy. The difference between them is their level of completeness. Using the concepts of proto-typing and parameterised types from programming languages and applying them to data, it is possible to say that data and schemas exist on a spectrum of completeness. A record is complete (a value) when all fields contain a name, type and value; a record is usable as a type in the schema when all fields contain a name and concrete type.
 
@@ -101,24 +101,28 @@ This spectrum of completeness also clarifies the relationship between templates 
 
 A blank is a placeholder that must be filled before the pattern becomes a valid structure that can be used in a schema to validate data. A template with blanks is not yet a valid definition, it’s a function that produces a definition once the blanks are filled. Let’s see if we can use this concept to create a specification. In this basic schema we create a “person” type that has a blank type T for the name field. This is what the user specifies:
 
-`person: <T> { name: T, age: !int },`  
-`fullName: { firstName: !string, lastName: !string },`  
-`simpleName: !person<T:!string> { },`  
-`complexName: !person<T:!fullName> { }`
+```
+person: <T> { name: T, age: !int },
+fullName: { firstName: !string, lastName: !string },
+simpleName: !person<T:!string> { },
+complexName: !person<T:!fullName> { }
+```
 
 These definitions are using syntax that incorporates findings from the previous series. It is still being developed, but it shows the idea of filling in blanks towards completeness. The person type is a template that modifies and produces a definition which is ready to use. The proto-schema would need to load this and resolve any templates to produce real definitions. The simpleName and complexName would then look something like:
 
-`person: !template { parameters:[ “T” ], structure: { name: T, age: !int } }`
+`person: !template { parameters:[ "T" ], structure: { name: T, age: !int } }`
 
-`fullName: !record { firstName: !string, lastName: !string }`  
-`simpleName: !record { name: !string, age: !int }`  
-`complexName: !record { name: !fullName, age: !int }`
+```
+fullName: !record { firstName: !string, lastName: !string }
+simpleName: !record { name: !string, age: !int }
+complexName: !record { name: !fullName, age: !int }
+```
 
 With this schema it is now possible to validate the structure of some real data:
 
-`simpleName: !simpleName { name: “bob”, age: 25 }`
+`simpleName: !simpleName { name: "bob", age: 25 }`
 
-`complexName: !complexName { name: { firstName: “bob”, lastName: “culp” }, age: 25 }`
+`complexName: !complexName { name: { firstName: "bob", lastName: "culp" }, age: 25 }`
 
 The current person definition above allows any type to be substituted in the name. To ensure that crazy types with a number for a name can’t be created, the type T in person could be constrained, so instead the definition would be:
 
@@ -132,10 +136,12 @@ This is an area where the proto-schema will need to make a decision, should temp
 
 In the initial description of using the beads analogy, it was recognised that a type with blanks creates a family of bracelets. It is the same with definitions. Take another look at the person example:
 
-`person: <T> { name: T, age: !int },`  
-`fullName: { firstName: !string, lastName: !string },`  
-`simpleName: !person<T:!string> { },`  
-`complexName: !person<T:!fullName> { }`
+```
+person: <T> { name: T, age: !int },
+fullName: { firstName: !string, lastName: !string },
+simpleName: !person<T:!string> { },
+complexName: !person<T:!fullName> { }
+```
 
 What would happen if I was to create an array of person:
 
