@@ -13,7 +13,7 @@ description: >
 
 ## 2026 Revision 32
 
-**Status:** Working revision. The 2026 revision series is subject to change without compatibility guarantees. When finalised, this specification will be published as **TSON version 1** and frozen; until then, revisions are released under the 2026 series. This revision is an editorial refactor: non-normative rationale, design history, and extended worked examples have moved to [TSON-GUIDE].
+**Status:** Working revision. The 2026 revision series is subject to change without compatibility guarantees. When finalised, this specification will be published as **TSON version 1** and frozen; until then, revisions are released under the 2026 series.
 
 **Series:** TSON Specification, Part 2 of 2
 
@@ -95,6 +95,7 @@ A schema document declaring three types, governed by the canonical meta-schema a
 {
   priority => !integer ^ { min: 1  max: 5 }
   status   => !enum [OPEN ACTIVE DONE]
+  flagged  => <T, N> { entry: T  priority: priority ~ N }
   task => {
     id:       uuid
     title:    non_empty_text
@@ -102,11 +103,12 @@ A schema document declaring three types, governed by the canonical meta-schema a
     status:   status ~ OPEN
     due:      date?
     tags:     [text]?
+    history:  [flagged<status, 2>]?
   }
 }
 ```
 
-`priority` refines core's `integer` instance (§5.5); `status` applies the `enum` constructor, reached through the structure namespace supplied by the `!!meta` target (§3.3.1); `task` is a fresh record whose field types resolve through the type-name namespace (§3.3.2). A data document binds the schema with `!!schema` (§7.1) and instantiates its types:
+`priority` refines core's `integer` instance (§5.5); `status` applies the `enum` constructor, reached through the structure namespace supplied by the `!!meta` target (§3.3.1); `task` is a fresh record whose field types resolve through the type-name namespace (§3.3.2). `flagged` is a **template** with a type parameter and a value parameter (§5.10): a fresh record whose `priority` field is *defaulted by parameter* (`~ N`, §5.7), built entirely from names in the schema's own namespace — templates that derive from kernel constructors like `array<T>` belong to layers where those names resolve (§3.3.2, §5.3). `flagged<status, 2>` is its fully-bound application, which the resolver materialises once per distinct application (§8.2); `history` wraps it in the plain array sugar. A data document binds the schema with `!!schema` (§7.1) and instantiates its types:
 
 ```
 !!schema:"https://example.com/task.tn1"
@@ -117,6 +119,7 @@ A schema document declaring three types, governed by the canonical meta-schema a
   status:   OPEN
   due:      2026-08-01
   tags:     [spec editorial]
+  history:  [{ entry: OPEN }  { entry: ACTIVE  priority: 4 }]
 }
 ```
 
@@ -239,9 +242,9 @@ The **structure namespace** of a schema document is the namespace of its `!!meta
 
 - **Constructor-application targets** — the name after `!` when no `^` follows (`!enum [...]`, `!integer_type {}`), subject to the lookup rule below.
 - **Generic-application heads** — the name before `<` when the name is not otherwise in scope (`map<text, text>`, `set<text>`).
-- **The implicit desugar targets of the sugar forms** — `[T]` and `[T; n]` desugar to `array`, `[T, U]` to `tuple`, `(A | B)` to `choice` (§5.6).
+- **The implicit desugar targets of the sugar forms** — `[T]` desugars to `array`, the sized forms to the size-refinement templates (§5.3), `[T, U]` to `tuple`, `(A | B)` to `choice` (§5.6).
 
-An entry consumed at a constructor role MUST be a constructor (`constructor: true`); resolving a non-constructor there is a resolver error. The structure namespace is never consulted for bare type-refs — a schema governed by meta cannot write `field: enum` or reach the kernel's `integer` as a field type (§3.3.2).
+An entry consumed at an *author-written* constructor role MUST be a constructor (`constructor: true`); resolving a non-constructor there is a resolver error. The implicit desugar targets are grammar-supplied and exempt from the gate — the size sugar reaches the non-constructor size templates precisely because ordinary schemas cannot name them directly (§5.3). The structure namespace is never consulted for bare type-refs — a schema governed by meta cannot write `field: enum` or reach the kernel's `integer` as a field type (§3.3.2).
 
 **Lookup for `!` targets.** The form after `!` declares its own intent, so no lookup-order tie-break is needed. Without `^`, `!C value` is **constructor application** (§5.5): `C` resolves first against the type-name namespace (the meta-kernel's self-hosted case, where its constructors are its own locals) and then against the structure namespace, and the resolved entry MUST be a constructor (`constructor: true`) — resolving an instance here is a resolver error, and the diagnostic SHOULD point at the refinement form (`!name ^ { ... }`). With `^`, `!I ^ { values }` is **atom refinement** (§5.5): `I` resolves against the type-name namespace only and MUST be a non-constructor instance of an atom family; the constructor it desugars to is reached through the instance's own `source` field — never by name, so refinement works even where the constructor is not name-visible. A name found in no permitted namespace is an unresolved-type error.
 
@@ -324,7 +327,7 @@ The kernel defines `top` as the structural root and three **base kinds** — `at
 - **Atom** — scalar types. An atom constructor composes with `atom` via `~atom & {...}`; its record of constraint fields describes the narrowable vocabulary available to instances. The kernel and meta define the series' atom constructors (§9); the `unit` constructor is the atom with no constraint vocabulary. Atom instances are produced by constructor application — `!<ctor> {}` (empty) or `!<ctor> { values }` — and refined with `!<instance> ^ { values }` (§5.5).
 - **Product** — structural types. `record`, `array`, `set`, `map`, and `tuple` compose with `product`, fixing `access_pattern` and `size_type`; the parameterized constructors declare type slots in `<>` parameter lists. Bare `{...}` definitions without explicit composition resolve to `kind: PRODUCT` by structural default.
 - **Sum** — discriminated-union types. `choice` in the kernel, `extern` and `unknown_type` in meta, compose with `sum`. `unknown` in core is `!unknown_type {}` — the empty instance accepting any well-formed value of any type.
-- **Reference** — a type definition whose body is a pointer to another type: a `kind: REFERENCE` entry with body `!reference { target: T }`. References are aliasing relationships, not IS-A; the resolver flattens every use to the target and attaches `@alias` (§8.3).
+- **Reference** — a type definition whose body is a pointer to another type: a `kind: REFERENCE` entry with body `!reference { target: T }`, where `target` names an entry (§8.3); when the reference was written as an application, the applied form is recorded in the entry's `source` (§8.1). References are aliasing relationships, not IS-A; the resolver flattens every use to the target and attaches `@alias` (§8.3).
 
 
 ### 4.2 Type Construction
@@ -384,7 +387,7 @@ id      => uuid                                            ; type reference (§8
 scores  => [integer; 1..]                                  ; array type (§5.3)
 point   => [number, number]                                ; tuple type (§5.3)
 contact_method => (email | phone | address)                ; choice type (§5.4)
-translations   => map<text, text>                          ; generic application (§5.3, §5.10)
+translations   => map<text, text>                          ; constructor application, generic syntax (§5.3)
 ```
 
 
@@ -431,51 +434,72 @@ In data, a REQUIRED_FIXED field may be provided with a value matching the fixed 
 
 **Type-name resolution.** Type names used as type-refs (field positions, type arguments, choice variants, composition targets, refinement sources) resolve against the type-name namespace; constructor-application targets, generic-application heads, and the desugar targets of the sugar forms resolve through the structure namespace per §3.3.1. Bare names always refer to types — there is no field-name shadowing of type names.
 
-**Inline atom refinements and bare records are prohibited.** Atom refinements (`!number ^ { min: -273.15 max: 10000 }`) and bare records (`{ name: text }`) MUST be introduced via named declarations and referenced by name; they MAY NOT appear inline in field-type, field-group-member, tuple-element, array-element, choice-variant, type-argument, or composition positions. Implementations MAY warn on permitted inline forms that exceed a configurable nesting depth.
+**Inline atom refinements and bare records are prohibited.** Atom refinements (`!number ^ { min: -273.15 max: 10000 }`) and bare records (`{ name: text }`) MUST be introduced via named declarations and referenced by name; they MAY NOT appear inline in field-type, field-group-member, tuple-element, array-element, choice-variant, type-argument, or composition positions. Inline container forms are additionally restricted to type-argument shapes — size specifiers and element/position optionality are declaration-level syntax (§5.3). Implementations MAY warn on permitted inline forms that exceed a configurable nesting depth.
 
 
 ### 5.3 Type Expressions
 
-Inside the type-definition grammar, type expressions support arrays, tuples, optionality, and type arguments:
+The type-definition grammar supports two tiers of type expression, distinguished by position. **Inline forms** — legal at any type-ref position (field types, group members, tuple elements, array elements, choice variants, type arguments) — are plain arrays, all-REQUIRED tuples, choices, and generic applications, which may carry both type and value arguments (§5.10). **Declaration-level forms** — legal only as the top-level body of a declaration — additionally admit the bracket syntax for size specifiers and element/position optionality. The dividing line is the bracket syntax itself, not expressiveness: a size specifier is a spelling of an application of the kernel's size-refinement templates (below), and the application form — `array_ranged<order, 1, 100>` — is an ordinary generic application, legal inline wherever the template name resolves (§3.3.2); ordinary schemas reach the size templates through the sugar alone (layer visibility, below). An inline form may nest inline forms to any depth, but may not carry a size specifier or an element/position `?`.
 
 ```
 config => {
-  tags:     [text]
-  scores:   [integer; 1..]
-  matrix:   [number; 9]
-  batch:    [order; 1..100]
-  aliases:  [text]?
-  meta:     map<text, integer>
-  point:    [number, number]
-  sparse:   [text, text?]
-  contact:  (email | phone)
+  tags:     [text]                 ; inline: plain array
+  meta:     map<text, integer>     ; inline: generic application
+  point:    [number, number]       ; inline: tuple, all positions REQUIRED
+  contact:  (email | phone)        ; inline: choice
+  index:    map<text, [order]>     ; inline: nested inline forms
+  aliases:  [text]?                ; inline array; the ? is FIELD optionality (§5.2)
+  scores:   score_list             ; sized forms are declared, then referenced
+  batch:    order_batch
+  sparse:   sparse_pair
 }
+
+score_list  => [integer; 1..]      ; declaration-level: size specifier
+order_batch => [order; 1..100]     ; declaration-level: bounded range
+matrix9     => [number; 9]         ; declaration-level: exact size
+opt_items   => [text?]             ; declaration-level: OPTIONAL elements
+sparse_pair => [text, text?]       ; declaration-level: OPTIONAL tuple position
 ```
 
-**Array types** use `[type]` with an optional size specifier after `;`. The size specifier is a grammar production over the range token ([TSON-DATA] §7.2.4): a bound, optionally followed by `..` and an optional upper bound, or `..` followed by a bound (§12.1). Each bound is an unquoted token whose text MUST match the `decimal-natural` production of [TSON-DATA] §7.6 — a non-negative decimal integer without leading zeros. Five forms result: `N` (exactly N elements), `N..M` (bounded range), `N..` (at least N), `..M` (at most M), and absent (unconstrained). When both bounds are present, N MUST be less than M — a value-level relation checked at schema load; for exactly N elements, use the `N` form. A lower bound of `0` with no upper bound (`0..`) is vacuous: the resolver SHOULD warn, and canonical rendering treats it as the unconstrained form (§8.2).
+**Inline forms.** Four shapes are inline-legal: a plain array `[T]`; a tuple `[T, U, ...]` whose positions are all REQUIRED; a choice `(A | B | ...)` (§5.4); and a generic application `name<args>`. Each desugars to a constructor application or a template application (§5.10) and is represented structurally at the use site (below). A size specifier, an element `?`, or a position `?` inside an inline form is a parse error whose diagnostic SHOULD suggest a named declaration (or, in layers where the template names resolve, the equivalent size-refinement application).
 
-The element position accepts an optional `?` suffix, producing `state: OPTIONAL` on the resolved `array`. Under `[T?]`, elements at any position MAY be the absent sentinel `_` (§7.6); absent elements occupy positional slots — `[a _ c]` has three elements and satisfies a `[T?; 3]` size constraint. Without the suffix, `state` defaults to `REQUIRED` and absent elements are a validation error when a schema is in scope. The `set` constructor refines `array` and pins `state: = REQUIRED` — absence has no meaning in an unordered collection of unique members.
+**Declaration-level forms.** As a declaration's top-level body, the array and tuple forms take their full syntax. A pure size specifier is a spelling of a size-refinement template application (the desugar table below): the declaration resolves per §5.10's rules for a fully-bound template reference — `order_batch` above is an alias of the `array_ranged<order, 1, 100>` instantiation, IS-A `array` — and the same shape is reachable inline as the application itself. The element- and position-`?` forms have no template route (their state binding pins the same array a size would, and template application nests rather than merges), so they desugar directly and become the declaration's body; these forms remain declaration-level only, consistent with the named-declaration rule for atom refinements and bare records (§5.2).
 
-**Tuple types** use `[type, type, ...]` with comma or whitespace separation between individually typed positions. A tuple requires at least two element type expressions: two or more type-refs separated by whitespace or comma inside brackets is always a tuple; a semicolon after a single type-ref introduces an array size specifier; a single type-ref with no semicolon is an unconstrained array — never a one-element tuple. `[text,]` is a parse error ([TSON-DATA] §2.4).
+**Array types** use `[type]` with, at declaration level, an optional size specifier after `;`. The size specifier is a grammar production over the range token ([TSON-DATA] §7.2.4): a bound, optionally followed by `..` and an optional upper bound, or `..` followed by a bound (§12.1). Each bound is an unquoted token whose text MUST match the `decimal-natural` production of [TSON-DATA] §7.6 — a non-negative decimal integer without leading zeros — or, within a template body (§5.10), a value-parameter name: `grid => <T, N> [[T; N]; N]` is `array_ranged<array_ranged<T, N, N>, N, N>`. Classification is unambiguous — parameters cannot be numeric — and a non-numeric bound token that resolves to no value parameter is a resolver error. Five forms result: `N` (exactly N elements), `N..M` (bounded range), `N..` (at least N), `..M` (at most M), and absent (unconstrained). When both bounds are present, N MUST be less than M — a value-level relation checked at schema load; for exactly N elements, use the `N` form. A lower bound of `0` with no upper bound (`0..`) is vacuous: the resolver SHOULD warn, and the resolved form records no bound.
 
-Tuple positions support only REQUIRED and OPTIONAL states (tuples and arrays share the two-member `element_state` enumeration; records use the five-member `field_state`). Tuples are fixed-length: every position MUST be present in the data. An OPTIONAL position may carry the absent sentinel `_`, but the slot itself MUST appear — a tuple value with fewer elements than the type's position count is a validation error regardless of trailing-optional positions. Given `[text, text?]`: `[a, b]` and `[a, _]` are valid; `[a]` is a validation error. Authors wanting trailing-optional semantics should use an array (`[text; 1..]`).
+The element position accepts, at declaration level, an optional `?` suffix, producing `state: OPTIONAL` on the resolved `array`. Under `[T?]`, elements at any position MAY be the absent sentinel `_` (§7.6); absent elements occupy positional slots — `[a _ c]` has three elements and satisfies a `[T?; 3]` size constraint. Without the suffix, `state` defaults to `REQUIRED` and absent elements are a validation error when a schema is in scope. The `set` constructor refines `array` and pins `state: = REQUIRED` — absence has no meaning in an unordered collection of unique members.
+
+**Tuple types** use `[type, type, ...]` with comma or whitespace separation between individually typed positions. A tuple requires at least two element type expressions: two or more type-refs separated by whitespace or comma inside brackets is always a tuple; a semicolon after a single type-ref introduces an array size specifier (declaration level only); a single type-ref with no semicolon is an unconstrained array — never a one-element tuple. `[text,]` is a parse error ([TSON-DATA] §2.4).
+
+Tuple positions support only REQUIRED and OPTIONAL states (tuples and arrays share the two-member `element_state` enumeration; records use the five-member `field_state`); the OPTIONAL state is declarable at declaration level only. Tuples are fixed-length: every position MUST be present in the data. An OPTIONAL position may carry the absent sentinel `_`, but the slot itself MUST appear — a tuple value with fewer elements than the type's position count is a validation error regardless of trailing-optional positions. Given `sparse_pair => [text, text?]`: `[a, b]` and `[a, _]` are valid; `[a]` is a validation error. Authors wanting trailing-optional semantics should use an array (`[text; 1..]`).
 
 **Choice types** use `(type | type | ...)` — see §5.4.
 
-**Type arguments** use `name<type, type>`, binding positional type arguments to a constructor's declared parameters (§5.10). The argument count MUST match the parameter count. Type arguments are themselves type references and may be parameterized recursively (`map<text, array<integer>>`). Bare references to a parameterized type without `<>` are resolver errors — parameter binding is mandatory at every use site.
+**Arguments** use `name<arg, arg>`, binding positional arguments to the declared parameters of a constructor or template (§5.10). The argument count MUST match the parameter count. An argument is a type reference — which may nest (`map<text, array<integer>>`, `map<text, [integer]>`) — or, for a template with value parameters, a concrete value: `array_ranged<order, 1, 100>`, `vector<pixel, 1920>`. Number, boolean, and quoted-string arguments are unambiguously values; an unquoted token argument is classified against the applied signature's parameter kinds — a reference in a type slot, a literal (an enum member, for instance) in a value slot (§5.10). Bare references to a parameterized type without `<>` are resolver errors — parameter binding is mandatory at every use site.
 
-**Resolution.** Inline type expressions desugar through fixed chains to constructor applications (§5.6) and, at synthesis positions, materialise as named synthetic entries (§8.2):
+**Desugaring.** Inline and declaration-level forms desugar through fixed chains to constructor applications (§5.6):
 
-| Source form                | Desugaring                                                                                     |
-|----------------------------|------------------------------------------------------------------------------------------------|
-| `[T]`                      | `array<T>` → `!array T` → `!array { element_type: T }`                                         |
-| `[T; n]`, `[T; 1..]`, `[T?]` | as `[T]` with the corresponding constraint fields filled                                       |
-| `[T, U, ...]`              | `tuple<...>` → `!tuple { elements: [...] }`                                                    |
-| `set<T>`                   | `!set T` → `!set { element_type: T }`                                                          |
-| `map<K, V>`                | `!map { key_type: K, value_type: V }` (two REQUIRED fields — no positional form)               |
-| `C<args>`                  | `!C <arg>` if C has one REQUIRED field; otherwise `!C { <bindings> }`                          |
+| Source form                  | Desugaring                                                                     |
+|------------------------------|--------------------------------------------------------------------------------|
+| `[T]`                        | `!array { element_type: T }`                                                   |
+| `[T; N..]`                   | `array_min<T, N>` (declaration level)                                          |
+| `[T; ..M]`                   | `array_max<T, M>` (declaration level)                                          |
+| `[T; N..M]`                  | `array_ranged<T, N, M>` (declaration level)                                    |
+| `[T; N]`                     | `array_ranged<T, N, N>` (declaration level)                                    |
+| `[T?]`, `[T?; ...]`          | the corresponding array form with `state: OPTIONAL` bound directly (declaration level) |
+| `[T, U, ...]`                | `!tuple { elements: [...] }`                                                   |
+| `(A \| B)`                   | `!choice { variants: [A B] }`                                                  |
+| `set<T>`                     | `!set { element_type: T }`                                                     |
+| `map<K, V>`                  | `!map { key_type: K, value_type: V }`                                          |
+| `C<args>`                    | `!C { <bindings> }` when `C` is a constructor; a template application (§5.10, §8.2) when `C` is a non-constructor template |
+
+The size sugar routes through the kernel's **size-refinement templates** — `array_min => <T, MIN> array<T> ^ { min_items: = MIN }`, `array_max`, and `array_ranged`, declared in the kernel without `~` (§4.2): not constructors but refinement templates, so their closures are ordinary members of the array family, IS-A `array` and substitutable where arrays are expected. Because the templates pin their sizes (`= MIN`, §5.7), a sugar-declared size is final — not further narrowable; a layer that imports the kernel, where `array` is nameable (§3.3.2), can declare alternative templates with different pinning choices. The source-level rule that N be less than M in `N..M` is retained as spelling hygiene (the exact form is spelled `N`), though `array_ranged` itself accepts MIN = MAX.
+
+**Layer visibility.** The structure namespace supplies constructor roles only, gated on `constructor: true` (§3.3.1). The sugar forms and `~` constructors — the kernel's `set` and `map`, the meta layer's `vector` — are therefore reachable from every governed schema, while the size-refinement templates, declared without `~`, are not: an ordinary schema reaches them only through the size sugar (which is why the sugar's parameterized bounds matter — the sugar is the ordinary schema's whole route), and names them directly only by importing the kernel. Refinement sources and composition targets resolve through the type-name namespace alone (§3.3.2), so *deriving* from `array<T>` — as `vector` and the size templates themselves do — is available only in layers where `array` is nameable; a template in an ordinary schema is built from the schema's own names and imports. The `~` flag thus sets three dials at once: annotation head (§5.6), entry weight (§8.2), and reach. Where fixed arity is the *intent* rather than a coincidence of bounds, the meta layer's `vector` constructor (§9) states it as a type of its own — `vector => <T, S> ~array<T> ^ { min_items: = S  max_items: = S }`, a `~` constructor parallel to `set`, so applications are structural and closed declarations carry `!vector` bodies; it is deliberately not a desugar target.
 
 Array forms record `element_type`, `state` from the element's `?` suffix, and `min_items`/`max_items` from the size specifier; tuple forms record `elements` with a `tuple_element` per position, each carrying its own `state`.
+
+**Resolution is structural.** An inline constructor application does not materialise a schema entry. The resolver represents it in place as a `type_ref` value (§8.1) whose `name` is the desugar target and whose `arguments` are `type_argument` records — `{ name: ... }` for a reference, `{ value: ... }` for a literal — recursively. `index: map<text, [order]>` resolves to a `record_field` whose `type` is `{ name: map  arguments: [ { name: text }  { name: { name: array  arguments: [ { name: order } ] } } ] }`. Constructor applications are self-describing under this representation — the constructor's declared parameters give the arguments their meaning; for the variadic pair, `tuple` and `choice`, arguments map positionally onto `elements` and `variants`, lossless precisely because the inline restriction keeps element states and sizes out of inline forms — and validators interpret them directly with a one-hop lookup of the head. A fully-bound application of a non-constructor template instead resolves to a materialised instantiation entry, referenced by name (§5.10.1, §8.2).
 
 
 ### 5.4 Choice Types
@@ -488,7 +512,7 @@ contact_method => (email | phone | address)
 
 A choice MUST contain at least two variants; each variant is a type reference. At the data level, a value matching a choice type MUST carry a type annotation (`!variant`) selecting the variant — the validator does not infer the variant from structure. The choice name is then used like any other type name in field definitions, and choices MAY also appear inline in type-ref positions: `contact: (email | phone)`.
 
-**Resolution.** `(A | B | ...)` desugars to `!choice { variants: [A B ...] }` — a SUM-kind `type_definition`. The resolver validates that each variant names a distinct type in the schema's type map.
+**Resolution.** `(A | B | ...)` desugars to `!choice { variants: [A B ...] }` — a SUM-kind `type_definition` when declared, and a structural `type_ref` when inline (§5.3): an inline choice materialises no entry. Each variant is a type reference (a `type_ref` value, §8.1) and may itself be an inline form. The resolver validates that each variant resolves to a distinct type.
 
 A choice discriminates by variant *type name*; for labelled disjunction — mutually exclusive alternatives distinguished by field label, including alternatives of the same underlying type — see field groups (§5.11).
 
@@ -540,7 +564,9 @@ where `C` names a constructor and `bindings` is a record literal filling the con
 !array text           →  !array { element_type: text }
 ```
 
-REQUIRED_DEFAULT, REQUIRED_FIXED, and OPTIONAL fields do not count toward the single-REQUIRED rule. The positional form is invalid when the constructor has zero, two, or more REQUIRED fields — the resolver MUST reject such uses with a clear error. This restriction applies to the positional form only.
+REQUIRED_DEFAULT, REQUIRED_FIXED, and OPTIONAL fields do not count toward the single-REQUIRED rule. The positional form is invalid when the type has zero, two, or more REQUIRED fields — the resolver MUST reject such uses with a clear error. This restriction applies to the positional form only.
+
+**The positional form is general over schema-backed data.** At any data position whose declared type is a record with exactly one field in state REQUIRED, a non-brace-delimited value fills that field directly; a braced value is always the explicit record (so record- and map-valued fills cannot go positional — the same exclusion as above). The two spellings denote the same value; which one canonical output uses is a per-type convention (§8.1 for `type_ref`, whose bare-token spelling is this rule). Type-definition bodies canonicalise the other way — toward the explicit bindings record, per the end state below — a deliberate pair of conventions: bodies uniform, references minimal.
 
 **Record-bindings form.** `!C { ... }` is the explicit form, valid for any constructor as long as the bindings cover all REQUIRED fields not pinned by FIXED or covered by DEFAULT. Empty bindings `!C {}` are valid whenever the constructor has no unfilled REQUIRED fields.
 
@@ -553,7 +579,9 @@ REQUIRED_DEFAULT, REQUIRED_FIXED, and OPTIONAL fields do not count toward the si
 
 Recognition is syntactic — the `^` declares the intent — and the resolver verifies it: the target MUST resolve to a non-constructor atom-family instance, and the retarget follows the instance's `source`. The result records `source: I.source` and `supertypes: [I]`.
 
-**End state.** After desugaring, every type-def body in resolver output is `!C { bindings }` where `bindings` supplies values for the constructor's REQUIRED fields not pinned by FIXED or covered by DEFAULT; pinned and default values come from the constructor and do not appear in the binding record; OPTIONAL fields appear only when the source provides a value. The surface abbreviations exist only in source text.
+**End state.** After desugaring, every *closed* non-reference type-def body in resolver output is a binding record `!C { bindings }`, where `C` is the nearest `~` constructor in the definition's source chain — `!array` for a closure of `array_min` or a `vector`-style refinement template, `!set` for an application of `set` — and `bindings` supplies values for the vocabulary's REQUIRED fields not pinned by FIXED or covered by DEFAULT, plus the fields the application or refinement bound; pinned and default values come from the vocabulary and do not appear. Bindings that fill *type slots* (fields declared with a parameter type, such as `array.element_type`) hold `type_ref` values under the positional form (§8.1). Binding records are closed-world: they never contain parameter references — a definition whose parameters remain open keeps its body at the vocabulary level instead (§5.10), so constructors and open non-reference templates carry `!record` vocabulary bodies, and every other non-reference entry carries a binding record. The surface abbreviations exist only in source text.
+
+**Top-level constructor applications are constructions.** A declaration whose body is a fully-bound application of a constructor — `lookup => map<text, integer>`, in either angle or bracket spelling — resolves as a construction: `kind` from the constructor's family, the applied form recorded in `source` (§8.1), the binding record as body, and no supertypes (construction transfers kind, not IS-A). Two such declarations are nominally distinct entries with structurally equal bodies. A declaration whose body is a fully-bound application of a non-constructor *template* resolves instead as a reference to the materialised instantiation (§5.10, §8.3).
 
 **Named definitions required.** The refinement form (`!I ^ { values }`) and constructor application (`!C value`) are valid only as the top-level body of a declaration — the inline prohibition of §5.2. A constrained atom must be introduced with its own declaration and referenced by name.
 
@@ -585,9 +613,13 @@ OPTIONAL_FIXED     | error    | error    | error       | error     | allowed   |
 
 **Identity diagonal.** Each state may be restated as itself. For value-carrying states, identity restatement is governed by the value's own mutability: a REQUIRED_DEFAULT restatement may change the default (defaults are overridable, §5.2); REQUIRED_FIXED and OPTIONAL_FIXED restatements MUST NOT change the value — the identity cells exist so a body may restate a fixed field without error, not so fixed values can be replaced.
 
+**Open modifiers.** In a template body (§5.10), the value of a `=` or `~` modifier may be a value parameter: `vector => <T, S> array<T> ^ { min_items: = S  max_items: = S }` pins, and `retry_policy => <N> { attempts: integer ~ N }` defaults. The state transitions are the ordinary ones — `=` moves the field to its `_FIXED` state, `~` to REQUIRED_DEFAULT — and the parameter is recorded at the vocabulary level as a `value_param` member in place of `value` (§8.1); on full binding, the parameter's argument becomes the concrete value. The modifier spellings are the *only* way to bind a field's value to a parameter: a bare parameter token in a plain value position would be indistinguishable from a token literal, so the grammar has no open plain binding — `min_items: S` parses as a type-narrowing entry and fails resolution, with a diagnostic that SHOULD suggest `= S`.
+
 **Elided type-refs.** In a refinement or supertype-composition body, the type-ref in a field definition MAY be elided: when only a modifier is present (`field: = value` or `field: ~ value`), the field's type is inherited from the source declaration and only the value state changes. A modifier-only entry is always a tightening — it names no type, so it cannot declare a new field — and a modifier-only entry whose name matches no inherited field is a resolver error. Restating the type-ref remains necessary when the tightening also narrows the field's type. In a fresh record definition there is no inherited declaration to elide toward: every field MUST have an explicit type-ref, and the resolver MUST reject modifier-only entries there.
 
-A refined definition remains a definition: it can be refined further or instantiated. A refinement that takes an OPTIONAL field to `= _` (fixed to absent) effectively forbids the field's value in the refined type while keeping the field in the contract — the IS-A-preserving counterpart of removal (§5.9). Maps may be refined by tightening their key type, value type, or bounds; individual map entries cannot be refined because map keys are data, not definition fields.
+**Refinement requires a vocabulary body.** The source of `^` — after flattening references (§8.3) — MUST be a definition whose body is a `!record`: a fresh or refined record, a composition, a constructor, or an open template; or it is an application head over such a vocabulary (`map<text, text> ^ { min_items: 1 }` derives from `map`'s vocabulary with the arguments as bindings). A definition whose body is a binding record — a top-level constructor application (§5.6), a template instantiation (§8.2), or an alias resolving to either — is **finished**: its bindings are set, and `^` on it is a resolver error. Record refinement chains remain open because record refinement re-emits a `!record` body; map and array shapes are refined at their application heads, and a declared construction (`lookup => map<text, integer>`) is terminal — authors wanting a narrower relative re-derive from the head (`strict_lookup => map<text, integer> ^ { min_items: 1 }`, in a layer where `map` is nameable at a refinement source, §3.3.2). Atom refinement (`!I ^`, §5.5) is a distinct form with its own rule and is unaffected.
+
+A refined record definition remains a definition: it can be refined further or instantiated. A refinement that takes an OPTIONAL field to `= _` (fixed to absent) effectively forbids the field's value in the refined type while keeping the field in the contract — the IS-A-preserving counterpart of removal (§5.9). Individual map entries cannot be refined because map keys are data, not definition fields.
 
 **Body materialisation.** The refined body re-emits the complete inherited field set in source order; each field carries either its inherited state and value or the tightened ones. The materialised body is self-describing — consumers of resolver output do not walk the supertype chain to learn the field set. Inherited REQUIRED_FIXED and REQUIRED_DEFAULT fields appear with their pinned values even when the refinement did not refer to them.
 
@@ -622,7 +654,7 @@ uri_type => ~text_type & atom_specification & {
 
 `uri_type` is a constructor, IS-A `text_type` and `atom_specification` directly. Its fields, in order: `text_type`'s four constraint fields, `atom_specification`'s `spec` — tightened in place to `REQUIRED_FIXED` via an elided-type modifier — and the new `scheme` field.
 
-**Parameterized references.** Both `&` composition and `^` refinement operate on type-refs, which may carry type arguments. A refinement of a parameterized type must re-declare its open parameters in its own `<>` slot (§5.10); composing with a parameterized supertype works the same way: `vip => <T> customer & box<T> & { ... }`.
+**Parameterized references.** Both `&` composition and `^` refinement operate on type-refs, which may carry arguments. A refinement of a parameterized type must re-declare its open parameters in its own `<>` slot (§5.10); composing with a parameterized supertype works the same way: `vip => <T> customer & box<T> & { ... }`. The `supertypes` lists record the head names only (`[customer box]`) — they are name-level IS-A indexes (§8.1) — while the applied form, arguments included, lives in the entry's `source` and in the absorbed fields, which carry the parameters through ordinary type channels. Parameterized substitutability is therefore a two-part check: the name-level edge via `supertypes`, and binding agreement via the bodies.
 
 **Resolution.** The composed entry's `supertypes` records the listed parents and, transitively, their own chains (§8.1); the body's `record.supertypes` records the direct compositions as written, and inherited fields are copied into the body's `fields` list in the order above.
 
@@ -660,26 +692,34 @@ Rules:
 
 ### 5.10 Templates and Parameters
 
-A type definition may declare type parameters using `<>` immediately after `=>`. Parameters are local names referenced in the body and bound to concrete types when the definition is referenced with type arguments. A definition with parameters is a **template** — it cannot be instantiated directly, and references to it MUST supply type arguments for all its parameters:
+A type definition may declare parameters using `<>` immediately after `=>`. Parameters are local names referenced in the body and bound to concrete arguments when the definition is referenced with `<args>`. A definition with parameters is a **template** — it cannot be instantiated directly, and references to it MUST supply arguments for all its parameters:
 
 ```
-container => <T> { items: array<T> }
+container => <T> { items: [T] }
 pair      => <T, U> { first: T  second: U }
+vector    => <T, S> array<T> ^ { min_items: = S  max_items: = S }
+matrix    => <T, M, N> vector<vector<T, N>, M>
 ```
 
-`container<text>` and `pair<text, integer>` are concrete types; bare `container` or `pair` references are resolver errors.
+`container<text>`, `vector<pixel, 1920>`, and `matrix<pixel, 1080, 1920>` are concrete types; bare `container` or `vector` references are resolver errors.
 
-**Scoping.** Parameters are local to the declaring definition. Within the body, parameter names take precedence over the schema namespace; they do not escape, do not compose across `&`, and two definitions can independently use the same parameter name. Two fields that must resolve to the same type share a parameter (`homogeneous_pair => <T> { first: T  second: T }`) — sharing the name is the link.
+**Two parameter kinds.** A parameter is a **type parameter** or a **value parameter**. Kinds are not annotated; they are inferred from use sites: a parameter used in type-reference channels (field types, element types, arguments filling type slots) is a type parameter, and one used in value channels (`=` pins, arguments filling value slots) is a value parameter. A parameter used in both kinds of channel is a schema error. An unused parameter is a type parameter (the phantom-parameter reading) and the resolver SHOULD warn; a parameter whose kind is grounded only in mutual recursion between templates, with no concrete kind-determining use, is a schema error. Value parameters bind **scalars only** — the values that fill `value`-typed slots (§5.3, [TSON-DATA] §4): numbers, booleans, tokens, and quoted strings. Collection-valued slots are not parameterizable — an enum's member list, for instance, cannot be bound through a parameter — and there is no parameter arithmetic: every value argument is used as given.
+
+**Scoping and the shadowing/label rule.** Parameters are local to the declaring definition; they do not escape and do not compose across `&`, and two definitions can independently use the same parameter name. Two positions that must agree share a parameter (`homogeneous_pair => <T> { first: T  second: T }`; `vector` uses `S` twice) — sharing the name is the link. Where a parameter reference lives depends on what else can occupy the channel. Type-reference channels are all-reference — a token there is always a name — so parameters ride them by **shadowing**: within the body, parameter names take precedence over the schema namespace, and implementations SHOULD warn when a parameter shadows a schema type. Value channels admit token literals (enum members), so a bare token there is always a literal, and parameter references are **labelled**: the `= P` pin in source (§5.7), the `value_param` member in output (§8.1). One rule, both directions: shadow where every token is a reference; label where tokens can be literals.
 
 **Templates are not directly instantiable.** A `type_definition` with a non-empty parameter list cannot validate data; using a template as a type annotation in data is a resolver error.
 
-**Substitution is eager.** A parameterized reference like `container<text>` produces a fully-substituted `type_definition` in resolver output, alongside the template itself; consumers distinguish templates by their `parameters` field.
+**Open bodies are vocabulary records.** While parameters remain unbound, a template's resolved body stays at the vocabulary level — the level where the parameter channels exist. A non-reference template — a record template like `container`, or a refinement template over a constructor application like `vector` — resolves to a `!record` vocabulary body: the source chain's vocabulary materialised per §5.7, with type parameters in `record_field.type` channels and value pins as `value_param` members. A reference template — a pure application body like `matrix` — resolves to `body: !reference { target: head }` with the open application recorded in the entry's `source` (§8.1). Binding records never contain parameter references (§5.6): openness is visible both at the entry head (`parameters`) and in the body's own level.
 
-**Fully-bound references** produce reference-kind entries pointing at the substituted form:
+**Substitution is structural rewriting.** Binding a template's parameters rewrites the recorded structures — parameter references in the `source` application and the vocabulary body are replaced by the corresponding arguments — with no rendered intermediate to re-parse. When every parameter closes, the resolver materialises the result (§5.10.1, §8.2): the vocabulary body collapses to a binding record headed by the nearest `~` constructor in the source chain, and the fully-bound application is recorded in the entry's `source`.
+
+**Fully-bound references** resolve to REFERENCE-kind entries targeting the materialised instantiation by its entry name:
 
 ```
-user_response => api_response<user>
+string_vec => vector<text, 3>
 ```
+
+resolves to `kind: REFERENCE`, `source: { name: vector  arguments: [ { name: text }  { value: 3 } ] }`, and `body: !reference { target: E }`, where `E` is the instantiation entry's internal name (§8.2).
 
 **Partial application.** When a reference to or refinement of a parameterized type leaves parameters open, it MUST re-declare the open parameters in its own `<>` slot — implicit parameter inheritance is not permitted; every parameter has a visible declaration site:
 
@@ -687,7 +727,11 @@ user_response => api_response<user>
 text_keyed_map => <V> map<text, V>
 ```
 
-`text_keyed_map<integer>` resolves to `map<text, integer>` after both substitution layers.
+A partially-applied reference is itself a template. Applications of constructors stay structural, so `text_keyed_map` resolves to `parameters: [V]`, `source: { name: map  arguments: [ { name: text }  { name: V } ] }`, and a construction on binding; an open application of a *template* (`matrix` above) resolves to a reference template whose `target` is the head and whose `source` carries the open application. Reference-kind templates compose during substitution — no intermediate entry per alias hop; the origin survives as `source` and, at use sites, `@alias` (§8.3).
+
+**Heads are not parameters.** Parameters bind *arguments of a named head*; the head itself — the type being refined, composed, or applied — is always a concrete name. `<A, N> A ^ { max_items: = N }`, abstracting over the refinement source, is not expressible: the size-refinement family is declared per-constructor (`array_min` names `array`), and generic derivation over arbitrary heads is a deliberate v1 boundary.
+
+**Closed entries are parameter-free.** An entry whose `parameters` list is empty MUST contain no parameter references anywhere: no `value_param` members, and no reference `name` — in field types, element types, variants, `source`, or `type_argument`s — that resolves to a parameter, at any depth. This is a well-formedness rule on resolver output and an integrity check on ingest (§8.1); only template entries may be open.
 
 The `_` token is not valid in field-type positions (§7.6); authors expressing "type to be filled later" use parameters.
 
@@ -699,11 +743,12 @@ Types may reference themselves:
 ```
 node => { value: text  children: [node] }
 linked_list => <T> { value: T  next: linked_list<T>? }
+tree => <T> { value: T  children: [tree<T>]? }
 ```
 
-The resolver MUST detect and handle cycles in type references. A self-referential type is complete as long as the recursive reference is through an optional field or a variable-length container; a required direct self-reference (`item => { inner: item }`) creates an infinitely nested structure that MUST NOT be instantiated — the resolver SHOULD warn about such definitions.
+The resolver MUST detect and handle cycles in type references. A self-referential type is complete as long as the recursive reference is through an optional field or a variable-length container; a required direct self-reference (`item => { inner: item }`) creates an infinitely nested structure that MUST NOT be instantiated — the resolver SHOULD warn about such definitions. In a template body, a recursive reference is an open application like any other — `tree`'s `children` field carries `{ name: array  arguments: [ { name: { name: tree  arguments: [ { name: T } ] } } ] }` — and needs no special representation.
 
-**Recursive template materialisation.** When a parameterized type is referenced with concrete arguments, the resolver materialises it as a single named entry, named by the canonical rendering of the reference expression (§8.2): `linked_list<integer>` → `"linked_list<integer>"`. Recursive references within the body resolve to that name, producing one entry per unique canonical rendering. The same model applies to non-recursive templates: `box<integer>` and `box<text>` are two distinct entries.
+**Template materialisation.** When a template application closes, the resolver materialises one entry per distinct application: identity is structural equality of the flattened, fully-bound application (§8.2), so `tree<text>` and `tree<integer>` are two entries, and every further occurrence of the same application anywhere in the schema reuses the existing one. The entry's name is internal (§8.2). Recursive references within the body, once bound, denote the entry being materialised; the resolver ties the knot by resolving them to the entry's own name. The same model applies to non-recursive templates.
 
 
 ### 5.11 Field Groups
@@ -898,20 +943,39 @@ For multi-schema heterogeneous arrays, declare the field as `[extern]` — an ar
 
 ## 8. Resolver Output
 
-The resolver's output for a schema is a map of `type_definition` records: the `type_definition` record and its resolver-managed fields (§8.1), the synthetic entries materialised for inline forms (§8.2), and reference flattening at use sites (§8.3). Each construct's mapping to its `type_definition` is defined with the construct in §4–§5.
+The resolver's output for a schema is a map of `type_definition` records: the output records and their conventions (§8.1), template instantiation (§8.2), and references and flattening (§8.3). Each construct's mapping to its `type_definition` is defined with the construct in §4–§5.
 
 
-### 8.1 The `type_definition` Record
+### 8.1 Output Records: `type_definition`, `type_ref`, `type_argument`
 
-The `type_definition` record captures the resolver's output for any type. Its fields: `source` (the origin recorded by construction and refinement), `kind` (ATOM, PRODUCT, SUM, or REFERENCE), `parameters` (declared type parameters; non-empty marks a template, §5.10), `constructor` (`true` when declared with `~`), `supertypes` and `subtypes` (resolver-managed; below), and `body` (required, declared as `top`). The resolver produces body values annotated with the structurally-appropriate type: `!record` for products, `!<constructor>` for atom constructor instances, `!reference { target: T }` for reference-kind entries, and so on. The `top` declaration is sufficient because every body annotation names either a constructor — which transitively IS-A `top` through its base kind (§4.1) — or the kernel's `reference`, which composes with `top` directly; the parser validates body annotations without dependent typing.
+The `type_definition` record captures the resolver's output for any type. Its fields: `source` (structured provenance; below), `kind` (ATOM, PRODUCT, SUM, or REFERENCE), `parameters` (declared parameter names; non-empty marks a template, §5.10), `constructor` (`true` when declared with `~`), `supertypes` and `subtypes` (name-level indexes, resolver-managed; below), and `body` (required, declared as `top`). Body values are annotated with the structurally-appropriate type: `!record` for vocabulary bodies (constructors and open non-reference templates, §5.10), a binding record headed by the nearest `~` constructor for every closed non-reference definition (§5.6), and `!reference { target: T }` for reference-kind entries. The `top` declaration is sufficient because every body annotation names either a constructor — which transitively IS-A `top` through its base kind (§4.1) — or the kernel's `reference`, which composes with `top` directly; the parser validates body annotations without dependent typing.
 
-**Reading parameter references.** Parameters and type names share the lexical class `token`, so a `type_name` in resolver output (e.g. in `record_field.type`) resolves against two namespaces in order: the enclosing `type_definition.parameters` list first, then the schema's type-name namespace — the same precedence used during source-level parsing (§5.10). Consumers MUST apply the same precedence. Implementations SHOULD warn when a parameter shadows a top-level schema type.
+**The `type_ref` and `type_argument` records.** Every type-reference position in resolver output — `record_field.type`, `tuple_element.element_type`, `choice.variants` elements, `type_definition.source`, and the type slots of binding records (§5.6) — holds a value of the kernel's `type_ref` record; applications carry their arguments as `type_argument` records:
 
-**`supertypes` and `subtypes` are resolver-managed**; declarations never set them. Their standing differs. `subtypes` is a cache: fully derivable, always recomputable, never trusted — the resolver MUST compute it as the transitive inverse of `supertypes` across the schema's namespace. `supertypes` is derivable from `body` for product types (the body's `record.supertypes` carries the direct compositions) but NOT for the atom family: desugaring erases the surface distinction between refining an instance (`age => !integer ^ { min: 0 max: 150 }`, IS-A `integer`) and constructing a fresh sibling (`port => !integer_type { min: 0 max: 65535 }`, IS-A nothing) — both serialize to `source: integer_type` with an identical body shape. The atom family's direct IS-A hop therefore lives only in `type_definition.supertypes`, making that field part of the type's serialized meaning rather than a recomputable cache.
+```
+type_ref => {
+  name:       type_name
+  arguments:  [type_argument]?
+}
 
-**Ingest.** When `!type_definition` records are ingested as data (§10.1): `subtypes` MUST be discarded and recomputed; `supertypes` is taken as input, with the transitive closure recomputed and integrity verified — every listed supertype must exist, atom-family supertypes must share the entry's `source` constructor, product-type lists must be consistent with the body's `record.supertypes`, and transitive lists must be closed. Within-family retargeting — a document claiming an entry refines a different sibling of the same constructor — is internally consistent and undetectable from the document alone; this residual gap is one reason resolved-form documents are never schema sources (§10.1) and ingest is an explicit, opt-in act.
+type_argument => {
+  ( name: type_ref | value: value )
+}
+```
+
+A `type_ref`'s `name` is the referenced type or, within a template body, a parameter, and `arguments` carries the application's positional arguments. A `type_argument`'s `name` member holds every *reference* — a type, an entry, or (in template bodies) a parameter of either kind — while its `value` member holds concrete literals only; exactly one member is present (the group is REQUIRED, §5.11). The reference/literal split is therefore structural: a token in a `name` member is always a reference, so value-typed token literals (enum members) can never be mistaken for parameter names, and member population is the open/closed signal — substitution replaces `{ name: P }` with the bound argument (`{ name: text }`, `{ value: 1920 }`) as parameters close.
+
+**Positional form.** `name` is `type_ref`'s only REQUIRED field, so the general positional form (§5.6) applies at every `type_ref`-typed position: a bare name token fills `name` directly, and a braced record is the explicit form. Canonical output MUST use the bare token whenever `arguments` is absent; an explicit record without `arguments` is valid data but non-canonical. `type_argument` deliberately has *no* REQUIRED field and hence no positional form: a bare token cannot self-classify as reference or literal, so its braced record is load-bearing, not ceremony.
+
+**Reading parameter references.** Parameters and type names share the lexical class `token`, so a `name` — in any `type_ref`, at any depth, including `type_argument` name members and the `source` field — resolves against two namespaces in order: the enclosing `type_definition.parameters` list first, then the schema's type-name namespace, the same precedence used during source-level parsing (§5.10). Value-parameter references additionally appear as `value_param` members on `record_field` (§5.7, §5.10). Only template entries may contain parameter references (the closed-entry rule, §5.10); a consumer holding an entry with empty `parameters` interprets every name directly against the schema.
+
+**`source` is structured provenance.** `source` records where a definition came from, as a `type_ref` — a bare name under the positional form in the common cases, the applied form when the origin was an application. Concretely: a construction records the constructor (`source: enum`); an atom refinement records the instance's constructor (`source: integer_type`, §5.5); a `^` refinement or `&` head records the source name; a refinement of or reference to an *application* records the application itself (`set`: `source: { name: array  arguments: [ { name: T } ] }`; `lookup => map<text, integer>`: the map application; `string_vec => vector<text, 3>`: the vector application, as written); and a materialised instantiation records the fully-bound application with reference chains and nested instantiation arguments flattened to entry names (§8.3), which makes the entry **self-describing**: its body is recomputable by substitution from its `source`, and identity comparison is single-level structural equality of `source` (§8.2).
+
+**`supertypes` and `subtypes` are name-level indexes**, resolver-managed; declarations never set them. Each answers a one-hop question — "is this in family X?", "what is in family X?" — by name; the structured truth lives in `source` and the bodies, so a parameterized supertype contributes its *head name* to the index while its arguments travel through the absorbed fields (§5.8). Their standing differs. `subtypes` is a cache: fully derivable, always recomputable, never trusted — the resolver MUST compute it as the transitive inverse of `supertypes` across the schema's namespace. `supertypes` is derivable from `body` for product types (the body's `record.supertypes` carries the direct compositions) but NOT for the atom family: desugaring erases the surface distinction between refining an instance (`age => !integer ^ { min: 0 max: 150 }`, IS-A `integer`) and constructing a fresh sibling (`port => !integer_type { min: 0 max: 65535 }`, IS-A nothing) — both serialize to `source: integer_type` with an identical body shape. The atom family's direct IS-A hop therefore lives only in `type_definition.supertypes`, making that field part of the type's serialized meaning rather than a recomputable cache. Instantiation is not IS-A: a closure of `vector` records `supertypes: [array product top]` — the template's own supertypes — and "is this a vector?" is a `source.name` question, not a `supertypes` one.
 
 **Two `supertypes` fields with different semantics.** `type_definition.supertypes` records the **transitive** IS-A chain — direct parents plus each parent's chain, deduplicated; construction via `!T {}` does not contribute. The body's `record.supertypes` records only the **direct** `&` compositions as written. Consumers use `type_definition.supertypes` for IS-A queries and `record.supertypes` to recover source-level composition. Example: `text_type => ~atom & { ... }` produces `type_definition.supertypes: [atom, top]` and `body: !record { supertypes: [atom], ... }`.
+
+**Ingest.** When `!type_definition` records are ingested as data (§10.1): `subtypes` MUST be discarded and recomputed; `supertypes` is taken as input, with the transitive closure recomputed and integrity verified — every listed supertype must exist, atom-family supertypes must share the entry's `source` constructor, product-type lists must be consistent with the body's `record.supertypes`, and transitive lists must be closed. The closed-entry rule (§5.10) MUST be verified — no `value_param` members and no parameter-resolving names in an entry with empty `parameters`, and no parameter references of any kind inside binding records (§5.6). Every instantiation entry's body MUST equal the recomputation by substitution from its recorded `source` — the self-describing check. Canonical-form violations (an explicit `type_ref` record without `arguments`, a positional form where the convention requires the explicit record) are ingest errors. Within-family retargeting — a document claiming an entry refines a different sibling of the same constructor — is internally consistent and undetectable from the document alone; this residual gap is one reason resolved-form documents are never schema sources (§10.1) and ingest is an explicit, opt-in act.
 
 **Body patterns** (informative — the construct sections govern):
 
@@ -926,71 +990,69 @@ The `type_definition` record captures the resolver's output for any type. Its fi
 | Atom constructor `~atom & { ... }` | ATOM; `constructor: true`; `supertypes: [atom top]` | `integer_type`, `enum` |
 | Product constructor `~product & { ... }` | PRODUCT; `constructor: true`; `supertypes: [product top]` | `record`, `array` |
 | Sum constructor `~sum & { ... }` | SUM; `constructor: true`; `supertypes: [sum top]` | `choice`, `extern` |
-| Constructor refinement `~T<P> ^ { ... }` | `constructor: true`; `source: T`; `supertypes: [T ...]` | `set` |
+| Constructor refinement `~T<P> ^ { ... }` | `constructor: true`; `source`: the application; `supertypes: [T ...]` | `set` |
+| Refinement template `<T, S> C<T> ^ { ... }` | `parameters` non-empty; vocabulary `!record` body with `value_param` pins; `supertypes: [C ...]` (§5.10) | `vector`, `array_min` |
 | Constructor instance `!T {}` | kind from `T`'s family; `source: T`; no supertypes; `body: !T {}` | `integer`, `value`, `unknown` |
 | Atom refinement `!I ^ { v }` | `source: I`'s constructor; `supertypes: [I ...]`; `body: !ctor { v }` | `age` |
-| Template `<T> ...` | `parameters` non-empty; not instantiable (§5.10) | `container` |
-| Inline container (synthetic) | kind from the implied constructor; `source: <ctor>`; no supertypes | `"[text]"` (§8.2) |
+| Top-level constructor application `C<args>` | PRODUCT construction; `source`: the application; binding-record body; no supertypes (§5.6) | `lookup => map<text, integer>`, `schema` |
+| Record template `<T> { ... }` | `parameters` non-empty; not instantiable; vocabulary body (§5.10) | `container` |
+| Inline form at a use site | no entry; represented in place as a `type_ref` (§5.3) | `[text]`, `map<text, integer>` |
+| Template instantiation | internally named entry; `source`: the flattened application; binding-record body (§8.2) | closures of `vector`, `tree` |
 | Choice `(A \| B)` | SUM; `body: !choice { variants: [...] }` | `contact_method` |
-| Field group `( a: T \| b: U )` | members flattened into `fields` as OPTIONAL; grouping in `record.groups` (§5.11) | `integer_type` |
+| Field group `( a: T \| b: U )` | members flattened into `fields` as OPTIONAL; grouping in `record.groups` (§5.11) | `integer_type`, `type_argument` |
 | Reference `name` | REFERENCE; `body: !reference { target: name }`; no supertypes | `id => uuid` (§8.3) |
 
-The `schema` type is a map from type names (the bare leaf names of types in the schema) to type definitions; schema lookup is by name, not by parameterized reference.
+The `schema` type is a map from type names to type definitions; schema lookup is by name. Declared entries are keyed by their declared names; instantiation entries are keyed by their internal names (§8.2).
 
 
-### 8.2 Synthetic Types
+### 8.2 Template Instantiation
 
-When a definition uses an inline type-expression form — container (`[T]`, `[T; n]`, `[T, U]`, `set<T>`, `map<K, V>`), choice (`(A | B)`), or a generic application (`linked_list<integer>`) — at a position whose runtime type is not otherwise named, the resolver synthesizes an entry in the schema's namespace, named by the **canonical rendering** of the source expression.
+Constructor applications never materialise entries — they are carried structurally wherever they occur (§5.3) and, as declaration bodies, resolve in place as constructions (§5.6). Exactly one form materialises: a **fully-bound application of a non-constructor template** (§5.10). A template instantiation is a genuine new `type_definition` — the product of substitution, with its own bindings — and recursion, dedup, and reference targets need it to be an entry.
 
-*Trigger positions.* Synthesis fires at positions that accept a type-ref and contain an inline structural form or generic application: record field types, field-group member types, tuple element types, array element types, choice variants, type arguments, and generic applications themselves (including a top-level type-def body that is a generic application, which materialises the applied form and resolves the declaration to a REFERENCE entry targeting it, §8.3). Composition targets and refinement sources are restricted to named type references; inline structural forms there are resolver errors. A top-level body that is a bracket or paren sugar form (`scores => [integer; 1..]`) is not a synthesis site — the declaration names the result, and the desugared form becomes the body directly.
+*Trigger positions.* Instantiation fires wherever a fully-bound template application appears: record field types, group member types, tuple element types, array element types, choice variants, arguments at any depth, and a top-level type-def body that is a template application (which resolves the declaration to a REFERENCE entry targeting the instantiation, §8.3). Composition targets and refinement sources remain restricted to named type references, optionally with arguments; inline structural forms there are resolver errors (§5.8, §12.1). An *open* application never materialises — it remains structural inside its template's body (§5.10).
 
-*Canonical rendering.* The canonical rendering of an inline form is a **whitespace-free** string over source-level names:
+*Identity.* Within a schema, two fully-bound applications denote the same entry if and only if their **flattened applications are structurally equal**: the application with every reference chain resolved to its terminal entry name and every nested fully-bound template application resolved to its instantiation's entry name (§8.3), compared member-by-member — heads, argument order, `name` against `name`, `value` against `value` under the argument types' own equality. The flattened application is exactly what the instantiation's `source` records, so identity is a single-level structural comparison of `source` values, and spelling variance never forks an entry: `[order]` and `array<order>` in argument positions, aliased and terminal names, and whitespace all land on the same entry. The first occurrence materialises; later occurrences reuse; recursive references resolve to the entry's own name (§5.10.1).
 
-- A simple type reference renders as the name as written; renderings use source-level names throughout — reference flattening (§8.3) applies to the synthesised *body*, never to the name.
-- An optional element or position appends `?`.
-- An array form renders as `[`, the element rendering, then — when a size constraint is present — `;` and the size-spec rendered without whitespace (each bound as parsed, joined by `..` where the range token appears; a vacuous `0..` is omitted together with its `;`), and `]`: `"[text]"`, `"[text?]"`, `"[text;1..]"`, `"[order;1..100]"`, `"[number;9]"`.
-- A tuple form renders as `[`, the position renderings joined by `,`, and `]`: `"[number,number]"`.
-- A choice form renders as `(`, the variant renderings joined by `|` in source order, and `)`: `"(email|phone)"`.
-- A generic application renders as the applied name, `<`, the argument renderings joined by `,`, and `>`: `"map<text,integer>"`.
-- Nested inline forms render recursively: `map<text, [integer]>` synthesises the inner `"[integer]"` and the outer `"map<text,[integer]>"`.
+*Entry names are internal.* Instantiation entries are named by the resolver, and the names are **not part of this specification's conformance surface**: an implementation chooses them freely, subject to two rules and one recommendation. Freshness (MUST): an internal name is a valid `token` and collides with no declared entry and no other internal entry. Stability within a resolution (MUST): all references to one instantiation use one name. Determinism (SHOULD): names derived from the flattened application's content — a readable head plus a structural hash, for instance — keep re-resolution output diff-stable. Internal names do not exist at source level (there is nothing to author), MUST NOT be relied on across resolutions or implementations, and resolved-form comparison between implementations is structural — equality up to renaming of instantiation entries.
 
-Every rendering contains at least one character outside the unquoted-token profile ([TSON-DATA] §7.1), so a synthetic name is always serialized as a **quoted token** and the synthetic namespace is disjoint from every authorable type name by construction — the `type-name` production admits only unquoted tokens (§12.1). Renderings are whitespace-free, so they satisfy the `token` contract (§7.4) and serve unchanged as map keys and `type_name` field values. Serialized resolver output MUST name synthetic entries by their canonical rendering.
-
-*Identity and dedup.* Within a schema, two inline forms denote the same synthetic entry if and only if their canonical renderings are identical strings; the first occurrence synthesizes, later occurrences reuse. The rendering is simultaneously the entry's name, its dedup key, and its diagnostic display form. Identity is deliberately textual: `(email | phone)` and `(phone | email)` are distinct entries — harmless, because synthetic entries are internal and non-referenceable. Whitespace never forks an entry: renderings are whitespace-free, so `[order; 1 .. 100]` and `[order;1..100]` name the same entry.
-
-*Body shape.* A synthesised type's body is the canonical constructor form of the source expression (§5.3–§5.6). The `source` field names the constructor implied by the inline form; `kind` is that constructor's kind; `supertypes` is empty (construction transfers kind, not IS-A):
+*Entry shape.* `source`: the flattened fully-bound application; `kind`: the template's kind; `parameters`: empty (the entry is closed, §5.10); `supertypes`: the template's supertypes, unchanged by substitution (§8.1); `body`: the substituted binding record, headed by the nearest `~` constructor in the source chain (§5.6). For `vector => <T, S> array<T> ^ { min_items: = S  max_items: = S }` applied as `vector<pixel, 1920>`, a resolver might produce:
 
 ```
-"[text]" => !type_definition {
+vector_pixel_af3 => !type_definition {
   kind: PRODUCT
-  source: array
-  body: !array { element_type: text }
+  source: { name: vector  arguments: [ { name: pixel }  { value: 1920 } ] }
+  supertypes: [array product top]
+  body: !array { element_type: pixel  min_items: 1920  max_items: 1920 }
 }
 ```
 
-*Non-exposure.* Synthetic entries are resolver-materialised, not declared. They cannot be named as type-refs from any schema — guaranteed by grammar; authors reach an equivalent type by writing the same source form (reusing the entry) or by introducing a named declaration. They MUST NOT participate in `!!import` resolution: imports merge declared entries only (§2.2.3); an importing schema using the same source form synthesises its own identically-named entry.
+*Non-exposure.* Instantiation entries are resolver-materialised, not declared. They cannot be named from any schema source and MUST NOT participate in `!!import` resolution: imports merge declared entries only (§2.2.3); an importing schema applying the same imported template materialises its own entry. Authors reach the type by writing the application (reusing the entry) or by declaring a named alias (§8.3).
 
-*Diagnostics and cross-schema identity.* The synthetic name surfaces the source form itself in error messages; implementations SHOULD additionally report the source position of the form that first synthesised the entry. Synthetic entries are per-schema internals — the same form in two schemas produces two distinct entries; cross-schema identity is through named declarations or not at all.
+*Diagnostics and cross-schema identity.* Internal names MUST NOT be the primary form shown to users: diagnostics surface the source application — recoverable from the entry's `source`, the originating source position, and `@alias` where recorded. Instantiation entries are per-schema internals; cross-schema identity is through named declarations or not at all.
 
 
-### 8.3 Reference Flattening
+### 8.3 References and Flattening
 
-A type-def body that is purely a type *reference* — a bare name or a generic application, with no body record, no `&`, and no constructor application — produces a REFERENCE-kind entry. The `target` depends on the form:
+A type-def body that is purely a type *reference* — a bare name or a template application, with no body record, no `&`, and no construction — produces a REFERENCE-kind entry with body `!reference { target: T }`, where `target` names an entry, and `source` records the referent as written (§8.1):
 
-- **Simple type-ref leaf** (`id => uuid`): `source: typename`, `body: !reference { target: typename }`. The `target` is the immediate referent, not the ultimate type — reference chains (`doc → documentation → text`) appear as distinct entries, each pointing one hop forward.
-- **Generic application** (`lookup => map<text, integer>`): the applied form is materialised as a synthetic entry (§8.2) and the REFERENCE entry points at it by canonical rendering: `body: !reference { target: "map<text,integer>" }`.
+- **Simple leaf** (`id => uuid`): `source: uuid`, `body: !reference { target: uuid }`. The `target` is the immediate referent, not the ultimate type — reference chains (`doc → documentation → text`) appear as distinct entries, each pointing one hop forward.
+- **Fully-bound template application** (`string_vec => vector<text, 3>`): the application is materialised (§8.2); `source` records it as written; `target` is the instantiation's internal entry name.
+- **Open template application** (`text_keyed_map => <V> map<text, V>`, `matrix => <T, M, N> vector<...>`): the declaration is itself a template (§5.10); `source` records the open application; for a template head, `target` holds the head name as the pending index. Reference-kind templates compose during substitution without materialising intermediate entries.
 
-**Resolution at use sites.** When a reference is used — as a field type, tuple element, type argument, or data-mode type annotation — the resolver flattens it: it walks the reference chain to the first non-REFERENCE type, rewrites the use-site `type_name` to that type, and attaches an `@alias` annotation to the type token recording the source-level name:
+A top-level *constructor* application is not a reference — it resolves as a construction in place (§5.6).
+
+**Resolution at use sites.** When a reference is used — as a field type, tuple element, choice variant, argument, or data-mode type annotation — the resolver flattens it: it walks the reference chain to the first non-REFERENCE entry, rewrites the use-site name to that entry's name, and attaches an `@alias` annotation recording the source-level name:
 
 ```
-!record_field { name: owner  type: @alias:id uuid }
+!record_field { name: owner   type: @alias:id uuid }
+!record_field { name: batch   type: @alias:string_vec vector_text_9d4 }
 ```
 
-The alias attaches to the type, not the `record_field` — it describes the type reference, not the field. Only the source-site alias is preserved; intermediate hops in a chain are not aliased on the use-site type (they remain visible as schema entries). The same flattening applies in data mode: `!id 550e8400-…` resolves to a uuid-typed value with `@alias:id` on the type annotation.
+The alias attaches to the type value, not the `record_field` — it describes the type reference, not the field. Only the source-site alias is preserved; intermediate hops in a chain are not aliased on the use-site type (they remain visible as schema entries). Flattening applies recursively inside `arguments` — every name in a flattened application is a terminal entry name — which is what makes instantiation identity a single-level comparison (§8.2). The same flattening applies in data mode: `!id 550e8400-…` resolves to a uuid-typed value with `@alias:id` on the type annotation.
 
 **References are not supertypes.** REFERENCE-kind entries do not contribute to the `supertypes`/`subtypes` graph: `uuid.subtypes` does not list `id`; `id.supertypes` is empty.
 
-**Synthetic names are not references.** Synthetic types carry quoted source-form names and have their original kind and a constructor-instance body, not a `!reference` record. A REFERENCE entry may *point at* a synthetic name; the synthetic itself is a construction.
+**Instantiation entries are not references.** Instantiation entries (§8.2) carry the substituted template's kind and a binding-record body, not a `!reference` record. A REFERENCE entry may *point at* an instantiation; the instantiation itself is a closed, concrete definition.
 
 
 ## 9. The Meta Layer
@@ -999,8 +1061,8 @@ Two pre-loaded schemas form the meta layer. Implementations MUST pre-load both (
 
 | Schema | Role | Declares |
 |--------|------|----------|
-| `2026/32/m/meta-kernel.tn1` | Self-referencing bootstrap; its `!!id` and `!!meta` reference its own URL | `top`, the base kinds `atom`/`product`/`sum`, `reference`; the `record`/`array`/`set`/`map`/`tuple`/`enum`/`choice` constructors; the `record_field`/`tuple_element`/`field_group`/`parameter`/`type_definition`/`schema` supporting records; the `unit` constructor and its instances `value`/`token`/`void`; the atom-constructor/instance pairs `integer_type`/`integer` (with the `integer_size` supporting record), `text_type`/`text`, `uri_type`/`uri`, `regex_type`/`regex`; `boolean`; `atom_specification`; the internal enums; the annotation types `annotation`, `documentation`, `doc`, `alias` |
-| `2026/32/m/meta.tn1` | Canonical meta-schema; chains to the kernel and imports it | `binary` (with `binary_encoding`), `extern`, `unknown_type`; the constraint-vocabulary constructors for numeric (`float_type` with `ieee_format`, `decimal_type`, `rational_type`, `complex_type` with `complex_component`), temporal (`date_type`, `time_type`, `datetime_type`, `duration_type`), identifier (`uuid_type`), network (`ipv4_type`, `ipv6_type`, `cidr4_type`, `cidr6_type`, `mac_type`), and text (`email_type`) families; the annotation types `ordered`, `bounded`, `exact`, `numeric`, `deprecated`, `since`, `todo`, `lang` |
+| `2026/32/m/meta-kernel.tn1` | Self-referencing bootstrap; its `!!id` and `!!meta` reference its own URL | `top`, the base kinds `atom`/`product`/`sum`, `reference`; the `record`/`array`/`set`/`map`/`tuple`/`enum`/`choice` constructors; the `record_field`/`tuple_element`/`field_group`/`type_ref`/`type_argument`/`type_definition`/`schema` supporting records; the `array_min`/`array_max`/`array_ranged` size-refinement templates (§5.3); the `unit` constructor and its instances `value`/`token`/`void`; the atom-constructor/instance pairs `integer_type`/`integer` (with the `integer_size` supporting record), `text_type`/`text`, `uri_type`/`uri`, `regex_type`/`regex`; `boolean`; `atom_specification`; the internal enums; the annotation types `annotation`, `documentation`, `doc`, `alias` |
+| `2026/32/m/meta.tn1` | Canonical meta-schema; chains to the kernel and imports it | `binary` (with `binary_encoding`), `extern`, `unknown_type`; the `vector` fixed-size array constructor (§5.3); the constraint-vocabulary constructors for numeric (`float_type` with `ieee_format`, `decimal_type`, `rational_type`, `complex_type` with `complex_component`), temporal (`date_type`, `time_type`, `datetime_type`, `duration_type`), identifier (`uuid_type`), network (`ipv4_type`, `ipv6_type`, `cidr4_type`, `cidr6_type`, `mac_type`), and text (`email_type`) families; the annotation types `ordered`, `bounded`, `exact`, `numeric`, `deprecated`, `since`, `todo`, `lang` |
 
 Each constraint-bearing atom family is a constructor/instance pair (§4.2): the constructor lists the family's constraint fields; the canonical empty instance lives in the kernel or in core (`integer`, `text`, `uri`, `regex`; `number`, `float32`, `float64`, `rational`, `complex`, `date`, and the rest in `core.tn1`). Meta's kernel import is doubly load-bearing: it supplies the kernel types meta's own declarations use and delivers the kernel's structural vocabulary to every meta-governed schema (§3.3.1). Annotation types live in the chain because of the one-hop rule (§3.3.3, §6); core re-exports `void`, `doc`, `documentation`, `annotation`, and `alias` for data documents governed by core-importing schemas, and adds `complex` (`!complex_type {}`).
 
@@ -1107,6 +1169,7 @@ schema-map-entry = *( annotation ws ) type-name ws "=>" ws
 type-def = atom-refinement
          / instance
          / [type-params] ["~"] structural-def
+         / [type-params] container-def
          / [type-params] type-ref
 
 type-params = "<" ws param-name *(ws "," ws param-name) ws ">"
@@ -1162,7 +1225,7 @@ group-member = *annotation field-name ws ":" ws type-ref
 ; ── Type References (any type position) ───────────────────
 
 type-ref = paren-type
-         / array-def
+         / inline-array
          / type-name "<" type-args ">"
          / type-name
 
@@ -1170,30 +1233,53 @@ type-ref = paren-type
 
 paren-type = "(" type-ref "|" type-ref *("|" type-ref) ")"   ; choice, 2+ variants
 
-array-def  = tuple-form / array-form
-tuple-form = "[" field-type separator field-type *(separator field-type) "]"
-array-form = "[" field-type [ ws ";" ws size-spec ] ws "]"
-size-spec  = size-bound [ ws ".." ws [ size-bound ] ]
-           / ".." ws size-bound
+inline-array = "[" type-ref ws "]"                            ; plain array
+             / "[" type-ref 1*(separator type-ref) "]"        ; tuple, all positions REQUIRED
 
-; field-type is defined in the field-def section above;
-; it is reused here for tuple and array element positions.
+; Declaration-level container forms (top-level type-def body
+; only, §5.3): size specifiers and element/position "?" are
+; not valid inside a type-ref.
+
+container-def = "[" element-type [ ws ";" ws size-spec ] ws "]"          ; array
+              / "[" element-type 1*(separator element-type) "]"          ; tuple
+
+element-type  = type-ref ["?"]
+size-spec     = size-bound [ ws ".." ws [ size-bound ] ]
+              / ".." ws size-bound
+              ; a size-bound is decimal-natural or, within a
+              ; template body, a value-parameter name (§5.3)
+
+; The "?" in field-type marks FIELD optionality (§5.2) and
+; remains valid at field positions; the "?" in element-type
+; marks element or tuple-position optionality and is valid
+; only inside a container-def.
 
 ; ── Terminals ─────────────────────────────────────────────
 
-type-args  = type-ref *(separator type-ref)    ; separator = ws "," ws / ws1
+type-args  = type-arg *(separator type-arg)    ; separator = ws "," ws / ws1
+type-arg   = type-ref / value-literal
+value-literal = token
+           ; a single scalar lexeme: a number, quoted string,
+           ; boolean, or other non-name token. An unquoted
+           ; token that satisfies type-name parses as a
+           ; type-ref; whether it denotes a type or a value
+           ; (an enum member) is settled against the applied
+           ; signature's parameter kinds (§5.10, §5.3), not
+           ; by the grammar.
 size-bound = unquoted-token
            ; text MUST match the decimal-natural production
            ; of [TSON-DATA] §7.6
 type-name  = unquoted-token
-           ; two restrictions beyond the lexeme class: a
+           ; one restriction beyond the lexeme class: a
            ; declaration name whose text matches the number
            ; production of [TSON-DATA] §7.6 is a parse error —
            ; numbers are not declarable names (param-name
-           ; shares the rule); and every resolver-synthesised
-           ; entry name (§8.2) contains a character outside
-           ; the unquoted profile, so the synthetic and
-           ; declared namespaces are disjoint by construction.
+           ; shares the rule). Resolver-materialised
+           ; instantiation entries (§8.2) carry internal names
+           ; in this same lexeme class; the resolver keeps them
+           ; disjoint from declared names by construction
+           ; (freshness, §8.2), and they are unreachable from
+           ; source because they do not exist at source level.
 ```
 
 Notes:
@@ -1201,7 +1287,8 @@ Notes:
 - The `type-params` slot declares type parameters (§5.10); parameters take precedence over schema-namespace lookup, and references to a parameterized type MUST supply matching type arguments.
 - `paren-type` produces choice types; choices require at least two variants — `(T)` is a parse error.
 - `group-def` produces field groups (§5.11); a group requires at least two members. Inside a record body, `(` at entry position (after any leading annotations) opens a group; `(` after a `field-name ":"` opens a `paren-type`. The two never collide — a group is an entry, a choice is a type-ref. The `?` after the closing `)` sets the group's state; member positions reject `?` and modifiers by grammar.
-- The `?` suffix marks field-level, tuple-position-level, array-element-level, or group-level optionality and is valid only in those positions, recording `state: OPTIONAL` on the containing `record_field`, `tuple_element`, `array`, or `field_group`. There is no generic "optional type" in TSON.
+- The `?` suffix marks field-level, tuple-position-level, array-element-level, or group-level optionality and is valid only in those positions, recording `state: OPTIONAL` on the containing `record_field`, `tuple_element`, `array`, or `field_group`. Element- and position-level `?` is declaration-level syntax: it appears in `container-def` (a top-level type-def body) and never inside a `type-ref`. There is no generic "optional type" in TSON.
+- `inline-array` and `container-def` overlap on the plain-array and all-REQUIRED-tuple shapes; at top-level type-def position `container-def` is tried first, and the two parses are semantically identical there. Size specifiers and element/position `?` are exclusive to `container-def` (§5.3): an inline `[T; n]`, `[T?]`, or `[T, U?]` is a parse error whose diagnostic SHOULD suggest a named declaration or, in layers where the template names resolve (§5.3), the equivalent size-refinement application.
 - The trailing record-def in `construction-def` is optional (`customer => address & contact` is valid). When a `{` follows a `&`-chain, it always belongs to the construction's record-def.
 - The refined-def target is restricted to a bare type-name, optionally with type-args; inline structural forms cannot precede `^` by grammar. A `^` whose resolved target has no refinable body (a choice, for example) is a resolver error reported with the target's kind.
 - The removal clause attaches to construction heads only; a refinement head admits none — `T ^ { ... } - { ... }` is a parse error (§5.7, §5.9).
@@ -1234,12 +1321,13 @@ This section is informative.
 ;   name {         → parse error (write ^ or &)
 ;   {              → fresh record-def
 ;   (              → paren-type (choice)
-;   [              → array-def or tuple
+;   [              → container-def (array or tuple, full syntax)
 ;   name ? / name  → type-ref
 ;
 ; type-ref position (field types, array elements, etc.):
 ;   (              → paren-type (choice)
-;   [              → array-def or tuple
+;   [              → inline-array (plain array or tuple; no
+;                    size spec, no element/position "?")
 ;   name <         → generic
 ;   name ? / name  → simple ref
 ;
@@ -1247,10 +1335,11 @@ This section is informative.
 ;   (              → group-def (field group, §5.11)
 ;   name ":"       → field-def
 ;
-; array-def internal disambiguation:
+; bracket-form internal disambiguation:
 ;   [type sep type  → tuple (whitespace or comma)
-;   [type ; spec    → array with size constraint
+;   [type ; spec    → array with size constraint (container-def only)
 ;   [type ]         → unconstrained array
+;   [type ? ...     → element/position "?" (container-def only)
 ;
 ; after a construction body "}":
 ;   -              → removal clause (§5.9)
@@ -1269,7 +1358,7 @@ This section is informative.
 ;   name (other)   → parse error
 ```
 
-Each case in the type-def block is decided by at most two tokens of lookahead at the start of the production; in array-def, the choice between tuple, sized array, and unconstrained array is made by one-token lookahead after the complete preceding `field-type`. A `field-type` can itself be nested (`(email | [phone])?`) and parses without backtracking via the disambiguation above. The schema body requires at most two tokens of lookahead to detect a declaration boundary. The parser never backtracks at any level.
+Each case in the type-def block is decided by at most two tokens of lookahead at the start of the production; inside a bracket form, the choice between tuple, sized array, and unconstrained array is made by one-token lookahead after the complete preceding element type. A `field-type` can itself be nested (`(email | [phone])?`) and parses without backtracking via the disambiguation above; the outer `?` there is field optionality (§5.2). The schema body requires at most two tokens of lookahead to detect a declaration boundary. The parser never backtracks at any level.
 
 
 ### 12.3 Adjacency Rules
@@ -1279,14 +1368,14 @@ The following rows extend the adjacency table of [TSON-DATA] §7.5 for the opera
 | Operator | Type | Context | Rule |
 |---|---|---|---|
 | `!` | prefix | type-def body (constructor application, atom refinement) | MUST be adjacent to the following unquoted-token (constructor or instance name) |
-| `?` | suffix | field type, tuple position, array element, field group | MUST be adjacent to the preceding token (type name or closing bracket/paren) |
+| `?` | suffix | field type, tuple position, array element (container-def), field group | MUST be adjacent to the preceding token (type name or closing bracket/paren) |
 | `&` | binary | composition | whitespace on either side optional |
 | `^` | binary | refinement (§5.5, §5.7) | whitespace on either side optional |
 | `-` | prefix | removal clause (§5.9) | whitespace optional before the following `{` |
 | `~` | prefix/modifier | constructor marker, default value | whitespace optional |
 | `=` | modifier | fixed value | whitespace optional |
 | `\|` | separator | choice variant; field-group member | whitespace optional |
-| `;` | separator | array size spec | whitespace optional |
+| `;` | separator | array size spec (container-def, §5.3) | whitespace optional |
 | `..` | binary | size-spec range (§5.3) | whitespace on either side optional |
 | `=>` | separator | schema declaration; data map entry | whitespace optional (compound token from lexer) |
 

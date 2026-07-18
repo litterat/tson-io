@@ -86,6 +86,14 @@
   unknown_type => ~sum & {}
 
   @doc:"""
+    Fixed-size array constructor.
+    """
+  vector => <T, S> ~array<T> ^ {
+    min_items: = S
+    max_items: = S
+  }
+
+  @doc:"""
     IEEE 754-2019 interchange formats, both radices. Selects the
     representable grid of an approximate (`float_type`) value. The
     binary formats are the familiar base-2 floats; the decimal formats

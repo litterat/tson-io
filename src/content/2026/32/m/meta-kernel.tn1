@@ -181,9 +181,51 @@
   field_name => token
   param_name => token
 
-  @doc:"Type parameter declaration."
-  parameter => {
-    name: param_name
+  @doc:"""
+    Structured type reference ([TSON-SCHEMA] §8.1). `name` is the
+    referenced type — or, within a template body, a parameter of
+    either kind, read against the enclosing definition's
+    `parameters` list — and `arguments` carries positional
+    arguments as type_argument records.
+
+    `name` is the only REQUIRED field, so the positional form
+    ([TSON-SCHEMA] §5.6, general over schema-backed data) applies
+    at every type_ref-typed position: a bare name token fills
+    `name` directly, and a braced record is the explicit form,
+    canonical only when `arguments` is present.
+
+    Applications of constructors are carried structurally and
+    materialise no entries. A fully-bound application of a
+    non-constructor template materialises an entry: the applied
+    form is recorded in the entry's `source`, the substituted
+    binding record becomes its body headed by the nearest `~`
+    constructor, and the entry's name is internal —
+    implementation-chosen and non-normative, since identity is
+    structural equality of the flattened application recorded in
+    `source` ([TSON-SCHEMA] §8.2). An entry with an empty
+    `parameters` list contains no parameter references at any
+    depth ([TSON-SCHEMA] §5.10).
+    """
+  type_ref => {
+    name:       type_name
+    arguments:  [type_argument]?
+  }
+
+  @doc:"""
+    One positional argument of a type application — a labelled
+    choice between a reference and a concrete value. `name` holds
+    every reference: a type, an entry, or (in template bodies) a
+    parameter of either kind — parameters ride the reference
+    channel because a token there is always a reference, never a
+    literal. `value` holds concrete literals only, so the
+    reference/literal split is structural and value-typed tokens
+    (enum members) are never ambiguous with parameter names. The
+    group is REQUIRED: exactly one member is present. Deliberately
+    no positional form — a bare token cannot self-classify as
+    reference or literal, so the braced record is load-bearing.
+    """
+  type_argument => {
+    ( name: type_ref | value: value )
   }
 
   @doc:"Internal enumerations."
@@ -200,16 +242,24 @@
   doc           => @annotation documentation
   alias         => @annotation text
 
-  @doc:"Supporting records."
+  @doc:"""
+    Supporting records. record_field's value group: `value` carries
+    a concrete fixed or default value; `value_param`, legal only in
+    template bodies, binds the fixed or default value to a value
+    parameter (`= P` and `~ P`, [TSON-SCHEMA] §5.7). The labelled
+    split exists because value-typed tokens are literals, so a
+    parameter reference in a value channel needs a label
+    ([TSON-SCHEMA] §5.10).
+    """
   record_field => {
     name:   field_name
-    type:   type_name
+    type:   type_ref
     state:  field_state ~ REQUIRED
-    value:  value?
+    ( value: value | value_param: param_name )?
   }
 
   tuple_element => {
-    element_type: type_name
+    element_type: type_ref
     state:        element_state ~ REQUIRED
   }
 
@@ -254,6 +304,26 @@
     unique_items: = true
   }
 
+  @doc:"""
+    Size-refinement templates — the desugar targets of the array
+    size-specifier sugar ([TSON-SCHEMA] §5.3): `[T; N..]` is
+    array_min<T, N>, `[T; ..M]` is array_max<T, M>, and `[T; N..M]`
+    and the exact form `[T; N]` are array_ranged<T, N, M> and
+    array_ranged<T, N, N>.
+    """
+  array_min => <T, MIN> array<T> ^ {
+    min_items: = MIN
+  }
+
+  array_max => <T, MAX> array<T> ^ {
+    max_items: = MAX
+  }
+
+  array_ranged => <T, MIN, MAX> array<T> ^ {
+    min_items: = MIN
+    max_items: = MAX
+  }
+
   map => <K, V> ~product & {
     access_pattern:  product_access_type = NAMED
     size_type:       product_size_type = VARIABLE
@@ -274,14 +344,14 @@
   }
 
   choice => ~sum & {
-    variants: [type_name]
+    variants: [type_ref]
   }
 
   @doc:"Resolver output."
   type_definition => {
-    source:       type_name?
+    source:       type_ref?
     kind:         type_kind
-    parameters:   [parameter]?
+    parameters:   [param_name]?
     constructor:  boolean ~ false
     supertypes:   [type_name]?
     subtypes:     [type_name]?

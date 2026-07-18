@@ -71,7 +71,18 @@ The same earlier draft expressed subtraction as `field: _` inside a composition 
 
 ### 2.11 Size-specs into the grammar
 
-The array size-spec was originally a single unquoted token validated against a regex in prose — `1..100` lexed as one token because digits and `.` are profile characters, so no parser production could ever split it. The fix is one lexer rule: the unquoted scanner terminates before consecutive dots, and `..` is a compound token (the range token), making the size-spec ordinary grammar — bounds around `..`, each matched against `decimal-natural`, with the regex deleted. The `+` spelling went with it: `1..` says the same thing, and textual synthetic identity (§8.1) had been paying for the duplicate with two entries for one type. What stayed behind is instructive: only the `N < M` relation remains a schema-load check — the taxonomy of §2.7 applied to sizes, shapes into grammar, value relations into checks. The data-format cost was accepted with eyes open: range-shaped content (`2026-01..2026-06`) now splits at the range token and must be quoted, which is the exclusion principle of §3.1 finally reaching ranges — their quoting rule is "always", never a scan.
+The array size-spec was originally a single unquoted token validated against a regex in prose — `1..100` lexed as one token because digits and `.` are profile characters, so no parser production could ever split it. The fix is one lexer rule: the unquoted scanner terminates before consecutive dots, and `..` is a compound token (the range token), making the size-spec ordinary grammar — bounds around `..`, each matched against `decimal-natural`, with the regex deleted. The `+` spelling went with it: `1..` says the same thing, and the then-textual synthetic identity (§8.1 recounts its replacement) had been paying for the duplicate with two entries for one type. What stayed behind is instructive: only the `N < M` relation remains a schema-load check — the taxonomy of §2.7 applied to sizes, shapes into grammar, value relations into checks. The data-format cost was accepted with eyes open: range-shaped content (`2026-01..2026-06`) now splits at the range token and must be quoted, which is the exclusion principle of §3.1 finally reaching ranges — their quoting rule is "always", never a scan.
+
+
+### 2.12 Templates as call sites for type finishing
+
+The 2026 Revision 32 redesign of type references began with a representation bug and ended with a unification. The bug: synthetic entry names carried source spelling, so aliases forked identity and template bodies put binders inside strings (§8.1 below). The fix — a recursive `type_ref` record with `type_argument` children — made references structural, and each subsequent decision fell out of pressing one principle: *store shape as shape*. Constructor applications became self-describing structure rather than entries; entry names became internal; `source` became the single structured-provenance channel while `supertypes`, `subtypes`, and `target` stayed name-level indexes — one question, one channel.
+
+The unification arrived when value parameters joined: the type operations form a two-by-two of {types, values} × {bind now, bind at call site}, and the fourth quadrant — values bound at the call site — was already occupied privately by the array size sugar. `[order; 1..100]` *is* `array_ranged<order, 1, 100>`; the redesign made the templates real (`array_min`, `array_max`, `array_ranged`, kernel-declared without `~`) and routed the sugar through them, which also fixed an accident: sized arrays had been nominal siblings of `array`, and as refinement-template closures they are IS-A `array`, Liskov-clean. A template is a suspended declaration and application is the finishing step — which is why `~` is the discriminator that matters: with it, a refinement founds a new vocabulary head (`set`, annotating its applications `!set`); without it, a refinement template's closures are ordinary members of the source family (`vector` closures are `!array` bodies).
+
+Two representational rules keep the machinery honest. The *shadowing/label rule*: parameters ride reference channels by shadowing (a token there is always a name) and value channels by label (`= P` pins, `value_param` members; a bare token in a value channel is always a literal, so enum members never collide with parameter names) — and `type_argument`'s two-member group makes the same split structural in argument lists, which is why it deliberately has no positional form. The *level rule*: open templates keep vocabulary-record bodies (the level where parameter channels exist), and binding records are closed-world — a body's own shape announces whether the definition is open, and it also decides refinability: `^` requires a vocabulary body, so a finished binding record (a construction, an instantiation, or an alias to one) is terminal, and narrower relatives are re-derived from the application head.
+
+The theoretical basis is the **spectrum of completeness** developed in the proto-schema research series (Part 5, *Templates* — tson.io/research/proto-schema/part-5-templates/): data and schemas are one continuum distinguished by how many blanks remain, and a template is a pattern with blanks — a definition awaiting completion. The final design makes the spectrum mechanical and self-applied: `record_field` *is* the bead (name, type, state, and a value channel that is concrete, defaulted, pinned, blank-by-parameter, or absent), member population is the visible completeness coordinate (`value_param: N` → `value: 2`; `{ name: T }` → `{ name: status }`), the body's level — vocabulary or binding — is the other, and there is no separate template wrapper: an open and a closed definition are the same `type_definition` at different points on the spectrum. The research piece's open puzzle — the "odd syntax where the template value is separated from the length value" in its `float3`/`vector` sketch — is resolved by the unified signature (`vector<float, 3>`, one argument list, both kinds), and its instinct that partial types must stay "out of data formats and the values they represent" became the closed-world binding-record rule: data-mode values never contain parameter machinery. Two of its open questions were answered *no* for v1, deliberately: bounded blanks (`<T: string | fullName>`) are deferred — parameters are unannotated and kind-inferred — and the type-family reading of a bare template name (`[person]` as the choice over its instantiations) is absent: v1 requires full binding at every reference. Between them, the illegal states of the old model — a binder in a name, a parameter in a binding record, an ambiguous token — became unrepresentable rather than prohibited.
 
 
 ## 3. Lexical Design
@@ -181,6 +192,7 @@ The task-tracking schema from [TSON-SCHEMA] §1.6, taken all the way through res
 {
   priority => !integer ^ { min: 1  max: 5 }
   status   => !enum [OPEN ACTIVE DONE]
+  flagged  => <T, N> { entry: T  priority: priority ~ N }
   task => {
     id:       uuid
     title:    non_empty_text
@@ -188,11 +200,12 @@ The task-tracking schema from [TSON-SCHEMA] §1.6, taken all the way through res
     status:   status ~ OPEN
     due:      date?
     tags:     [text]?
+    history:  [flagged<status, 2>]?
   }
 }
 ```
 
-`priority` refines core's `integer` instance; `status` applies the `enum` constructor, reached through the structure namespace supplied by the `!!meta` target; `task` is a fresh record whose field types resolve through the type-name namespace — `uuid`, `non_empty_text`, and `date` from the core import, `priority` and `status` from the local declarations. The `~` modifiers place `priority` and `status` in the REQUIRED_DEFAULT state, and `[text]?` is an OPTIONAL field whose inline array type the resolver synthesises as a named entry.
+`priority` refines core's `integer` instance; `status` applies the `enum` constructor, reached through the structure namespace supplied by the `!!meta` target; `task` is a fresh record whose field types resolve through the type-name namespace — `uuid`, `non_empty_text`, and `date` from the core import, `priority` and `status` from the local declarations. The `~` modifiers place `priority` and `status` in the REQUIRED_DEFAULT state; `[text]?` is an OPTIONAL field whose inline array type is carried structurally — a `type_ref` value at the field, no entry materialised ([TSON-SCHEMA] §5.3, §8.1). `flagged` is a template with a type parameter and a value parameter — a fresh record whose `priority` field is defaulted by parameter (`~ N`), built entirely from the schema's own names, since kernel constructors like `array` are not nameable at derivation positions in an ordinary schema ([TSON-SCHEMA] §3.3.2, §5.3) — and `[flagged<status, 2>]?` wraps its fully-bound application in the array sugar ([TSON-SCHEMA] §5.10).
 
 A data document binds the schema and instantiates:
 
@@ -205,6 +218,7 @@ A data document binds the schema and instantiates:
   status:   OPEN
   due:      2026-08-01
   tags:     [spec editorial]
+  history:  [{ entry: OPEN }  { entry: ACTIVE  priority: 4 }]
 }
 ```
 
@@ -226,6 +240,14 @@ Resolution derives a schema value, serialized as resolver output — a data docu
     source: enum
     body: !enum { members: [OPEN ACTIVE DONE] }
   }
+  flagged => !type_definition {
+    kind: PRODUCT
+    parameters: [T N]
+    body: !record { fields: [
+      !record_field { name: entry     type: T }
+      !record_field { name: priority  type: priority  state: REQUIRED_DEFAULT  value_param: N }
+    ] }
+  }
   task => !type_definition {
     kind: PRODUCT
     body: !record { fields: [
@@ -234,13 +256,17 @@ Resolution derives a schema value, serialized as resolver output — a data docu
       !record_field { name: priority  type: priority  state: REQUIRED_DEFAULT  value: 3 }
       !record_field { name: status    type: status    state: REQUIRED_DEFAULT  value: OPEN }
       !record_field { name: due       type: date      state: OPTIONAL }
-      !record_field { name: tags      type: "[text]"  state: OPTIONAL }
+      !record_field { name: tags      type: { name: array  arguments: [ { name: text } ] }  state: OPTIONAL }
+      !record_field { name: history   type: { name: array  arguments: [ { name: flagged_status_4c1 } ] }  state: OPTIONAL }
     ] }
   }
-  "[text]" => !type_definition {
+  flagged_status_4c1 => !type_definition {
     kind: PRODUCT
-    source: array
-    body: !array { element_type: text }
+    source: { name: flagged  arguments: [ { name: status }  { value: 2 } ] }
+    body: !record { fields: [
+      !record_field { name: entry     type: status }
+      !record_field { name: priority  type: priority  state: REQUIRED_DEFAULT  value: 2 }
+    ] }
   }
 }
 ```
@@ -250,14 +276,21 @@ Reading the output:
 - `priority` shows **refinement**: the surface form `!integer ^ { ... }` retargeted to the instance's source constructor (`source: integer_type`), with IS-A recorded against the refined instance (`supertypes: [integer]`). This is the case where `supertypes` carries information the body cannot: compare a hypothetical sibling `port => !integer_type { min: 0  max: 65535 }`, which would serialize with the *same* `source` and an identical body shape but empty `supertypes`.
 - `status` shows **construction**: the `enum` constructor's ATOM kind is inherited, `source: enum` is recorded, and `supertypes` stays empty — construction transfers kind, not IS-A. The positional sugar `!enum [OPEN ACTIVE DONE]` has desugared to the explicit binding `{ members: [...] }`.
 - `task` shows the **field-state machinery**: each `record_field` carries its state (the default REQUIRED omitted) and the eagerly-resolved default values, so consumers read defaults from the output without re-parsing modifier tokens.
-- `"[text]"` shows **synthesis**: the inline array form hoisted to a named entry, its name the canonical rendering of the source expression — quoted, because the rendering contains `[`, which no authorable type name can. The synthetic has `source: array` and no supertypes, like any other construction.
+- `tags` shows **structural carriage**: the inline `[text]` is a constructor application, represented in place as a `type_ref` — `{ name: array  arguments: [ { name: text } ] }` — and interpreted directly against `array`'s vocabulary. No entry is materialised for it.
+- `flagged` and `flagged_status_4c1` show the **template machinery** end to end. The open template's body stays at the level where parameter channels exist: `T` rides `entry`'s type channel by shadowing, and the default `~ N` is the labelled `value_param` member at REQUIRED_DEFAULT ([TSON-SCHEMA] §5.7). The instantiation is the closed form: substitution swaps `type: T` for `type: status` and `value_param: N` for `value: 2`, and the fully-bound application recorded in `source` makes the entry self-describing — its body is recomputable by substitution. `history`'s field type then wraps the entry name in a structural array — instantiation and structural carriage composing. The entry's name is internal — `flagged_status_4c1` is this resolver's choice, not the specification's; identity is structural equality of `source`, and another implementation may name the same entry differently. For the constructor-collapse case (a refinement template closing to a `!array` binding record with inherited supertypes), see [TSON-SCHEMA] §8.2's `vector` example.
 
 
 ## 8. Resolver Output for Consumers
 
-### 8.1 Why synthetic identity is textual
+### 8.1 Why instantiation identity is structural — and names are internal
 
-Two inline forms denote the same synthetic entry iff their canonical renderings are identical strings — so `(email | phone)` and `(phone | email)` are distinct entries despite being semantically equal. This looks like a missed unification, but the alternatives are worse. Semantic identity requires the resolver to define (and every implementation to agree on) a normal form for every present and future construct — variant ordering, size-spec canonicalisation, nested-form flattening — and any disagreement forks entry names across implementations, which is a conformance bug factory. Textual identity is decidable by string comparison, stable across implementations by construction, and its cost is bounded and benign: synthetic entries are per-schema internals, non-referenceable by grammar, so a duplicate pair wastes a map entry and nothing else. The rendering also does triple duty — entry name, dedup key, and diagnostic display form — so error messages show authors the exact source form they wrote.
+Earlier revisions took the opposite position this section once defended: inline forms and template applications materialised *synthetic entries* named by the canonical rendering of the source expression, and identity was deliberately textual — two forms denoted the same entry iff their renderings were identical strings. Textual identity was cheap and decidable, but it made the rendering algorithm itself a conformance surface (every implementation had to produce byte-identical names, so the specification legislated whitespace stripping, bound canonicalisation, and ordering rules), and it forked identity on spelling: `[id]` and `[uuid]` named different entries for one shape, and a template body like `[tree<T>]` put a parameter binder inside a string — a name that could never safely be compared, substituted into, or verified.
+
+The structured type-reference model dissolved both problems at once, and the current design is the endpoint of following it through. Constructor applications stopped materialising entries at all — a field typed `[text]` carries the application structurally, and a validator interprets it against `array`'s vocabulary in one hop, so nothing needs a name. Template instantiations still materialise (recursion, dedup, and reference targets need entries), but their identity became **structural equality of the flattened, fully-bound application** — precisely the relation textual identity was approximating, minus the string. And once identity is structural, the entry's *name* carries no information: it is a resolver-internal key, chosen freely (a readable head plus a structural hash is the recommended style), fresh against declared names by construction, and explicitly outside the conformance surface. The entry stays self-describing through `source`, which records the flattened application — so ingest verifies an instantiation by recomputing its body from its `source`, not by parsing its name.
+
+What the demotion bought: the rendering grammar left the specification entirely; spelling variance can no longer fork entries; two conforming resolvers may disagree on every internal name and still agree structurally; and value arguments needed no "renderable value" fence, since nothing about a name constrains what an application may contain. What it cost: resolved output for template-using schemas is no longer byte-identical across implementations — conformance comparison there is structural, equality up to renaming of instantiation entries. The shipped artifacts sidestep even that: kernel, meta, and core apply no non-constructor templates, so their fixtures contain no instantiation entries at all.
+
+**Where the materialisation line sits.** With names internal, one could ask why the line stays where it is — why `flagged<status, 2>` earns an entry while the `array` wrapping it stays a structural `type_ref`, when a uniform rule in either direction would also be representable. The answer is what a consumer must *do* to interpret each. A constructor application is a **positional fill**: the arguments map one-to-one onto declared slots, meaning is complete in hand, interpretation is a one-hop vocabulary lookup — derived *and local*, so by the storage rule (§2.7's cousin in [TSON-SCHEMA] §8.1) it compiles at load and is never stored. A template application is a **substitution**: knowing what it means requires copying the template's body and rewriting its parameter channels — the resolver's hardest algorithm, whose output is *derived but non-local* (it needs the template's declaration plus the arguments), so it is stored once, exactly as `subtypes` is. The forcing case is recursion: `tree<text>`'s fully structural form is infinite — its children's element type is itself — and a tree-shaped document cannot express that cycle without a name; the entry is the knot. So an application has three spellings, each confined to the one place it is forced: structural inside open bodies (substitution cannot yet run), an entry name at closed use sites (substitution has run), and an entry where substitution *produced new content*. The line coincides exactly with `~` — the entry-weight dial (§2.12): a `~` head says applications bind against a vocabulary; its absence says applications finish a suspended declaration, and the entry marks the finishing.
 
 ### 8.2 The two supertypes fields, once more
 
@@ -265,7 +298,7 @@ Consumers should internalise the split: `type_definition.supertypes` is the **co
 
 ### 8.3 Error messages
 
-The specification's error categories are minimal by design; implementations compete on diagnostics. Some conventions that have worked well: report *parse* failures ("`twelve` is not an integer") separately from *validation* failures ("300 exceeds age's max of 150") since users fix them differently; surface synthetic names verbatim (the user wrote `[text; 1..]` — show them `[text; 1..]`, plus the source position that first synthesised the entry); and on unresolved-type errors under a schema, say *which namespace was searched* — "no `uuid` in schema X (did you mean to import core?)" turns the most common beginner error into a one-line fix.
+The specification's error categories are minimal by design; implementations compete on diagnostics. Some conventions that have worked well: report *parse* failures ("`twelve` is not an integer") separately from *validation* failures ("300 exceeds age's max of 150") since users fix them differently; never surface internal instantiation names as the primary form (show the source application, recovered from the entry's `source`, the originating position, and `@alias` — the user wrote `[text; 1..]`; show them `[text; 1..]` or `array_min<text, 1>`); and on unresolved-type errors under a schema, say *which namespace was searched* — "no `uuid` in schema X (did you mean to import core?)" turns the most common beginner error into a one-line fix.
 
 
 ## 9. Deployment and Encoding Guidance
