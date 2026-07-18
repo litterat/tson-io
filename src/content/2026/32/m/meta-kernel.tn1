@@ -347,7 +347,15 @@
     variants: [type_ref]
   }
 
-  @doc:"Resolver output."
+  @doc:"""
+    Resolver output. `disjoint` is a resolver-derived index over sum
+    definitions, parallel to `subtypes`: true when the resolver has
+    proved the variants pairwise disjoint as value sets ([TSON-SCHEMA]
+    §5.4), absent otherwise (refuted or unprovable). Declarations never
+    set it; on ingest it MUST be discarded and recomputed. It carries
+    the encoding-independent fact each encoding's discrimination rules
+    consume ([TSON-SCHEMA] §5.4, §7.2).
+    """
   type_definition => {
     source:       type_ref?
     kind:         type_kind
@@ -355,6 +363,7 @@
     constructor:  boolean ~ false
     supertypes:   [type_name]?
     subtypes:     [type_name]?
+    disjoint:     boolean?
     body:         top
   }
 

@@ -34,7 +34,7 @@
      `mac_type`), and text (`email_type`).
 
   Plus annotation types — `ordered`, `bounded`, `exact`, `numeric`,
-  `deprecated`, `since`, `todo`, `lang`. Annotation types must
+  `disjoint`, `deprecated`, `since`, `todo`, `lang`. Annotation types must
   reside in the governing target's namespace (per Part 2 §6); placing them
   in meta makes them reachable from core and from every schema that
   meta governs.
@@ -341,6 +341,18 @@
 
   @doc:"Numeric type marker annotation."
   numeric => @annotation void
+
+  @doc:"""
+    Author's assertion that a choice's variants are pairwise disjoint
+    as value sets — advisory intent, checked against the resolver's
+    derived `type_definition.disjoint` fact ([TSON-SCHEMA] §5.4). Carries
+    no decode force: like `@ordered`/`@bounded`/`@exact`, it records a
+    property the type already has or does not, and the resolver computes
+    disjointness whether or not the annotation is present. Present and
+    refuted is a schema-load error; present and unprovable is a warning;
+    present and proved, or absent, is silent.
+    """
+  disjoint => @annotation boolean
 
   @doc:"Marks a definition or field as deprecated."
   deprecated => @annotation text

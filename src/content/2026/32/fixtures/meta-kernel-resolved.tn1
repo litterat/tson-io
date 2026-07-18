@@ -515,6 +515,7 @@
       !record_field { name: constructor  type: boolean  state: REQUIRED_DEFAULT  value: false }
       !record_field { name: supertypes   type: { name: array  arguments: [ { name: @alias:type_name token } ] }  state: OPTIONAL }
       !record_field { name: subtypes     type: { name: array  arguments: [ { name: @alias:type_name token } ] }  state: OPTIONAL }
+      !record_field { name: disjoint     type: boolean  state: OPTIONAL }
       !record_field { name: body         type: top }
     ] }
   }

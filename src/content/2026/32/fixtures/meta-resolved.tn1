@@ -322,6 +322,13 @@
     body: !reference { target: void }
   }
 
+  @doc:"Author's assertion that a choice's variants are pairwise disjoint as value sets — advisory, checked against derived `type_definition.disjoint` (Part 2 Section 5.4)."
+  disjoint => @annotation !type_definition {
+    kind: REFERENCE
+    source: boolean
+    body: !reference { target: boolean }
+  }
+
   @doc:"Marks a definition or field as deprecated."
   deprecated => @annotation !type_definition {
     kind: REFERENCE
