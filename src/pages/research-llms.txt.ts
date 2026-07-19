@@ -23,7 +23,7 @@ export const GET: APIRoute = async ({ site }) => {
   const lines = [
     '# tson.io — Research & Papers',
     '',
-    '> Background research that led to the design of TSON (Tagged Structure Object Notation).',
+    '> Background research that led to the design of TSON (Typed Schema Object Notation).',
     '> This is background reading, not reference material — see /llms.txt for the specification',
     '> and schema files needed to actually read or write TSON.',
     '',

@@ -1,6 +1,6 @@
 # tson.io
 
-tson.io is the home of the **TSON** (Tagged Structure Object Notation)
+tson.io is the home of the **TSON** (Typed Schema Object Notation)
 project: a schema and data format for data interchange, built around strong
 semantic definitions and closed-world, verifiable schemas.
 

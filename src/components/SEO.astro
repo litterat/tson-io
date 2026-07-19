@@ -39,7 +39,7 @@ const {
 const SITE_NAME = "tson.io";
 const TWITTER_HANDLE = ""; // e.g. "@litterat" — leave empty if you don't have one
 const DEFAULT_DESCRIPTION =
-  "TSON (Tagged Structure Object Notation) is a Unicode-first, typed superset of JSON with closed-world, SHA-256-verifiable schemas.";
+  "TSON (Typed Schema Object Notation) is a Unicode-first, typed superset of JSON with closed-world, SHA-256-verifiable schemas.";
 
 const origin = Astro.site?.origin ?? "https://tson.io";
 const canonical = new URL(Astro.url.pathname, origin).href;
@@ -60,7 +60,7 @@ const website = {
   "@id": `${origin}/#website`,
   url: origin,
   name: SITE_NAME,
-  alternateName: "TSON — Tagged Structure Object Notation",
+  alternateName: "TSON — Typed Schema Object Notation",
   description: DEFAULT_DESCRIPTION,
   publisher: { "@id": `${origin}/#litterat` },
   inLanguage: "en",

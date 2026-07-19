@@ -1,6 +1,6 @@
 ## About
 
-TSON (Tagged Structure Object Notation) is a schema and data format for data interchange, built
+TSON (Typed Schema Object Notation) is a schema and data format for data interchange, built
 around strong semantic definitions and closed-world, verifiable schemas. Where JSON-like formats
 optimise for visual readability, minimal syntax, and convention, TSON optimises for the opposite
 priorities — semantic transparency, explicit structure, and verifiable schemas. That makes it a
