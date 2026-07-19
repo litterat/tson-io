@@ -1,19 +1,20 @@
 ---
-title: "TSON Part 1: Data Format"
+title: "TSON Part 1: Text Data Format"
 draft: "2026"
 status: "Working Draft"
 part: 1
 description: >
-  The lexer, structural grammar, absent sentinel, augmentation syntax (annotations, type
-  annotations, directives), and base type resolution — everything needed to losslessly read
-  and write schemaless TSON data.
+  The notation and reference encoding of the TSON schema system: the lexer, structural
+  grammar, absent sentinel, augmentation syntax (annotations, type annotations, directives),
+  and base type resolution — everything needed to losslessly read and write schemaless
+  TSON data.
 ---
 
-# TSON Part 1: Data Format
+# TSON Part 1: Text Data Format
 
 ## 2026 Revision 32
 
-**Status:** Working revision. The 2026 revision series is subject to change without compatibility guarantees. When finalised, this specification will be published as **TSON version 1** and frozen (§1.2, principle 7); until then, revisions are released under the 2026 series. This revision is an editorial refactor: non-normative rationale and design history have moved to [TSON-GUIDE].
+**Status:** Working revision. The 2026 revision series is subject to change without compatibility guarantees. When finalised, this specification will be published as **TSON version 1** and frozen (§1.2, principle 7); until then, revisions are released under the 2026 series. This revision is an editorial refactor: non-normative rationale and design history have moved to [TSON-GUIDE], and the series framing is restated — the type system ([TSON-SCHEMA]) is the centre of the series, and this document is its notation and reference encoding (§1.3).
 
 **Series:** TSON Specification, Part 1 of 2
 
@@ -26,9 +27,11 @@ description: >
 ### 1.1 Purpose and Scope
 
 
-TSON (Tagged Structure Object Notation) is a Unicode text-based data interchange format that extends the concepts of JSON with richer structural types, optional annotations, optional type annotations, optional directives, and a layered type system that separates structural parsing from semantic interpretation.
+TSON is a schema system with its own notation. At its centre is a type system ([TSON-SCHEMA]): immutable, hash-pinned schemas whose definitions are themselves data, resolving down a verified chain — document → schema → meta-schema → kernel — so that one hash authenticates a document together with its entire contract. The TSON text format is that system's notation and its reference encoding. Schemas are the point; the text format is how they are written down, and the first of the encodings that carry them.
 
-This document defines the TSON **data format**: the lexer, the structural grammar, the absent sentinel, augmentation syntax, base type resolution, and the built-in type vocabulary. A processor implementing this document can losslessly read and write any schemaless TSON data document, typed or untyped. Schemas ([TSON-SCHEMA]) add declared structure and validation on top of this document; they are an upgrade in correctness, not a prerequisite.
+TSON (Typed Schema Object Notation) is a Unicode text-based data interchange format that extends the concepts of JSON with richer structural types; optional annotations, type annotations, and directives; and a layered resolution model that separates structural parsing from semantic interpretation.
+
+This document defines the TSON **text data format**: the lexer, the structural grammar, the absent sentinel, augmentation syntax, base type resolution, and the built-in type vocabulary. It stands alone: a processor implementing this document — and nothing else — can losslessly read and write any schemaless TSON data document, typed or untyped, and every valid JSON document outside two character-level exceptions is already valid TSON (§6). [TSON-SCHEMA] defines the type system this notation carries; nothing in this document depends on it.
 
 
 ### 1.2 Design Principles
@@ -54,10 +57,24 @@ This document defines the TSON **data format**: the lexer, the structural gramma
 
 The TSON specification is published in two parts:
 
-- **Part 1: Data Format** (this document) — the lexer, the data grammar, base type resolution, and the built-in type vocabulary.
-- **Part 2: Schemas and the Type System** [TSON-SCHEMA] — the schema grammar, the type system, the schema chain, and the operations of the `schema`, `meta`, and `import` directives.
+- **Part 1: Text Data Format** (this document) — the notation and reference encoding: the lexer, the data grammar, base type resolution, and the built-in type vocabulary.
+- **Part 2: Type System and Schema** [TSON-SCHEMA] — the centre of the series: the schema grammar, the type system, the schema chain, and the operations of the `schema`, `meta`, and `import` directives.
 
-Each part adds capability without modifying the parts below it. The lexer defined in this document is complete: higher parts introduce no new tokens, no new lexer modes, and no changes to character classification.
+The architecture of the series places the type system at the centre, with the text format as its notation and reference encoding:
+
+```
+data document ──!!schema──▶ user schema ──!!meta──▶ meta-schema ──!!meta──▶ meta-kernel
+                                                                           (pre-loaded)
+
+  the chain is the type system — every rung an immutable, hash-pinnable
+  TSON document, so one hash verifies a document together with its
+  entire contract chain (§2.2.1)                            [TSON-SCHEMA]
+
+  the notation that writes every rung, and the reference encoding
+  that carries the type system's values                    [this document]
+```
+
+Reading order runs the other way: this document stands alone, and a Class 1 processor (§1.5) needs nothing from [TSON-SCHEMA]. Each part adds capability without modifying the parts below it. The lexer defined in this document is complete: higher parts introduce no new tokens, no new lexer modes, and no changes to character classification.
 
 [TSON-SCHEMA] defines a second document kind, the **schema document**, recognised by the header dispatch of §2.2. A schema document is parsed by a sibling grammar — the schema grammar — that shares this document's lexer and core value rules: its declaration grammar gives the reserved special tokens (§7.2.5) their meaning, and [TSON-SCHEMA] defines the operations of the directives (§3.3). None of that syntax appears in data documents: in the data grammar, a reserved special token is a parse error, and a `!!` token whose name is not followed by an adjacent `:` is a parse error.
 
@@ -170,7 +187,7 @@ When the identifying URI carries a content hash (the convention is defined below
 
 **The hash-parameter URI convention.** A content hash rides on the identifying URI as a query parameter named for its algorithm: `?sha256=<hash>`, with the value in lowercase hexadecimal at full length — a truncated hash is an error. `sha256` is the algorithm of this revision; future algorithms use their own parameter names. The hash parameter is **verification metadata, not identity** (canonical identity is defined below); a query component, when present, MUST consist solely of hash parameters, and a query parameter whose name is not a recognized hash algorithm is an error — never silently retained, so identity never depends on which algorithms a given reader happens to recognize.
 
-**Canonical identity.** A reference's **canonical identity** is a documented profile of RFC 3986 §6.2.1 (simple string comparison), reached by two reductions: (1) remove the scheme and its `://` delimiter, and (2) remove the query component. What remains — **lowercase host plus path** — is the identity; two references name the same document if and only if their canonical identities are byte-for-byte identical. The scheme is a *transport hint*, not part of the name: `http://tson.io/2026/32/m/core.tn1` and `https://tson.io/2026/32/m/core.tn1` are the same document, and a consumer MAY fetch by whichever scheme its policy allows. The host is part of the identity — two hosts serving a like-named path are different documents — so a fetch-endpoint substitution can never silently redirect a name. A reference with no authority component (a local `file:`-style or path-only reference) has an empty host; its canonical identity is the path alone, and such references are resolved only against an application-supplied library entry (§2.2.1, [TSON-SCHEMA] §10.1), never fetched.
+**Canonical identity.** A reference's **canonical identity** is a documented profile of RFC 3986 §6.2.1 (simple string comparison), reached by two reductions: (1) remove the scheme and its `://` delimiter, and (2) remove the query component. What remains — **lowercase host plus path** — is the identity; two references name the same document if and only if their canonical identities are byte-for-byte identical. The scheme is a *transport hint*, not part of the name: `http://tson.io/2026/32/m/core.tn1` and `https://tson.io/2026/32/m/core.tn1` are the same document, and a consumer MAY fetch by whichever scheme its policy allows. The host is part of the identity — two hosts serving a like-named path are different documents — so a fetch-endpoint substitution can never silently redirect a name. A reference with no authority component (a local `file:`-style or path-only reference) has an empty host; its canonical identity is the path alone, and such references are resolved only against an application-supplied library entry ([TSON-SCHEMA] §10.1), never fetched.
 
 Canonical identity stays at RFC 3986's cheapest rung by *restricting the input* rather than normalizing it, in the manner of the unquoted-token profile (§7.1): an identifying URI MUST already be in canonical form apart from scheme and hash query — lowercase host, no userinfo, no port (default or otherwise), no percent-encoding of unreserved characters, no dot-segments (`.`/`..`), and no fragment. An identifier that is not in this form is an error, not a candidate for normalization; no case folding, path resolution, or percent-decoding is ever performed at comparison time (rationale in [TSON-GUIDE]).
 
@@ -182,7 +199,7 @@ Content addressing composes: a data document may reference its schema by hashed 
 ### 2.3 Values
 
 
-TSON uses a single parser with two closely related value rules. A **scoped value** is an optional `schema` directive followed by a data value; it occurs in exactly three positions — record field values, map entry values, and array elements. A **data value** is zero or more annotations, an optional type reference, and a core value; it occurs everywhere a value does.
+The data grammar has two closely related value rules. A **scoped value** is an optional `schema` directive followed by a data value; it occurs in exactly three positions — record field values, map entry values, and array elements. A **data value** is zero or more annotations, an optional type reference, and a core value; it occurs everywhere a value does.
 
 ```
 scoped-value     = [ schema-directive ws ] data-value
@@ -377,7 +394,7 @@ A configuration directive provides pre-interpretation configuration: the `!!` co
 
 The `:` MUST be adjacent to the directive name. The argument is a single quoted token; in every directive of this series it is a URI or file reference (RFC 3986).
 
-Directives appear only in the document header (§2.2) and in scoped-value positions (§2.3): record field values, map entry values, and array elements. A directive scopes to the document or value it prefixes. Directives are not permitted before map keys, field names, or annotation values. The remaining exclusions are deliberate: keys and names are identity-bearing, so a schema scope on a key would make identity scope-dependent (§2.6); and annotation values are metadata resolved against the governing target's namespace by the one-hop rule ([TSON-SCHEMA] §3.3.3), which a local scope switch would subvert.
+Directives appear only in the document header (§2.2) and in scoped-value positions (§2.3): record field values, map entry values, and array elements. A directive scopes to the document or value it prefixes. Directives are not permitted before map keys, field names, or annotation values: keys and names are identity-bearing, so a schema scope on a key would make identity scope-dependent (§2.6), and annotation values are metadata resolved against the governing target's namespace by the one-hop rule ([TSON-SCHEMA] §3.3.3), which a local scope switch would subvert.
 
 Unlike an annotation, a directive is not strippable metadata: it affects how the value is interpreted. A Class 1 processor does not act on `schema` bindings — it preserves them for the consuming application — but it enforces directive grammar in full.
 
@@ -476,7 +493,7 @@ Each atom owns a **parsing contract**: which tokens it accepts, and what host va
 
 Host-value entries in the tables are informative; the precise representation is implementation-defined, but implementations MUST preserve the parsed value's information content (a `uuid` round-trips to the same 128 bits; a `number` preserves its digits).
 
-**Parsing and validation are distinct.** Parsing takes a token to a host value; validation checks the parsed value against the atom's constraints. `twelve` under `!int32` is a parse error — the integer grammar cannot interpret it; `9999999999` under `!int32` parses as an integer and then fails validation against the 32-bit range. A token the atom's grammar rejects "is a parse error"; a parsed value violating the atom's range "is a validation error" (§8.1). Within this vocabulary, only the numeric atoms carry range constraints; the other atoms are pure format checks.
+**Parsing and validation are distinct.** Parsing takes a token to a host value; validation checks the parsed value against the atom's constraints. `twelve` under `!int32` is a parse error — the integer grammar cannot interpret it; `9999999999` under `!int32` parses as an integer and then fails validation against the 32-bit range. A token the atom's grammar rejects "is a parse error"; a parsed value violating the atom's range "is a validation error" (§8.1). Within this vocabulary, range constraints belong to the numeric atoms (§5.6) and the CIDR prefix rules (§5.5); the remaining atoms are pure format checks.
 
 
 ### 5.3 Binary Types
@@ -596,7 +613,7 @@ Continue = XID_Continue ∪ { - + . }
 
 The three extension characters are all `Pattern_Syntax` and therefore immutable, so the profile itself is frozen. The property-based components grow with the Unicode version: new scripts enter `XID_Start`/`XID_Continue` and new digits enter `Nd` as they are encoded. Growth is monotone — characters that were lexer errors become token characters, and valid documents remain valid under later versions. Underscore (U+005F) is in `XID_Continue` but not `XID_Start`: it may appear within or at the end of a token (`my_type`) but cannot start one. Token-initial underscore is reserved to the format and occupied by the absent sentinel `_` (§2.9); names with a leading underscore (`_id`) MUST be quoted.
 
-**Rationale.** The profile is the UAX #31 identifier profile plus exactly what base type resolution consumes: `Nd` for numbers, `-`/`+` for signs and exponent signs, `.` for the decimal point and `.inf`/`.infinity`/`.nan` — every extension character is required by a production of the number grammar (§7.6). The extension characters remain profile members, but their bare single-character forms are claimed by the grammar or excluded: `-` alone is the subtraction operator ([TSON-SCHEMA] §5.9), `..` is the range token (§7.2.4), and bare `+` and `.` have no role — the single-character strings are written quoted (`"-"`, `"+"`, `"."`). Content kinds the profile cannot cover totally (paths, URIs, monetary amounts, rationals, networks, percentages, ranges) are excluded entirely, so their quoting rule is *always*, never a per-character scan (full derivation in [TSON-GUIDE]).
+**Profile boundaries.** Every extension character is required by a production of the number grammar (§7.6): `Nd` for digits, `-`/`+` for signs and exponent signs, `.` for the decimal point and `.inf`/`.infinity`/`.nan`. The extension characters remain profile members, but their bare single-character forms are claimed by the grammar or excluded: `-` alone is the subtraction operator ([TSON-SCHEMA] §5.9), `..` is the range token (§7.2.4), and bare `+` and `.` have no role — the single-character strings are written quoted (`"-"`, `"+"`, `"."`). Content kinds the profile cannot cover totally (paths, URIs, monetary amounts, rationals, networks, percentages, ranges) are excluded entirely, so their quoting rule is *always*, never a per-character scan (full derivation in [TSON-GUIDE]).
 
 **Quoting by kind.** The profile makes the quoting decision a property of what a value *is*, not of the characters it happens to contain. A generator's decision procedure is two clauses: quote if any character falls outside the profile, and quote if the bare token would resolve to something other than the intended string (`"true"`, `"42"`, `"0x71C7…"`, §4).
 
@@ -616,7 +633,7 @@ The lexer produces a stream of tokens from the input, classifying each token by 
 
 1. **Whitespace** — Characters with the `Pattern_White_Space` property are consumed and not emitted as tokens. The set is immutable: U+0009 (TAB), U+000A (LF), U+000B (VT), U+000C (FF), U+000D (CR), U+0020 (SPACE), U+0085 (NEL), U+200E (LRM), U+200F (RLM), U+2028 (LINE SEPARATOR), U+2029 (PARAGRAPH SEPARATOR).
 
-2. **Quoted token** — `"` begins a quoted token. If the next two characters are also `"`, the lexer enters multi-line mode; otherwise single-line mode. This is the first of the lexer's three lookahead rules.
+2. **Quoted token** — `"` begins a quoted token. If the next two characters are also `"`, the lexer enters multi-line mode; otherwise single-line mode. This is the first of the lexer's lookahead rules; §7.2.4 defines the others.
 
 3. **Unquoted token** — A character in the unquoted start set of the profile (§7.1) begins an unquoted token; the lexer consumes characters while they match the continuation set, with one termination rule: a `.` whose immediately following character is also `.` is not consumed — the token ends before the first dot, which then begins a range token (§7.2.4). Consecutive dots never appear inside an unquoted token.
 
@@ -1076,7 +1093,7 @@ Unicode identifiers introduce visually confusable field names — Latin `a` (U+0
 
 | Reference | Title | URL |
 |-----------|-------|-----|
-| TSON-SCHEMA | TSON Part 2: Schemas and the Type System | https://tson.io/2026/32/tson-part2-schema |
+| TSON-SCHEMA | TSON Part 2: Type System and Schema | https://tson.io/2026/32/tson-part2-schema |
 | TSON-GUIDE | TSON Developer Guide (non-normative) | https://tson.io/2026/32/tson-guide |
 
 

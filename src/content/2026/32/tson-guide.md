@@ -13,18 +13,121 @@ description: >
 **Status:** Non-normative companion to the TSON specification series, 2026 revision series. This guide collects the design history, rationale, and extended worked examples that the specifications reference but do not carry. Nothing here is normative; where this guide appears to disagree with [TSON-DATA] or [TSON-SCHEMA], the specifications govern.
 
 
-## 1. Reading the Series
+## 1. What TSON Is
 
-The TSON series is two documents and six artifacts:
+TSON is a schema system with its own notation. At its centre is a type system ([TSON-SCHEMA]): immutable, hash-pinned schemas whose definitions are themselves data, resolving down a verified chain — document → schema → meta-schema → kernel — so that one hash authenticates a document together with its entire contract. The TSON text format ([TSON-DATA]) is that system's notation and its reference encoding: a Unicode-first superset of JSON, pleasant enough to use on its own, typed even without a schema. Schemas are the point; the text format is how they are written down — and the first of the encodings that carry them.
 
-- **[TSON-DATA]** defines everything a schemaless processor needs: the lexer (frozen, shared by the whole series), the data grammar, base type resolution, and the built-in type vocabulary. If you are writing a parser, start here and stay here until it passes the data-format test suite.
-- **[TSON-SCHEMA]** defines the schema layer: a second body grammar over the same lexer, the type system, the schema chain, and resolver output. If you are writing a validator or resolver, this is your contract.
-- The **companion artifacts** — `meta-kernel.tn1`, `meta.tn1`, `core.tn1` and their resolved fixtures — are the normative vocabulary and the reference answers. Implementations pre-load the kernel and meta as in-memory structures; the documents are *descriptions* of those structures, and round-tripping them is the first serious integration test.
+If you arrived here thinking "another JSON dialect", that is a reasonable first impression and a wrong one. The unquoted names and optional commas are real, and they matter for daily use — but they are the notation's manners, not the system's identity. The nearest relatives are not JSON5 or JSONC but Avro and ASN.1: systems where the schema is the product and wire formats serve it. TSON takes that architecture and adds three things those systems never had together: schemas that are ordinary, hash-verifiable documents in the same notation as the data; a schemaless mode that is still typed; and an extension model where new type vocabularies arrive as data, never as grammar changes.
 
-A useful reading order for implementers: Part 1 §7 (the lexer and grammars), Part 1 §2–§4 (documents and base resolution), Part 2 §3 (the schema chain), Part 2 §5 (the type-definition grammar), Part 2 §8 (resolver output), then the fixtures.
+### 1.1 The chain, walked once
+
+Everything in TSON hangs off one picture. Here is a data document:
+
+```
+!!schema:"https://example.com/people.tn1?sha256=c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
+!person { name: "Ada Lovelace"  born: 1815-12-10 }
+```
+
+The `!!schema` directive names the contract, pinned by content hash. `!person` names which of the schema's types this value instantiates. Note what `born` looks like: an unquoted token, no annotation. The schema declares the field as a `date`, so the date atom parses it — the data stays clean because the contract carries the types.
+
+The schema it names is itself a TSON document:
+
+```
+!!id:"https://example.com/people.tn1"
+!!meta:"https://tson.io/2026/32/m/meta.tn1"
+!!import:"https://tson.io/2026/32/m/core.tn1"
+{
+  person => { name: text  born: date }
+}
+```
+
+Same lexer, same tokens, same tooling — a second body grammar behind the same header. And the schema stands on the same relation it offers: its `!!meta` names the meta-schema that validates *its* declarations, and its `!!import` brings in the core type library that defines `text` and `date`. The meta-schema chains to the meta-kernel; the kernel's `!!meta` names itself, and the circle is closed not by resolution but by pre-loading — implementations ship the kernel's resolved structure, and the kernel document is the TSON encoding of it. The in-memory model is authoritative; the file describes it.
+
+Every rung is immutable and hash-pinnable, and hashes attach to canonical identities rather than URLs, so a consumer holding one hashed reference can verify a document together with its schema, that schema's meta-schema, and the kernel — the entire contract, authenticated from a single identifier, with no network access required or trusted (§3.3–§3.4 below detail the identity and verification discipline). Schema URLs are names resolved through a local library; fetching is an opt-in way to populate it, never the meaning of a reference.
+
+That is the product. Everything else in the series — the grammar, the resolver, the encoding rules — exists to make that picture true.
+
+### 1.2 Immutable means versioned
+
+The schema in §1.1 will never change. Not *should not* — cannot: a schema's identity is its exact byte content ([TSON-SCHEMA] §3.5), and the hash in the data document's `!!schema` pins those bytes. Editing `people.tn1` does not update the schema; it creates a different document that no existing reference names.
+
+So when the contract needs to grow, you publish:
+
+```
+!!id:"https://example.com/people-v2.tn1"
+!!meta:"https://tson.io/2026/32/m/meta.tn1"
+!!import:"https://tson.io/2026/32/m/core.tn1"
+{
+  person => { name: text  born: date  email: text }
+}
+```
+
+Look at what just happened: `email` is **required**. In every mutable-schema system, that is the forbidden edit — protobuf marks `required` *"Do not use"* because a required field added to a shared definition breaks every document already written; Avro demands a default; GraphQL says deprecate, never remove or tighten. Every one of those rules exists because a single definition must serve every document ever written against it. Here it doesn't have to: the §1.1 document names `people.tn1` by hash and validates against it forever, untouched by v2's existence; new documents name `people-v2.tn1`. Two contracts coexist, each at full strength. Neither is "the" schema — *the* schema is not a concept in this system; a *document's* schema is. (The `-v2` in the name is a convention for humans; the system's notion of version is identity plus hash, and nothing parses the suffix.)
+
+Once that lands, the ripples reach nearly everything:
+
+- **Required means required.** No leaving fields optional for future-proofing, no reserved field numbers, no tombstone fields carried forever. Records are closed under their type ([TSON-SCHEMA] §7.2): a v2 document without `email` is invalid, and a v1 document is never asked for one.
+- **Unknown fields need no tolerating.** The "must ignore unknown fields" robustness rule exists to survive in-place evolution; with no in-place evolution, closure is safe — and a typo in a field name becomes an error instead of silently discarded data.
+- **Acceptance is explicit.** A reader declares which versions it accepts by registering exactly those schemas in its library — and because the version key sits on the document's opening lines, readable before any value parsing, a front door can route v1 and v2 traffic to different servers without opening the body.
+- **Migration is a function between two known values.** Both schemas are data (§1.3), so "what changed between v1 and v2" is a structural diff a tool can compute, and a v1→v2 transform has a precise input contract and a precise output contract.
+
+Every design choice in §1.1 was quietly serving this moment: hashes attach to canonical identities so a pin survives mirroring; the id line is excluded from its own hash so a document can carry its name; the header classifies in two directives so routers never parse bodies. The full versioning story — including why routing by schema beats binding one server to every version, and the compatibility-rulebook history this model retires — is §9.1.
+
+### 1.3 Schemas are data
+
+A schema document *resolves* to a value: a map from type names to `type_definition` records, every one of them expressible in ordinary TSON. The `person` declaration above resolves to:
+
+```
+person => !type_definition {
+  kind: PRODUCT
+  body: !record { fields: [
+    !record_field { name: name  type: text }
+    !record_field { name: born  type: date }
+  ] }
+}
+```
+
+This reflexivity is load-bearing, not decorative. It means resolver output can be serialized, diffed, and shipped as fixtures; it means the meta layer can describe itself; and it means the system grows by publishing new schema documents — new type libraries, extended meta-schemas — rather than by amending a grammar. The kernel and the grammar are frozen at version 1; the meta layer is the sanctioned extension point, and extensions travel as data down the same verified chain as everything else.
+
+It also dissolves the old bootstrap riddle. "What validates the meta-kernel?" has a concrete answer here: the pre-loaded meta-kernel, which exists as implementation structure before any document is parsed. The self-reference in the kernel's header is a description of that fact, not a dependency to resolve.
+
+The research behind the design calls this discipline the **proto-schema** (§2): every schema in the system, walked down its chain, flattens to the meta-kernel — a handful of kinds, a few constructors, and one record, `type_definition`, that describes every type in existence including itself. The closest ancestor in spirit is Lisp. Where Lisp reduced computation to its purest form — programs written in the language's own data structures, an evaluator expressible in the language it evaluates — the proto-schema attempts the same reduction for description: data described by data, all the way down to a kernel that describes itself. Homoiconicity, for contracts rather than code.
+
+### 1.4 Typed without a schema
+
+Most schema systems make you choose: protobuf will not run without an IDL; JSON Schema leaves untouched data untyped. TSON is gradually typed. With no schema in scope, base type resolution gives you JSON's value model plus real numbers — hex, binary, digit separators, arbitrary precision — and the built-in type vocabulary gives you common typed values by annotation alone:
+
+```
+{
+  id:     !uuid 550e8400-e29b-41d4-a716-446655440000
+  price:  !number 19.99
+  placed: !datetime "2026-07-18T09:30:00Z"
+  digest: !hex 4f2a90de11c3b7a6
+}
+```
+
+Each annotation invokes a parsing contract — the value becomes a UUID, an exact decimal, a datetime, bytes — with no schema anywhere. And because every valid JSON document (outside two character-level exceptions) is already valid TSON, the adoption path runs from "paste your JSON in" through "annotate the values that matter" to "bind a schema and pin it by hash", each step optional and each step reversible. The schemaless built-ins and the core type library denote the same contracts, so annotations added on day one mean the same thing under the schema bound on day ninety.
+
+### 1.5 One model, many encodings
+
+The type system stands above any particular wire form. Inside the specification this shows up as a discipline: a token's quoting is lexical necessity, never meaning (`!number 10.2` and `!number "10.2"` are the same value); a set is a schema property carried in array syntax, because "unordered" is an instruction to the reader, not a property of linear data; whether a `!variant` tag may be omitted rests on a disjointness fact the resolver derives independently of any encoding, with each encoding stating its own discrimination rule over it.
+
+Part 2's §7 — the Text Encoding Rules — is the first instance of the pattern: how the type system's values are carried in TSON text. Other encodings state their own rules against the same model. A JSON encoding must decide what a tuple, a typed map key, or the absent sentinel become in a poorer notation; those decisions are parameters, and because schemas are data, the parameters themselves can travel as schema-governed documents beside the schemas they configure. The type system decides *what the value is*; an encoding decides *how it is spelled*.
+
+### 1.6 Reading the series
+
+The series is two documents and six artifacts:
+
+- **[TSON-DATA] — Part 1: Text Data Format** — stands alone: the lexer (frozen, shared by the whole series), the data grammar, base type resolution, and the built-in type vocabulary. If you are writing a parser, an editor mode, or a formatter, it is the whole job — start here and stay here until it passes the data-format test suite. A Class 1 processor needs nothing from Part 2 and remains a complete, useful tool: a better JSON, with types.
+- **[TSON-SCHEMA] — Part 2: Type System and Schema** — the centre of the series: a second body grammar over the same lexer, the type system, the schema chain, and resolver output. If you are writing a validator or resolver, this is your contract. Read §3 (the schema chain) first — it is the picture above, made normative — then §4–§5 for the type system and its grammar, §8 for what resolution produces, and §7 for how typed values are carried in text.
+- The **companion artifacts** — `meta-kernel.tn1`, `meta.tn1`, `core.tn1` and their resolved fixtures — are the normative vocabulary and the reference answers: the system describing itself. Implementations pre-load the kernel and meta as in-memory structures; the documents are *descriptions* of those structures, and round-tripping them is the first serious integration test. Reading the kernel after Part 2 §4 is the fastest way to make the type system concrete.
+
+A useful reading order for implementers: Part 1 §7 (the lexer and grammars), Part 1 §2–§4 (documents and base resolution), Part 2 §3 (the schema chain), Part 2 §5 (the type-definition grammar), Part 2 §8 (resolver output), then the fixtures. This guide carries what the specifications exclude on principle — rationale, design history, worked examples, deployment guidance — and nothing in it is normative.
 
 
 ## 2. Design History
+
+TSON's schema model was derived rather than assembled from precedent. The proto-schema research series (tson.io/research/proto-schema/) starts from the physical constraints of serialized data — linear, immutable, finite, divisible — and derives what a schema can be: Sequence and Choice as the structural primitives; Tuple, Record, Array, Map, and Set as the configurations of Sequence worth naming; templates as definitions with blanks on a spectrum of completeness; composition with narrowing rules that preserve substitutability; required-by-default multiplicity with absence as a sentinel rather than a type. The kernel is that conclusion made executable — its constructors and constraint vocabularies match the research's tables field for field. The sections below record the individual decisions the specifications state without argument, including the places where the final design overruled the research's first conclusions, and why.
 
 ### 2.1 No comments
 
@@ -303,15 +406,34 @@ The specification's error categories are minimal by design; implementations comp
 
 ## 9. Deployment and Encoding Guidance
 
-### 9.1 Schema libraries in practice
+### 9.1 Versioning: publish, don't mutate
+
+Most schema systems version by *mutating a shared definition* and policing the mutation with compatibility rules. TSON versions by *publishing*: a schema's identity is its exact byte content, so version N and version N+1 are independent, immutable artifacts with different hashes and different identities ([TSON-SCHEMA] §3.5). Nothing evolves in place. A data document locks to the one contract it was written against — the hash-pinned `!!schema` on its opening lines — and that binding never drifts, because neither side can change.
+
+Acceptance then becomes explicit, and it lives where it belongs: at the boundary. A server's code binds to the *set* of schema versions it accepts, registering each in its schema library, and every request is validated against exactly the contract the request names. Because the version key sits in the header, dispatch is cheap: document kind and schema identity are readable from the opening bytes, before any value parsing ([TSON-DATA] §2.2, §7.1).
+
+For major upgrades there is a stronger pattern than binding one server to every version: run version-specific servers and **route on the schema reference**. A front door reads `!!schema`, matches canonical identity and hash, and dispatches; each server behind it holds exactly one contract at full strength, and retiring a version is deleting a route. This is the architecture the industry converged on from the other direction — Stripe's date-versioned API with server-side translation between pinned versions is the best-documented example ([Stripe, *APIs as infinite versions*](https://stripe.com/blog/api-versioning)) — but there the version key is a bespoke HTTP header; here it is a first-class, verifiable property of the document itself.
+
+What this retires is the compatibility rulebook — the folklore every mutable-schema system accumulated because one definition had to serve every point in time:
+
+- **Protocol Buffers.** `required` is marked *"Do not use"* in the [proto2 language guide](https://protobuf.dev/programming-guides/proto2/), the maxim being "required is forever"; Buf documents it as the root cause of early Google outages ([Tip of the Week #8: never use required](https://buf.build/blog/totw-8-never-use-required)). The [*Updating A Message Type*](https://protobuf.dev/programming-guides/proto2/#updating) rules add the rest of the liturgy: never change a field number, never reuse one, mark removals `reserved`, add only optional or repeated fields. Proto3 went further — deleted `required` outright and made every field optional with zero-value defaults — then spent years restoring the [field presence](https://protobuf.dev/programming-guides/field_presence/) that deletion had cost.
+- **Avro.** Reader and writer schemas are reconciled pairwise under the specification's [Schema Resolution](https://avro.apache.org/docs/current/specification/) rules — new fields must carry defaults, renames need aliases — and an entire product category, the schema registry, exists to police mutation with [BACKWARD / FORWARD / FULL and transitive compatibility modes](https://docs.confluent.io/platform/current/schema-registry/fundamentals/schema-evolution.html).
+- **GraphQL.** The official best practice is a versionless API under ["continuous evolution"](https://graphql.org/learn/best-practices/#versioning): never remove, only `@deprecated`.
+- **Beneath them all,** Postel's robustness principle — *"be liberal in what you accept"* (RFC 761) — which the IAB has since formally walked back as a long-term hazard to protocol health (RFC 9413, *Maintaining Robust Protocols*).
+
+Every rule on that list is the same trade: weaken the contract so the timeline stays compatible. Fields end up optional forever, unknown fields must be tolerated, removal is forbidden — and the guarantees the schema no longer makes migrate into application code as defensive checks, validation pushed from a place where it is declared once to a place where it must be reimplemented everywhere. (Part 8 of the proto-schema research traces this history in detail.)
+
+TSON's model dissolves the dilemma rather than picking a side. Records are closed under their type ([TSON-SCHEMA] §7.2) and required means required — *per version*. A field can be required in version 12 and gone in version 13, because 12 and 13 are different artifacts and no rule forces one definition to satisfy both. Compatibility between two versions becomes something tooling can **check** — resolver output is data, so two versions diff structurally — and a policy a team may **choose** at a given boundary, never a constraint the schema language imposes on every author to keep a mutable timeline coherent.
+
+### 9.2 Schema libraries in practice
 
 The library model (lookup, never fetch-by-default) maps onto deployments straightforwardly: production systems register every schema at startup — from files, embedded resources, or an internal registry — and disable runtime fetching entirely; development setups may enable fetching with an allowlist and treat it as a cache-population convenience. Registering under an application-supplied identity (for `!!id`-less development schemas) is handy in tests but should never survive into interchange: publish with `!!id`, pin with hashes at trust boundaries.
 
-### 9.2 Defaults on the wire
+### 9.3 Defaults on the wire
 
 Encoders should write values for defaulted fields. A document that states its defaults reads without its schema — `priority: 3` means 3 to every reader, schema in hand or not — whereas omission makes the document's meaning schema-relative. Omitting fields at their default values is a legitimate wire-size optimisation precisely because the decoder injects the value back on read, but it should be an explicit encoder option, not the default posture. Resolver output is the sanctioned exception: it omits fields at defaults because its consumers are, by definition, schema-aware, and the compression materially improves fixture readability.
 
-### 9.3 Directive-per-line
+### 9.4 Directive-per-line
 
 Scoped `!!schema` directives on array elements read best one element per line, directive first — the layout in [TSON-SCHEMA] §7.8's example. The grammar does not require it, but the convention keeps the scope-opening directive visually attached to the single element it governs, which matters in review: scope changes are the highest-consequence lines in a document.
 
@@ -320,8 +442,10 @@ Scoped `!!schema` directives on array elements read best one element per line, d
 
 | Reference | Title |
 |-----------|-------|
-| TSON-DATA | TSON Part 1: Data Format |
-| TSON-SCHEMA | TSON Part 2: Schemas and the Type System |
+| TSON-DATA | TSON Part 1: Text Data Format |
+| TSON-SCHEMA | TSON Part 2: Type System and Schema |
 | RFC 3986 | Uniform Resource Identifier (URI): Generic Syntax |
 | UAX #31 | Unicode Identifiers and Syntax |
 | RFC 8259 | The JavaScript Object Notation (JSON) Data Interchange Format |
+| RFC 761 | DoD Standard Transmission Control Protocol (origin of the robustness principle) |
+| RFC 9413 | Maintaining Robust Protocols |

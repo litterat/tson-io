@@ -1,15 +1,15 @@
 ---
-title: "TSON Part 2: Schemas and the Type System"
+title: "TSON Part 2: Type System and Schema"
 draft: "2026"
 status: "Working Draft"
 part: 2
 description: >
-  The schema layer: the schema grammar, the type system and its operations, the schema chain
-  and its resolution model, schema compilation and resolver output, and the operations of the
-  schema, meta, and import directives.
+  The centre of the TSON series: the schema grammar, the type system and its operations,
+  the schema chain and its resolution model, schema compilation and resolver output, the
+  text encoding rules, and the operations of the schema, meta, and import directives.
 ---
 
-# TSON Part 2: Schemas and the Type System
+# TSON Part 2: Type System and Schema
 
 ## 2026 Revision 32
 
@@ -22,15 +22,19 @@ description: >
 
 ## 1. Introduction
 
-This document defines the TSON **schema layer**: the schema grammar and its type-definition forms, the type system and its operations, the schema chain and its resolution model, the resolver output contract, and the schema-layer directive operations.
+TSON is a schema system, and this document is its centre: a type system of immutable, hash-pinned schemas whose definitions are themselves data, resolving down a verified chain — document → schema → meta-schema → kernel — so that one hash authenticates a document together with its entire contract. The text format of [TSON-DATA] is this system's notation and its reference encoding: schemas are written in it, resolver output is serialized in it, and §7 states its encoding rules — the first encoding to carry the type system's values, with others defined against the same encoding-independent model.
+
+This document defines the TSON **type system and schema layer**: the schema grammar and its type-definition forms, the type system and its operations, the schema chain and its resolution model, the resolver output contract, the text encoding rules, and the schema-layer directive operations.
 
 [TSON-DATA] defines the lexer, the data grammar, base type resolution, and the built-in type vocabulary. This document introduces no lexical changes: a schema document is parsed by a second body grammar over the same frozen lexer, selected by the document header ([TSON-DATA] §2.2), and every operator it uses is a token that lexer already emits — the reserved special tokens of [TSON-DATA] §7.2.5 receive their meaning here. The schema grammar imports [TSON-DATA]'s `data-value` production at exactly three points — constructor-application values and atom-refinement values (§5.5), and field-modifier values (§5.2) — and the coupling is one-directional: nothing in the data grammar depends on this document.
 
 
 ### 1.1 The TSON Specification Series
 
-- **Part 1: Data Format** [TSON-DATA] — the lexer, the data grammar, base type resolution, and the built-in type vocabulary.
-- **Part 2: Schemas and the Type System** (this document) — the schema grammar, the type system, the schema chain, and the operations of the `schema`, `meta`, and `import` directives.
+- **Part 1: Text Data Format** [TSON-DATA] — the notation and reference encoding: the lexer, the data grammar, base type resolution, and the built-in type vocabulary.
+- **Part 2: Type System and Schema** (this document) — the centre of the series: the schema grammar, the type system, the schema chain, and the operations of the `schema`, `meta`, and `import` directives.
+
+[TSON-DATA] §1.3 gives the series architecture: the schema chain — the type system — on one axis, and the notation and encodings that carry it on the other.
 
 
 ### 1.2 Design Principles
@@ -407,7 +411,7 @@ config => {
 }
 ```
 
-The five field states:
+The field states — five states across six spellings; `OPTIONAL_FIXED` has a valued and an absent form:
 
 | Syntax                    | State              | Meaning                                    |
 |---------------------------|--------------------|--------------------------------------------|
@@ -716,7 +720,7 @@ matrix    => <T, M, N> vector<vector<T, N>, M>
 
 `container<text>`, `vector<pixel, 1920>`, and `matrix<pixel, 1080, 1920>` are concrete types; bare `container` or `vector` references are resolver errors.
 
-**Two parameter kinds.** A parameter is a **type parameter** or a **value parameter**. Kinds are not annotated; they are inferred from use sites: a parameter used in type-reference channels (field types, element types, arguments filling type slots) is a type parameter, and one used in value channels (`=` pins, arguments filling value slots) is a value parameter. A parameter used in both kinds of channel is a schema error. An unused parameter is a type parameter (the phantom-parameter reading) and the resolver SHOULD warn; a parameter whose kind is grounded only in mutual recursion between templates, with no concrete kind-determining use, is a schema error. Value parameters bind **scalars only** — the values that fill `value`-typed slots (§5.3, [TSON-DATA] §4): numbers, booleans, tokens, and quoted strings. Collection-valued slots are not parameterizable — an enum's member list, for instance, cannot be bound through a parameter — and there is no parameter arithmetic: every value argument is used as given.
+**Two parameter kinds.** A parameter is a **type parameter** or a **value parameter**. Kinds are not annotated; they are inferred from use sites: a parameter used in type-reference channels (field types, element types, arguments filling type slots) is a type parameter, and one used in value channels (`=` pins, arguments filling value slots) is a value parameter. A parameter used in both kinds of channel is a resolver error. An unused parameter is a type parameter (the phantom-parameter reading) and the resolver SHOULD warn; a parameter whose kind is grounded only in mutual recursion between templates, with no concrete kind-determining use, is a resolver error. Value parameters bind **scalars only** — the values that fill `value`-typed slots (§5.3, [TSON-DATA] §4): numbers, booleans, tokens, and quoted strings. Collection-valued slots are not parameterizable — an enum's member list, for instance, cannot be bound through a parameter — and there is no parameter arithmetic: every value argument is used as given.
 
 **Scoping and the shadowing/label rule.** Parameters are local to the declaring definition; they do not escape and do not compose across `&`, and two definitions can independently use the same parameter name. Two positions that must agree share a parameter (`homogeneous_pair => <T> { first: T  second: T }`; `vector` uses `S` twice) — sharing the name is the link. Where a parameter reference lives depends on what else can occupy the channel. Type-reference channels are all-reference — a token there is always a name — so parameters ride them by **shadowing**: within the body, parameter names take precedence over the schema namespace, and implementations SHOULD warn when a parameter shadows a schema type. Value channels admit token literals (enum members), so a bare token there is always a literal, and parameter references are **labelled**: the `= P` pin in source (§5.7), the `value_param` member in output (§8.1). One rule, both directions: shadow where every token is a reference; label where tokens can be literals.
 
@@ -818,7 +822,9 @@ Any type in the governing target's namespace can be used as an annotation — th
 **Resolver-attached annotations.** Some annotations are attached by the resolver rather than written by the author — most commonly `@alias` (defined in the meta-kernel and re-exported by core): when a reference is flattened (§8.3), the resolver attaches `@alias:name` to the resolved type, naming the source-level alias used at the reference site. Resolver-attached annotations follow the same resolution rules as user-written ones.
 
 
-## 7. Data Values Under a Schema
+## 7. Text Encoding Rules: Data Values Under a Schema
+
+This section is the text format's **encoding rules**: how the type system's values are carried in TSON text. Every encoding of the type system owns a section shaped like this one — its atom lexical forms, its container syntax, its treatment of absence, and its discrimination predicate over the derived disjointness fact (§5.4). This section states TSON text's rules; future encodings (a JSON encoding, for instance) state their own against the same encoding-independent model, in their own encoding-rules documents.
 
 [TSON-DATA] defines the syntax of data values and their schemaless interpretation. This section defines the `!!schema` directive (§7.1) and how an active schema changes interpretation: type-annotation resolution (§7.2), atom parsing in place of base type resolution (§7.3, §7.4), sets (§7.5), the absent sentinel (§7.6), resolver behaviours at typed positions (§7.7), and cross-schema references (§7.8).
 
@@ -847,7 +853,7 @@ Schema documents do not carry `!!schema`: a schema's governing contract is decla
 
 In data values, a type annotation (`!name`) marks **instantiation** — the value is concrete data conforming to the named type. The name resolves against the external schema identified by the current `!!schema` directive — never against definitions within the same document (§3).
 
-**The built-in vocabulary does not apply in schema scope.** When a schema is in scope, all type annotations MUST resolve through the schema's type-name namespace; a built-in annotation name not defined by the active schema is an unresolved-type error. Schemas wanting `uuid`, `base64`, `datetime`, and the other built-in names import the core type library or define them locally. This is the normative statement of the scoping rule restated in [TSON-DATA] §5.1. A document with no `!!schema` falls back to schemaless processing (§7.1).
+**The built-in vocabulary does not apply in schema scope.** When a schema is in scope, all type annotations MUST resolve through the schema's type-name namespace; a built-in annotation name not defined by the active schema is an unresolved-type error. Schemas wanting `uuid`, `base64`, `datetime`, and the other built-in names import the core type library or define them locally. This is the normative statement of the scoping rule; [TSON-DATA] §5.1 restates it for schemaless processors. A document with no `!!schema` falls back to schemaless processing (§7.1).
 
 **Records are closed under their type.** When a schema is in scope and a record's type is known, the record MUST contain only fields defined by its type; fields not present in the type definition are validation errors. This applies to directly-typed records (`!person { ... }`) and structurally-positioned records (a record at a record-typed field position). Schemaless records have no closure rule. Closure is what makes schema evolution a discrete operation: every published schema version is a precise, immutable contract about what fields exist (§3.5).
 
@@ -862,7 +868,7 @@ In data values, a type annotation (`!name`) marks **instantiation** — the valu
 
 ### 7.3 Atom Parsing Replaces Base Type Resolution
 
-When a schema is in scope, base type resolution ([TSON-DATA] §4) does not apply at typed positions: each position's declared atom type owns its own parsing contract (§7.4). The tokens `true`, `false`, and `null` have no special status in schemaful mode — their meaning is determined entirely by the position's type.
+When a schema is in scope, base type resolution ([TSON-DATA] §4) does not apply at typed positions: each position's declared atom type owns its own parsing contract (§7.4). The tokens `true`, `false`, and `null` have no special status when a schema is in scope — their meaning is determined entirely by the position's type.
 
 **`null` at `void`-typed positions.** The sole exception is a position whose declared type is `void` (§4.2): there the token `null` is accepted as an equivalent spelling of the absent sentinel `_` and normalised to absence. The concession is local to `void` — it has a single inhabitant, so no absence-vs-value distinction is lost — and does not change `null`'s meaning elsewhere. Authors SHOULD write `_`; a `void` position round-trips to `_`. This also covers JSON-shaped data under a schema: a JSON `null` at a `void`-typed position is accepted as absence; everywhere else it must satisfy the position's declared type.
 
@@ -1419,7 +1425,7 @@ The following rows extend the adjacency table of [TSON-DATA] §7.5 for the opera
 
 | Reference | Title | URL |
 |-----------|-------|-----|
-| TSON-DATA | TSON Part 1: Data Format | https://tson.io/2026/32/tson-part1-data |
+| TSON-DATA | TSON Part 1: Text Data Format | https://tson.io/2026/32/tson-part1-data |
 | TSON-GUIDE | TSON Developer Guide (non-normative) | https://tson.io/2026/32/tson-guide |
 | meta-kernel.tn1 | TSON Meta-Kernel (companion artifact) | https://tson.io/2026/32/m/meta-kernel.tn1 (hash pin to be published) |
 | meta.tn1 | TSON Meta-Schema (companion artifact) | https://tson.io/2026/32/m/meta.tn1 (hash pin to be published) |
