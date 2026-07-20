@@ -345,14 +345,14 @@
   @doc:"""
     Author's assertion that a choice's variants are pairwise disjoint
     as value sets — advisory intent, checked against the resolver's
-    derived `type_definition.disjoint` fact ([TSON-SCHEMA] §5.4). Carries
-    no decode force: like `@ordered`/`@bounded`/`@exact`, it records a
-    property the type already has or does not, and the resolver computes
-    disjointness whether or not the annotation is present. Present and
-    refuted is a schema-load error; present and unprovable is a warning;
-    present and proved, or absent, is silent.
+    derived `type_definition.disjoint` fact ([TSON-SCHEMA] §5.4). A
+    void-targeted presence marker like `@numeric`: written bare, and
+    presence is the assertion. Carries no decode force — the resolver
+    computes disjointness whether or not the annotation is present.
+    Present and refuted is a schema-load error; present and unprovable
+    is a warning; present and proved, or absent, is silent.
     """
-  disjoint => @annotation boolean
+  disjoint => @annotation void
 
   @doc:"Marks a definition or field as deprecated."
   deprecated => @annotation text

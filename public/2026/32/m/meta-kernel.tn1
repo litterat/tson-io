@@ -29,7 +29,7 @@
   @doc:"""
     Unit atom constructor. An atom with no constraint vocabulary — the
     atom equivalent of the empty record `{}` for products. Its instances
-    (`value`, `token`, `void` in the kernel; `complex` in core) are
+    (`value`, `token`, `void`, all in the kernel) are
     opaque atoms distinguished by name and prose-level parsing contract,
     not by schema shape.
     """
@@ -48,7 +48,7 @@
     must be the field's declared type — a dependency the schema language
     does not express directly) and for constraint vocabulary fields in
     meta whose constrained atom is not defined in meta-kernel or meta
-    (real_type.min, decimal_type.min, etc.).
+    (float_type.min, decimal_type.min, etc.).
     """
   value => !unit {}
 
@@ -62,9 +62,9 @@
 
     token is not used in data and exists so the kernel can describe
     lexical identifiers (type names, field names, parameter names) and
-    enum members honestly. It is not currently re-exported in core (no
-    core-level type targets it directly), unlike `void` which is
-    re-exported because annotations in core need it. The
+    enum members honestly. Core declares no sibling of it (no
+    core-level type targets it directly), unlike `void`, whose core
+    sibling exists because annotations in core need it. The
     implementation-internal constraints on what constitutes a
     well-formed token are fixed by the grammar; no constraint vocabulary
     is needed at the type level.
@@ -78,8 +78,9 @@
     (`@T` with no value); the resolver fills the implicit `_` and
     validates against this contract. See Part 2 §6.
 
-    Re-exported in core under the same name so that core-only schemas
-    can target it.
+    Core declares its own sibling under the same name — the same
+    construction and contract, a distinct type entity — so that data
+    documents governed by core-importing schemas can target it.
     """
   void => !unit {}
 

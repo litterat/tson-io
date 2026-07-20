@@ -18,9 +18,15 @@
       non_empty_text   => !text ^ { min_length: 1 }
 
   Annotation types (`@ordered`, `@bounded`, `@exact`, `@numeric`,
-  `@deprecated`, `@since`, `@todo`, `@lang`) live in meta.tn1 — they
-  must be reachable through the `!!meta` chain to be usable as
-  annotations (§5.4). They appear here only by use, not by definition.
+  `@deprecated`, `@since`, `@todo`, `@lang`) live in meta.tn1 —
+  annotations resolve one hop against the governing target's
+  namespace (Part 2 §3.3.3, §6), so for this schema document they
+  must be reachable through the `!!meta` chain; they appear here
+  only by use. Core's own `annotation`, `documentation`, `doc`, and
+  `alias` declarations (and its `void` sibling) face the other
+  direction: they exist so that *data documents* governed by
+  core-importing schemas can use them — the same one-hop rule, seen
+  from the data side.
 
   References:
     ISO/IEC 11404:2007    General Purpose Datatypes
@@ -40,8 +46,10 @@
   """
 {
   @doc:"""
-    Void primitive. Re-exported from meta-kernel under the same name
-    so that core-only schemas can target it. The atom whose parsing
+    Void primitive. A fresh sibling of the meta-kernel's `void` under
+    the same name — the same `!unit {}` construction and contract, a
+    distinct type entity — so that data documents governed by
+    core-importing schemas can target it. The atom whose parsing
     contract admits only the absent sentinel `_`. See Part 2 §6 and §7.3.
     """
   void => !unit {}

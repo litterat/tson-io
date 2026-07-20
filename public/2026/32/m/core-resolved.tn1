@@ -7,7 +7,12 @@
 
   This document is governed by the meta-schema: the structural
   vocabulary (`type_definition`, `record`, `enum`, ...) reaches it
-  through meta's kernel import, and the annotation types used here
+  through meta's kernel import. As a data document, this header
+  cannot carry `!!import`: the namespace in which this map's
+  type-name tokens resolve (core.tn1's locals; core imports nothing)
+  is declared by the source schema's header and supplied at ingest
+  ([TSON-SCHEMA] Section 8.1), never by this document. The
+  annotation types used here
   (`doc` from the kernel via that import; `ordered`, `bounded`,
   `exact`, `numeric` from meta itself) resolve one hop against meta's
   namespace. Constructor names in `source` fields and bodies
@@ -17,7 +22,7 @@
   verbatim.
   """
 !schema {
-  @doc:"Void primitive, re-exported from meta-kernel. Admits only the absent sentinel `_`."
+  @doc:"Void primitive — a fresh sibling of the meta-kernel's `void`: same construction and contract, distinct type entity. Admits only the absent sentinel `_`."
   void => !type_definition {
     kind: ATOM
     source: unit

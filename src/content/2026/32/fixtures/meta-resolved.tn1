@@ -5,9 +5,14 @@
   Parse the source schema, run the resolver, canonicalise, compare.
   Conventions as in meta-kernel-resolved.tn1.
 
-  Supertype names in this map (`atom`, `sum`, `text_type`,
-  `atom_specification`, `top`) resolve through the source schema's
-  kernel import; `subtypes` lists entries of this map only, and none
+  As a data document, this header cannot carry `!!import`; its
+  `!!schema` names this document's own governing chain, not the
+  schema it describes. The namespace in which this map's type-name
+  tokens resolve — meta.tn1's locals plus its import of
+  meta-kernel.tn1 — is declared by the source schema's header and
+  supplied at ingest ([TSON-SCHEMA] Section 8.1), never by this
+  document. Supertype names in this map (`atom`, `sum`, `text_type`,
+  `atom_specification`, `top`) resolve through that kernel import; `subtypes` lists entries of this map only, and none
   of this map's entries narrows or composes with another, so every
   `subtypes` list here is empty and omitted.
   """
@@ -322,11 +327,11 @@
     body: !reference { target: void }
   }
 
-  @doc:"Author's assertion that a choice's variants are pairwise disjoint as value sets — advisory, checked against derived `type_definition.disjoint` (Part 2 Section 5.4)."
+  @doc:"Author's assertion that a choice's variants are pairwise disjoint as value sets — advisory, checked against derived `type_definition.disjoint` (Part 2 Section 5.4). Void-targeted presence marker; written bare."
   disjoint => @annotation !type_definition {
     kind: REFERENCE
-    source: boolean
-    body: !reference { target: boolean }
+    source: void
+    body: !reference { target: void }
   }
 
   @doc:"Marks a definition or field as deprecated."

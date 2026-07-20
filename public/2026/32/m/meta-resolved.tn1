@@ -5,9 +5,14 @@
   Parse the source schema, run the resolver, canonicalise, compare.
   Conventions as in meta-kernel-resolved.tn1.
 
-  Supertype names in this map (`atom`, `sum`, `text_type`,
-  `atom_specification`, `top`) resolve through the source schema's
-  kernel import; `subtypes` lists entries of this map only, and none
+  As a data document, this header cannot carry `!!import`; its
+  `!!schema` names this document's own governing chain, not the
+  schema it describes. The namespace in which this map's type-name
+  tokens resolve — meta.tn1's locals plus its import of
+  meta-kernel.tn1 — is declared by the source schema's header and
+  supplied at ingest ([TSON-SCHEMA] Section 8.1), never by this
+  document. Supertype names in this map (`atom`, `sum`, `text_type`,
+  `atom_specification`, `top`) resolve through that kernel import; `subtypes` lists entries of this map only, and none
   of this map's entries narrows or composes with another, so every
   `subtypes` list here is empty and omitted.
   """
@@ -39,7 +44,7 @@
     supertypes: [sum top]
     body: !record { supertypes: [sum]  fields: [
       !record_field { name: schema  type: uri }
-      !record_field { name: types   type: "[type_name]"  state: OPTIONAL }
+      !record_field { name: types   type: { name: array  arguments: [ { name: @alias:type_name token } ] }  state: OPTIONAL }
     ] }
   }
 
@@ -49,6 +54,25 @@
     constructor: true
     supertypes: [sum top]
     body: !record { supertypes: [sum]  fields: [] }
+  }
+
+  @doc:"Fixed-size array constructor — a ~ constructor parallel to set; applications are structural and closed declarations carry !vector bodies. Not a desugar target (Part 2 Section 5.3)."
+  vector => !type_definition {
+    kind: PRODUCT
+    constructor: true
+    source: { name: array  arguments: [ { name: T } ] }
+    parameters: [T S]
+    supertypes: [array product top]
+    body: !record { fields: [
+      !record_field { name: access_pattern  type: product_access_type  state: REQUIRED_FIXED  value: INDEX }
+      !record_field { name: size_type       type: product_size_type    state: REQUIRED_FIXED  value: VARIABLE }
+      !record_field { name: element_type    type: T }
+      !record_field { name: state           type: element_state  state: REQUIRED_DEFAULT  value: REQUIRED }
+      !record_field { name: unordered       type: boolean  state: REQUIRED_DEFAULT  value: false }
+      !record_field { name: unique_items    type: boolean  state: REQUIRED_DEFAULT  value: false }
+      !record_field { name: min_items       type: integer  state: OPTIONAL_FIXED  value_param: S }
+      !record_field { name: max_items       type: integer  state: OPTIONAL_FIXED  value_param: S }
+    ] }
   }
 
   @doc:"IEEE 754-2019 interchange formats, both radices. Selects the representable grid of an approximate (float_type) value."
@@ -220,8 +244,8 @@
     supertypes: [atom atom_specification top]
     body: !record { supertypes: [atom atom_specification]  fields: [
       !record_field { name: spec       type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc3986" }
-      !record_field { name: within     type: "[value]"  state: OPTIONAL }
-      !record_field { name: excluding  type: "[value]"  state: OPTIONAL }
+      !record_field { name: within     type: { name: array  arguments: [ { name: value } ] }  state: OPTIONAL }
+      !record_field { name: excluding  type: { name: array  arguments: [ { name: value } ] }  state: OPTIONAL }
     ] }
   }
 
@@ -232,8 +256,8 @@
     supertypes: [atom atom_specification top]
     body: !record { supertypes: [atom atom_specification]  fields: [
       !record_field { name: spec       type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc4291" }
-      !record_field { name: within     type: "[value]"  state: OPTIONAL }
-      !record_field { name: excluding  type: "[value]"  state: OPTIONAL }
+      !record_field { name: within     type: { name: array  arguments: [ { name: value } ] }  state: OPTIONAL }
+      !record_field { name: excluding  type: { name: array  arguments: [ { name: value } ] }  state: OPTIONAL }
     ] }
   }
 
@@ -246,8 +270,8 @@
       !record_field { name: spec        type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc4632" }
       !record_field { name: min_prefix  type: integer  state: OPTIONAL }
       !record_field { name: max_prefix  type: integer  state: OPTIONAL }
-      !record_field { name: within      type: "[value]"  state: OPTIONAL }
-      !record_field { name: excluding   type: "[value]"  state: OPTIONAL }
+      !record_field { name: within      type: { name: array  arguments: [ { name: value } ] }  state: OPTIONAL }
+      !record_field { name: excluding   type: { name: array  arguments: [ { name: value } ] }  state: OPTIONAL }
     ] }
   }
 
@@ -260,8 +284,8 @@
       !record_field { name: spec        type: uri  state: REQUIRED_FIXED  value: "https://www.rfc-editor.org/rfc/rfc4291" }
       !record_field { name: min_prefix  type: integer  state: OPTIONAL }
       !record_field { name: max_prefix  type: integer  state: OPTIONAL }
-      !record_field { name: within      type: "[value]"  state: OPTIONAL }
-      !record_field { name: excluding   type: "[value]"  state: OPTIONAL }
+      !record_field { name: within      type: { name: array  arguments: [ { name: value } ] }  state: OPTIONAL }
+      !record_field { name: excluding   type: { name: array  arguments: [ { name: value } ] }  state: OPTIONAL }
     ] }
   }
 
@@ -303,6 +327,13 @@
     body: !reference { target: void }
   }
 
+  @doc:"Author's assertion that a choice's variants are pairwise disjoint as value sets — advisory, checked against derived `type_definition.disjoint` (Part 2 Section 5.4). Void-targeted presence marker; written bare."
+  disjoint => @annotation !type_definition {
+    kind: REFERENCE
+    source: void
+    body: !reference { target: void }
+  }
+
   @doc:"Marks a definition or field as deprecated."
   deprecated => @annotation !type_definition {
     kind: REFERENCE
@@ -331,16 +362,4 @@
     body: !reference { target: text }
   }
 
-  @doc:"Synthetic entries materialised from inline forms."
-  "[type_name]" => !type_definition {
-    kind: PRODUCT
-    source: array
-    body: !array { element_type: @alias:type_name token }
-  }
-
-  "[value]" => !type_definition {
-    kind: PRODUCT
-    source: array
-    body: !array { element_type: value }
-  }
 }

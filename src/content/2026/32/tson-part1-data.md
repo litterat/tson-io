@@ -547,8 +547,8 @@ The numeric atoms are defined against the productions of the number grammar (§7
 |------------|----------------------|------------|------------|
 | `!int32`   | `integer` / `based-integer` | 32-bit signed range | 32-bit integer |
 | `!int64`   | `integer` / `based-integer` | 64-bit signed range | 64-bit integer |
-| `!uint32`  | `integer` / `based-integer`, no sign | 32-bit unsigned range | 32-bit unsigned |
-| `!uint64`  | `integer` / `based-integer`, no sign | 64-bit unsigned range | 64-bit unsigned |
+| `!uint32`  | `integer` / `based-integer` | 32-bit unsigned range | 32-bit unsigned |
+| `!uint64`  | `integer` / `based-integer` | 64-bit unsigned range | 64-bit unsigned |
 | `!number`  | `integer` / `float` | exact, preserved as written | exact number |
 | `!float32` | `integer` / `float` / `hex-float` / `special-value` | approximate, IEEE 754 binary32 grid | 32-bit float |
 | `!float64` | `integer` / `float` / `hex-float` / `special-value` | approximate, IEEE 754 binary64 grid | 64-bit float |
@@ -557,7 +557,7 @@ The numeric atoms are defined against the productions of the number grammar (§7
 
 The atoms are the schemaless parsing primitives; the core type library builds its named types on the meta constructors over the same value sets — `!number` feeds `number` (the exact tier, `decimal_type`), `!float32`/`!float64` feed the approximate `float_type` binary formats, `!rational` feeds `rational`, `!complex` feeds `complex` (`complex_type`). The exact atoms (`!number`, `!rational`, and the integer atoms) preserve the value as written; the approximate atoms (`!float32`, `!float64`) round the parsed value onto the named IEEE 754-2019 grid, so precision may be lost — the atom-level statement of the exact/approximate split the type library records with `@exact` ([TSON-SCHEMA] §9).
 
-The integer atoms accept based forms (`!uint32 0xFF00_0000`), and the annotation is the only schemaless route to the rational, complex, and hex-float forms: complex and hex-float tokens resolve as strings under base resolution (§4.3), and rational content contains `/`, so rational values are always quoted (`!rational "2/3"`). The float atoms accept plain integer tokens and give the special values IEEE 754-2019 semantics (`.inf`, `.nan`, signed zeros, subnormals); `!number`, being exact, does not accept the special values. NaN payloads are not part of a value's information content: every NaN, however produced, denotes the canonical quiet NaN, so preservation (§5.2) holds by definition; applications that need payload bits should carry them as integers or binary values. Unannotated numeric tokens resolve through base type resolution alone.
+The integer atoms accept based and signed forms uniformly (`!uint32 0xFF00_0000`, `!uint32 +10`) — the range constraint, not the lexer, enforces unsignedness: `!uint32 -10` parses, then fails the unsigned range at validation — and the annotation is the only schemaless route to the rational, complex, and hex-float forms: complex and hex-float tokens resolve as strings under base resolution (§4.3), and rational content contains `/`, so rational values are always quoted (`!rational "2/3"`). The float atoms accept plain integer tokens and give the special values IEEE 754-2019 semantics (`.inf`, `.nan`, signed zeros, subnormals); `!number`, being exact, does not accept the special values. NaN payloads are not part of a value's information content: every NaN, however produced, denotes the canonical quiet NaN, so preservation (§5.2) holds by definition; applications that need payload bits should carry them as integers or binary values. Unannotated numeric tokens resolve through base type resolution alone.
 
 
 ## 6. TSON and JSON

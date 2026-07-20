@@ -88,7 +88,7 @@
   @doc:"""
     Unit atom constructor. An atom with no constraint vocabulary — the
     atom equivalent of the empty record `{}` for products. Its instances
-    (`value`, `token`, `void` in the kernel; `complex` in core) are
+    (`value`, `token`, `void`, all in the kernel) are
     opaque atoms distinguished by name and prose-level parsing contract,
     not by schema shape.
     """
