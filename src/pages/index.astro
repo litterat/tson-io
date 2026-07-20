@@ -28,7 +28,7 @@ const heroSchema = `<span class="gain">!!id:</span><span class="ts">"https://exa
 }`;
 
 // ── the forbidden edit: v2 with a REQUIRED field ─────────────
-const v2Schema = `<span class="gain">!!id:</span><span class="ts">"https://example.com/people-v2.tn1"</span>
+const v2Schema = `<span class="gain">!!id:</span><span class="ts">"https://example.com/people-v2.tn1?sha256=ac3f2e1a…a8e5be21"</span>
 <span class="gain">!!meta:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/meta.tn1?sha256=8b1e4a9c…d7f2a640"</span>
 <span class="gain">!!import:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/core.tn1?sha256=3f9d2c71…b8e5c194"</span>
 {
@@ -164,7 +164,7 @@ const ledger = [
     why: 'Arbitrary precision, hex and binary, and digit separators resolve with no annotation at all. Infinities and NaN are approximate-tier values and need an explicit !float64; rationals and complex numbers need their own annotation too, since base resolution treats them as strings otherwise.',
     snippets: [
       { tag: 'json (closest you can get)', kind: 'json', html: '<span class="tp">"</span><span class="tk">mask</span><span class="tp">":</span> <span class="tn">255</span><span class="tp">, "</span><span class="tk">budget</span><span class="tp">":</span> <span class="tn">1000000</span><span class="tp">,</span>\n<span class="tp">"</span><span class="tk">ratio</span><span class="tp">":</span> <span class="tn">3.142857142857143</span><span class="tp">, "</span><span class="tk">limit</span><span class="tp">":</span> <span class="ts">"Infinity"</span>' },
-      { tag: 'tson', kind: 'tson', html: '<span class="tk">mask</span><span class="tp">:</span> <span class="gain">0xFF</span>   <span class="tk">budget</span><span class="tp">:</span> <span class="gain">1_000_000</span>   <span class="tk">ratio</span><span class="tp">:</span> <span class="gain">!rational</span> <span class="tn">22/7</span>\n<span class="tk">atoms</span><span class="tp">:</span> <span class="tn">6.02e23</span>   <span class="tk">limit</span><span class="tp">:</span> <span class="gain">!float64</span> <span class="tn">.inf</span>   <span class="tk">gap</span><span class="tp">:</span> <span class="gain">!float64</span> <span class="tn">.nan</span>' },
+      { tag: 'tson', kind: 'tson', html: '<span class="tk">mask</span><span class="tp">:</span> <span class="gain">0xFF</span>   <span class="tk">budget</span><span class="tp">:</span> <span class="gain">1_000_000</span>   <span class="tk">ratio</span><span class="tp">:</span> <span class="gain">!rational</span> <span class="tn">"22/7"</span>\n<span class="tk">atoms</span><span class="tp">:</span> <span class="tn">6.02e23</span>   <span class="tk">limit</span><span class="tp">:</span> <span class="gain">!float64</span> <span class="tn">.inf</span>   <span class="tk">gap</span><span class="tp">:</span> <span class="gain">!float64</span> <span class="tn">.nan</span>' },
     ],
   },
   {
