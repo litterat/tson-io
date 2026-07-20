@@ -2,10 +2,130 @@
 import Layout from '../layout/Layout.astro';
 import { CURRENT_REVISION } from '../lib/spec';
 
-// ── hero diff panes ──────────────────────────────────────────
-// .noise = syntax JSON requires that TSON makes optional
-// .gain  = meaning TSON adds that JSON cannot express
-const heroJson = `{
+const part1Url = `/2026/${CURRENT_REVISION}/tson-part1-data`;
+const part2Url = `/2026/${CURRENT_REVISION}/tson-part2-schema`;
+const guideUrl = `/2026/${CURRENT_REVISION}/tson-guide`;
+const specHubUrl = '/2026'; // redirects to /2026/{CURRENT_REVISION} via public/_redirects
+
+const chipClass = 'inline-block font-mono text-xs font-semibold rounded-full px-3 py-1 mb-2 bg-gray-100 text-teal-800 hover:underline';
+
+// ── hero: the chain, two documents ───────────────────────────
+const heroData = `<span class="gain">!!schema:</span><span class="ts">"https://example.com/people.tn1?sha256=c4d5e6f7…a2b3c4d5"</span>
+<span class="gain">!employee</span> {
+  <span class="tk">name</span><span class="tp">:</span>       <span class="ts">"Ada Lovelace"</span>
+  <span class="tk">born</span><span class="tp">:</span>       <span class="tn">1815-12-10</span>
+  <span class="tk">department</span><span class="tp">:</span> <span class="ts">Research</span>
+  <span class="tk">level</span><span class="tp">:</span>      <span class="ts">L2</span>
+}<br/><br/>`;
+
+const heroSchema = `<span class="gain">!!id:</span><span class="ts">"https://example.com/people.tn1?sha256=c4d5e6f7…a2b3c4d5"</span>
+<span class="gain">!!meta:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/meta.tn1?sha256=8b1e4a9c…d7f2a640"</span>
+<span class="gain">!!import:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/core.tn1?sha256=3f9d2c71…b8e5c194"</span>
+{
+  <span class="tk">person</span>   <span class="gain">=&gt;</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">born</span><span class="tp">:</span> <span class="ts">date</span> }
+  <span class="tk">employee</span> <span class="gain">=&gt;</span> <span class="ts">person</span> <span class="gain">&amp;</span> { <span class="tk">department</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">level</span><span class="tp">:</span> <span class="ts">level</span> <span class="gain">~</span> <span class="tn">L1</span> }
+  <span class="tk">level</span>    <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>
+}`;
+
+// ── the forbidden edit: v2 with a REQUIRED field ─────────────
+const v2Schema = `<span class="gain">!!id:</span><span class="ts">"https://example.com/people-v2.tn1"</span>
+<span class="gain">!!meta:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/meta.tn1?sha256=8b1e4a9c…d7f2a640"</span>
+<span class="gain">!!import:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/core.tn1?sha256=3f9d2c71…b8e5c194"</span>
+{
+  <span class="tk">person</span>   <span class="gain">=&gt;</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">born</span><span class="tp">:</span> <span class="ts">date</span>  <span class="added"><span class="tk">email</span><span class="tp">:</span> <span class="ts">text</span></span> }
+  <span class="tk">employee</span> <span class="gain">=&gt;</span> <span class="ts">person</span> <span class="gain">&amp;</span> { <span class="tk">department</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">level</span><span class="tp">:</span> <span class="ts">level</span> <span class="gain">~</span> <span class="tn">L1</span> }
+  <span class="tk">level</span>    <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>
+}`;
+
+const ripples = [
+  {
+    title: 'Required means required',
+    body: 'Records remain completely closed under their type with no fields left arbitrarily optional for future-proofing and no tombstones carried forever.',
+  },
+  {
+    title: 'Unknown fields are errors',
+    body: 'Tolerating unknown fields is just a workaround for in-place evolution. Without it a simple typo triggers an immediate error instead of silently dropping data.',
+  },
+  {
+    title: 'Route by version',
+    body: 'The schema hash sits in the header or on the first line for instant validation. A single server binds multiple versions concurrently or a gateway routes requests to distinct backends.',
+  },
+  {
+    title: 'Migration is a diff',
+    body: 'Because both schemas are data a tool computes the exact structural diff. Migrations become pure transformations with mathematically precise input and output contracts.',
+  },
+];
+
+// ── schema grammar ledger ────────────────────────────────────
+const schemaRows = [
+  {
+    chip: '§5.2', href: `${part2Url}#52-field-states`, title: 'Records and field states',
+    why: 'Fields are required by default. ~ supplies a default, = pins a value, ? makes the field optional. Five states, every one explicit in the declaration.',
+    code: `<span class="tk">config</span> <span class="gain">=&gt;</span> {
+  <span class="tk">host</span><span class="tp">:</span>    <span class="ts">text</span>
+  <span class="tk">port</span><span class="tp">:</span>    <span class="ts">integer</span> <span class="gain">~</span> <span class="tn">8080</span>
+  <span class="tk">retries</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">=</span> <span class="tn">3</span>
+  <span class="tk">comment</span><span class="tp">:</span> <span class="ts">text</span><span class="gain">?</span>
+}`,
+  },
+  {
+    chip: '§5.5', href: `${part2Url}#55-constructor-application-and-atom-refinement`, title: 'Atoms and enums',
+    why: 'Refine an atom\'s constraint vocabulary with ^, or mint a fresh atom family with a constructor. The refinement IS-A its source; the enum is its own family.',
+    code: `<span class="tk">port</span>  <span class="gain">=&gt;</span> <span class="gain">!integer</span> <span class="gain">^</span> { <span class="tk">min</span><span class="tp">:</span> <span class="tn">1</span>  <span class="tk">max</span><span class="tp">:</span> <span class="tn">65535</span> }
+<span class="tk">sku</span>   <span class="gain">=&gt;</span> <span class="gain">!text</span> <span class="gain">^</span> { <span class="tk">pattern</span><span class="tp">:</span> <span class="ts">"[A-Z]-[0-9]{3}"</span> }
+<span class="tk">level</span> <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>`,
+  },
+  {
+    chip: '§5.3', href: `${part2Url}#53-type-expressions`, title: 'Arrays, tuples, sets',
+    why: 'Sized homogeneous arrays, fixed-shape tuples, unique-membered sets. Three contracts that all read as one bracket syntax in the data.',
+    code: `<span class="tk">tags</span>   <span class="gain">=&gt;</span> <span class="tp">[</span><span class="ts">text</span><span class="gain">;</span> <span class="tn">1..10</span><span class="tp">]</span>
+<span class="tk">point</span>  <span class="gain">=&gt;</span> <span class="tp">[</span><span class="ts">number</span><span class="tp">,</span> <span class="ts">number</span><span class="tp">]</span>
+<span class="tk">badges</span> <span class="gain">=&gt;</span> <span class="ts">set</span><span class="gain">&lt;</span><span class="ts">text</span><span class="gain">&gt;</span>`,
+  },
+  {
+    chip: '§5.8', href: `${part2Url}#58-supertype-composition`, title: 'Composition',
+    why: 'New fields with declared ancestry: ticket IS-A audit, and contributed field sets must be disjoint. No silent overrides, no diamond ambiguity.',
+    code: `<span class="tk">audit</span>  <span class="gain">=&gt;</span> { <span class="tk">created</span><span class="tp">:</span> <span class="ts">datetime</span>  <span class="tk">updated</span><span class="tp">:</span> <span class="ts">datetime</span><span class="gain">?</span> }
+<span class="tk">ticket</span> <span class="gain">=&gt;</span> <span class="ts">audit</span> <span class="gain">&amp;</span> { <span class="tk">id</span><span class="tp">:</span> <span class="ts">uuid</span>  <span class="tk">title</span><span class="tp">:</span> <span class="ts">text</span> }`,
+  },
+  {
+    chip: '§5.7', href: `${part2Url}#57-refinement`, title: 'Refinement',
+    why: 'Tighten inherited fields without adding any: defaults can move, pins can\'t, contracts only narrow. One transition table governs every step.',
+    code: `<span class="tk">service</span>    <span class="gain">=&gt;</span> { <span class="tk">host</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">port</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">~</span> <span class="tn">8080</span> }
+<span class="tk">production</span> <span class="gain">=&gt;</span> <span class="ts">service</span> <span class="gain">^</span> { <span class="tk">host</span><span class="tp">:</span> <span class="gain">=</span> <span class="ts">"prod.internal"</span>  <span class="tk">port</span><span class="tp">:</span> <span class="gain">=</span> <span class="tn">443</span> }`,
+  },
+  {
+    chip: '§5.9', href: `${part2Url}#59-subtraction`, title: 'Subtraction',
+    why: 'Removal is allowed, and loud: public is not substitutable for account, and the resolved output records exactly that.',
+    code: `<span class="tk">account</span> <span class="gain">=&gt;</span> { <span class="tk">user</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">email</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">password</span><span class="tp">:</span> <span class="ts">text</span> }
+<span class="tk">public</span>  <span class="gain">=&gt;</span> <span class="ts">account</span> <span class="gain">-</span> { <span class="tk">password</span> }`,
+  },
+  {
+    chip: '§5.4', href: `${part2Url}#54-choice-types`, title: 'Choice',
+    why: 'Sum types. Structurally disjoint variants need no tag in data; overlapping ones require one. The resolver derives which, per encoding.',
+    code: `<span class="tk">shape</span>  <span class="gain">=&gt;</span> <span class="tp">(</span><span class="ts">circle</span> <span class="gain">|</span> <span class="ts">rect</span><span class="tp">)</span>
+<span class="tk">circle</span> <span class="gain">=&gt;</span> { <span class="tk">radius</span><span class="tp">:</span> <span class="ts">number</span> }
+<span class="tk">rect</span>   <span class="gain">=&gt;</span> { <span class="tk">width</span><span class="tp">:</span> <span class="ts">number</span>  <span class="tk">height</span><span class="tp">:</span> <span class="ts">number</span> }`,
+  },
+  {
+    chip: '§5.11', href: `${part2Url}#511-field-groups`, title: 'Field groups',
+    why: 'Exactly-one-of, stated structurally: the data carries one member under its own label, and no synthetic tag is invented.',
+    code: `<span class="tk">contact</span> <span class="gain">=&gt;</span> {
+  <span class="tk">name</span><span class="tp">:</span> <span class="ts">text</span>
+  <span class="tp">(</span> <span class="tk">email</span><span class="tp">:</span> <span class="ts">email</span> <span class="gain">|</span> <span class="tk">phone</span><span class="tp">:</span> <span class="ts">text</span> <span class="tp">)</span>
+}`,
+  },
+  {
+    chip: '§5.10', href: `${part2Url}#510-templates-and-parameters`, title: 'Templates',
+    why: 'Definitions with blanks, over type parameters and value parameters both. A fully bound application becomes a real, named type in the resolved schema.',
+    code: `<span class="tk">paged</span>  <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">T</span><span class="gain">&gt;</span> { <span class="tk">items</span><span class="tp">:</span> <span class="tp">[</span><span class="ts">T</span><span class="tp">]</span>  <span class="tk">cursor</span><span class="tp">:</span> <span class="ts">text</span><span class="gain">?</span> }
+<span class="tk">window</span> <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">T</span><span class="tp">,</span> <span class="ts">N</span><span class="gain">&gt;</span> <span class="tp">[</span><span class="ts">T</span><span class="gain">;</span> <span class="ts">N</span><span class="tp">]</span>
+<span class="tk">batch</span>  <span class="gain">=&gt;</span> <span class="ts">window</span><span class="gain">&lt;</span><span class="ts">text</span><span class="tp">,</span> <span class="tn">100</span><span class="gain">&gt;</span>`,
+  },
+];
+
+// ── notation section: the diff demo (unchanged mechanics) ────
+const diffJson = `{
   <span class="noise">"</span><span class="tk">name</span><span class="noise">"</span><span class="tp">:</span> <span class="ts">"Ada Lovelace"</span><span class="noise">,</span>
   <span class="noise">"</span><span class="tk">born</span><span class="noise">"</span><span class="tp">:</span> <span class="ts"><span class="noise">"</span>1815-12-10<span class="noise">"</span></span><span class="noise">,</span>
   <span class="noise">"</span><span class="tk">fields</span><span class="noise">"</span><span class="tp">:</span> <span class="tp">[</span><span class="ts"><span class="noise">"</span>mathematics<span class="noise">"</span></span><span class="noise">,</span> <span class="ts"><span class="noise">"</span>computing<span class="noise">"</span></span><span class="tp">]</span><span class="noise">,</span>
@@ -13,7 +133,7 @@ const heroJson = `{
   <span class="noise">"</span><span class="tk">note</span><span class="noise">"</span><span class="tp">:</span> <span class="tn">null</span>
 }`;
 
-const heroTson = `{
+const diffTson = `{
   <span class="tk">name</span><span class="tp">:</span> <span class="ts">"Ada Lovelace"</span>
   <span class="tk">born</span><span class="tp">:</span> <span class="gain">!date</span> <span class="tn">1815-12-10</span>
   <span class="tk">fields</span><span class="tp">:</span> <span class="tp">[</span><span class="ts">mathematics computing</span><span class="tp">]</span>
@@ -21,16 +141,10 @@ const heroTson = `{
   <span class="tk">note</span><span class="tp">:</span> <span class="tn">null</span>
 }`;
 
-// ── the ledger ───────────────────────────────────────────────
-// chips cite TSON Part 1 (Data Format) unless marked otherwise
-const part1Url = `/2026/${CURRENT_REVISION}/tson-part1-data`;
-const part2Url = `/2026/${CURRENT_REVISION}/tson-part2-schema`;
-
-const rows = [
+// ── notation ledger: description left, examples right ────────
+const ledger = [
   {
-    chip: '§2.4',
-    href: `${part1Url}#24-tokens`,
-    title: 'Quotes are optional',
+    chip: '§2.4', href: `${part1Url}#24-tokens`, title: 'Quotes are optional',
     why: 'Identifiers and scalar values are unquoted tokens, defined over Unicode identifier properties — so this works in every script, not just ASCII. Quote only what needs quoting: spaces, colons, free text.',
     snippets: [
       { tag: 'json', kind: 'json', html: '<span class="tp">"</span><span class="tk">city</span><span class="tp">": "</span><span class="ts">Melbourne</span><span class="tp">", "</span><span class="tk">имя</span><span class="tp">": "</span><span class="ts">Алиса</span><span class="tp">"</span>' },
@@ -38,9 +152,7 @@ const rows = [
     ],
   },
   {
-    chip: '§2.4',
-    href: `${part1Url}#24-tokens`,
-    title: 'Commas are whitespace',
+    chip: '§2.4', href: `${part1Url}#24-tokens`, title: 'Commas are whitespace',
     why: 'Any whitespace separates items; commas still work, so JSON habits carry over. Trailing commas remain errors in both.',
     snippets: [
       { tag: 'json', kind: 'json', html: '<span class="tp">[</span><span class="tn">1</span><span class="tp">,</span> <span class="tn">2</span><span class="tp">,</span> <span class="tn">3</span><span class="tp">,</span> <span class="tn">4</span><span class="tp">,</span> <span class="tn">5</span><span class="tp">]</span>' },
@@ -48,19 +160,15 @@ const rows = [
     ],
   },
   {
-    chip: '§7.6',
-    href: `${part1Url}#76-number-grammar`,
-    title: 'Numbers you can actually write',
-    why: 'Arbitrary precision, hex and binary, digit separators, signed infinities, and NaN resolve with no annotation at all. Rationals and complex numbers need an explicit type identifier in schemaless data — that annotation is the only route to them, since base resolution treats them as strings otherwise.',
+    chip: '§7.6', href: `${part1Url}#76-number-grammar`, title: 'Numbers you can actually write',
+    why: 'Arbitrary precision, hex and binary, and digit separators resolve with no annotation at all — the exact tier by default. Infinities and NaN are approximate-tier values and need an explicit !float64; rationals and complex numbers need their own annotation too, since base resolution treats them as strings otherwise.',
     snippets: [
       { tag: 'json — closest you can get', kind: 'json', html: '<span class="tp">"</span><span class="tk">mask</span><span class="tp">":</span> <span class="tn">255</span><span class="tp">, "</span><span class="tk">budget</span><span class="tp">":</span> <span class="tn">1000000</span><span class="tp">,</span>\n<span class="tp">"</span><span class="tk">ratio</span><span class="tp">":</span> <span class="tn">3.142857142857143</span><span class="tp">, "</span><span class="tk">limit</span><span class="tp">":</span> <span class="ts">"Infinity"</span>' },
-      { tag: 'tson', kind: 'tson', html: '<span class="tk">mask</span><span class="tp">:</span> <span class="gain">0xFF</span>   <span class="tk">budget</span><span class="tp">:</span> <span class="gain">1_000_000</span>   <span class="tk">ratio</span><span class="tp">:</span> <span class="gain">!rational</span> <span class="tn">22/7</span>\n<span class="tk">atoms</span><span class="tp">:</span> <span class="tn">6.02e23</span>   <span class="tk">limit</span><span class="tp">:</span> <span class="gain">∞</span>   <span class="tk">gap</span><span class="tp">:</span> <span class="gain">.nan</span>' },
+      { tag: 'tson', kind: 'tson', html: '<span class="tk">mask</span><span class="tp">:</span> <span class="gain">0xFF</span>   <span class="tk">budget</span><span class="tp">:</span> <span class="gain">1_000_000</span>   <span class="tk">ratio</span><span class="tp">:</span> <span class="gain">!rational</span> <span class="tn">22/7</span>\n<span class="tk">atoms</span><span class="tp">:</span> <span class="tn">6.02e23</span>   <span class="tk">limit</span><span class="tp">:</span> <span class="gain">!float64</span> <span class="tn">.inf</span>   <span class="tk">gap</span><span class="tp">:</span> <span class="gain">!float64</span> <span class="tn">.nan</span>' },
     ],
   },
   {
-    chip: '§7.2.3',
-    href: `${part1Url}#723-multi-line-tokens`,
-    title: 'Strings with more than one line',
+    chip: '§7.2.3', href: `${part1Url}#723-multi-line-tokens`, title: 'Strings with more than one line',
     why: 'Triple-quoted blocks with common indentation stripped, so multi-line text stays readable in source and exact in value.',
     snippets: [
       { tag: 'json', kind: 'json', html: '<span class="tp">"</span><span class="tk">poem</span><span class="tp">": "</span><span class="ts">Roses are red\\nViolets are blue</span><span class="tp">"</span>' },
@@ -68,9 +176,7 @@ const rows = [
     ],
   },
   {
-    chip: '§2.6',
-    href: `${part1Url}#26-map`,
-    title: 'Maps with real keys',
+    chip: '§2.6', href: `${part1Url}#26-map`, title: 'Maps with real keys',
     why: 'JSON objects force every key into a string. TSON keeps records (fixed named fields, :) and maps (variable associations, =>) distinct — and map keys can be any value.',
     snippets: [
       { tag: 'json — keys stringified', kind: 'json', html: '{ <span class="tp">"</span><span class="tk">1</span><span class="tp">": "</span><span class="ts">one</span><span class="tp">", "</span><span class="tk">2026-03-13</span><span class="tp">": "</span><span class="ts">launch</span><span class="tp">"</span> }' },
@@ -78,19 +184,15 @@ const rows = [
     ],
   },
   {
-    chip: '§2.9',
-    href: `${part1Url}#29-the-absent-sentinel`,
-    title: 'Absent is not null',
-    why: 'JSON gives two states — key missing, or null — to do three jobs. TSON’s absent sentinel _ says “this position exists and holds no value”, leaving null to be a value.',
+    chip: '§2.9', href: `${part1Url}#29-the-absent-sentinel`, title: 'Absent is not null',
+    why: 'JSON gives two states — key missing, or null — to do three jobs. TSON\'s absent sentinel _ says "this position exists and holds no value", leaving null to be a value.',
     snippets: [
       { tag: 'json — is this unset, unknown, or removed?', kind: 'json', html: '<span class="tp">"</span><span class="tk">phone</span><span class="tp">":</span> <span class="tn">null</span>' },
       { tag: 'tson', kind: 'tson', html: '<span class="tk">phone</span><span class="tp">:</span> <span class="gain">_</span>   <span class="tk">scores</span><span class="tp">:</span> <span class="tp">[</span><span class="tn">1</span> <span class="gain">_</span> <span class="tn">3</span> <span class="gain">_</span> <span class="tn">5</span><span class="tp">]</span>' },
     ],
   },
   {
-    chip: '§3.1',
-    href: `${part1Url}#31-annotations`,
-    title: 'Metadata that travels with the value',
+    chip: '§3.1', href: `${part1Url}#31-annotations`, title: 'Metadata that travels with the value',
     why: 'Annotations attach ordered, preserved metadata to any value — no more _comment fields pretending to be data. This is also why TSON needs no comment syntax: annotations survive parsing.',
     snippets: [
       { tag: 'json — the workaround', kind: 'json', html: '<span class="tp">"</span><span class="tk">phone_comment</span><span class="tp">": "</span><span class="ts">deprecated, use mobile</span><span class="tp">",</span>\n<span class="tp">"</span><span class="tk">phone</span><span class="tp">": "</span><span class="ts">555-0100</span><span class="tp">"</span>' },
@@ -98,69 +200,143 @@ const rows = [
     ],
   },
   {
-    chip: '§5.1',
-    href: `${part1Url}#51-applicability`,
-    title: 'Types when you want them',
+    chip: '§5.1', href: `${part1Url}#51-applicability`, title: 'Types when you want them',
     why: 'Type annotations tag a value with what it is. A built-in vocabulary — dates, UUIDs, binary, precise numerics — works with no schema at all, and the value parses to the native type, not a string.',
     snippets: [
       { tag: 'json — strings that mean things', kind: 'json', html: '<span class="tp">"</span><span class="tk">id</span><span class="tp">": "</span><span class="ts">550e8400-e29b-41d4-a716-446655440000</span><span class="tp">",</span>\n<span class="tp">"</span><span class="tk">price</span><span class="tp">":</span> <span class="tn">19.99</span>' },
       { tag: 'tson', kind: 'tson', html: '<span class="tk">id</span><span class="tp">:</span> <span class="gain">!uuid</span> <span class="tn">550e8400-e29b-41d4-a716-446655440000</span>\n<span class="tk">price</span><span class="tp">:</span> <span class="gain">!number</span> <span class="tn">19.99</span>' },
     ],
   },
-  {
-    chip: 'Part 2',
-    chipAlt: true,
-    href: part2Url,
-    title: 'Schemas when you need them',
-    why: 'One directive points a document at a published, immutable, hash-pinned schema. Types are defined in the same syntax as data — records, narrowing, composition, enums — and validated on read.',
-    snippets: [
-      { tag: 'tson — data', kind: 'tson', html: '<span class="gain">!!schema:</span><span class="ts">"https://example.com/people.tn1?sha256=c4d5…"</span>\n<span class="gain">!person</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">Alice</span>  <span class="tk">age</span><span class="tp">:</span> <span class="tn">30</span> }' },
-      { tag: 'tson — schema', kind: 'tson', html: '<span class="tk">person</span> <span class="gain">=&gt;</span> <span class="gain">!!type</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">string</span>  <span class="tk">age</span><span class="tp">:</span> <span class="ts">integer</span> }\n<span class="tk">employee</span> <span class="gain">=&gt;</span> <span class="gain">!!type</span> <span class="ts">person</span> <span class="gain">&amp;</span> { <span class="tk">department</span><span class="tp">:</span> <span class="ts">string</span> }' },
-    ],
-  },
 ];
 
-const layers = [
-  { part: 'Part 1', title: 'Data Format', href: part1Url, body: 'The lexer, the structural grammar, base type resolution, and the built-in type vocabulary — dates, UUIDs, binary, precise numerics, available with no schema at all.' },
-  { part: 'Part 2', title: 'Schemas & Directives', href: part2Url, body: 'The type-definition grammar, composition and narrowing, the schema chain, and hash-pinned publishing.' },
+// ── audience routing ─────────────────────────────────────────
+const routes = [
+  { label: 'Learn more about TSON?', title: 'The Developer Guide', href: guideUrl, body: 'The chain walked end to end, versioning, worked examples, and the reasoning behind the design.' },
+  { label: 'Delve into the Specifications?', title: 'Draft Specifications', href: specHubUrl, body: 'Text Data Format, Type System and Schema, Meta Schemas and Core types.' },
+  { label: 'Want the theory?', title: 'The proto-schema research', href: '/research', body: 'The schema model, derived from the physical constraints of serialized data.' },
 ];
 ---
 
 <Layout
-  title="tson.io"
-  description="TSON (Typed Schema Object Notation) is a Unicode-first schema and data format for data interchange, built around the concept of a proto-schema that creates strong semantic definitions and closed-world, verifiable schemas."
+  title="TSON — Data with an immutable schema"
+  description="TSON is a schema system with its own notation: immutable, hash-pinned schemas whose definitions are themselves data, over a Unicode-first superset of JSON. Typed data, verifiable contracts, one notation."
 >
   <div id="vsjson">
-    <!-- Hero -->
+    <!-- ═══ Hero ═══ -->
     <div class="max-w-5xl mx-auto px-6 pt-20 pb-10">
       <h1 class="text-4xl md:text-5xl font-bold font-mono tracking-tight mb-5 leading-tight">
-        JSON, minus the noise.<br />
-        Plus <span class="text-teal-700">numbers</span>, <span class="text-teal-700">types</span>, and <span class="text-teal-700">schemas</span>.
+        Data with an <span class="text-teal-700">immutable</span> schema.
       </h1>
       <p class="text-gray-500 max-w-2xl">
-        <strong class="text-gray-900">TSON</strong> is a Unicode-first superset of JSON. Names go
-        unquoted in any script, commas are optional, numbers keep their meaning, and values can
-        carry types and metadata.
-        <strong class="text-gray-900">Every valid JSON document is already valid TSON.</strong>
+        <strong class="text-gray-900">TSON (Typed Schema Object Notation)</strong> is a schema
+        system with immutable, hash-pinned schemas whose definitions are themselves data. A
+        document names its schema, the schema names its meta-schema; <strong class="text-gray-900">one hash verifies the whole chain</strong>. For the finishing touch, TSON's data format is a Unicode-first superset of JSON you'll actually
+        enjoy writing.
+      </p>
+      <div class="flex flex-wrap gap-3 pt-6">
+        <a href={guideUrl} class="font-mono text-sm font-semibold bg-gray-900 text-white px-5 py-2.5 rounded-full hover:bg-gray-700">Read the guide</a>
+        <a href={specHubUrl} class="font-mono text-sm font-semibold border border-gray-300 text-gray-700 px-5 py-2.5 rounded-full hover:border-gray-500">Specification</a>
+      </div>
+    </div>
+
+    <!-- ═══ Hero visual: the chain ═══ -->
+    <div class="max-w-5xl mx-auto px-6 pb-6">
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="border border-gray-200 rounded-md overflow-hidden">
+          <div class="flex justify-between items-baseline px-4 py-2.5 border-b border-gray-200 font-mono text-xs tracking-widest">
+            <span class="font-semibold uppercase text-gray-700">TSON Data</span>
+            <span class="text-gray-400">pins its schema by hash</span>
+          </div>
+          <pre class="bg-gray-50 p-4 text-sm leading-7 overflow-x-auto"><code set:html={heroData} /></pre>
+        </div>
+        <div class="border border-gray-200 rounded-md overflow-hidden">
+          <div class="flex justify-between items-baseline px-4 py-2.5 border-b border-gray-200 font-mono text-xs tracking-widest">
+            <span class="font-semibold uppercase text-teal-700">TSON Schema</span>
+            <span class="text-gray-400">pins its meta-schema</span>
+          </div>
+          <pre class="bg-gray-50 p-4 text-sm leading-7 overflow-x-auto"><code set:html={heroSchema} /></pre>
+        </div>
+      </div>
+      <p class="text-sm text-gray-500 pt-4 max-w-3xl">
+        TSON Data and Schemas documents share the same lexer, same tooling, same verification. Schemas are maps with a compact grammar that's easy to read and write. In this Schema, <code class="font-mono text-gray-900">person</code> is a record with two fields; <code class="font-mono text-gray-900">employee</code> combines person with department and level; the <code class="font-mono text-gray-900">level</code> field is an enum with a default; and all the fields are required by default.
       </p>
     </div>
 
-    <!-- Diff demo -->
-    <div class="max-w-5xl mx-auto px-6 pb-6">
+    <!-- ═══ Section 1: the forbidden edit ═══ -->
+    <div class="max-w-5xl mx-auto px-6 pt-8">
+      <div class="bg-gray-900 text-gray-200 rounded-xl px-8 py-10 md:px-10">
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-3">Schema Versioning</h2>
+        <p class="font-mono font-semibold text-xl md:text-2xl leading-snug max-w-2xl mb-6">
+          Adding a new <span class="text-teal-400">required</span> field with ease
+        </p>
+        <div class="border border-gray-700 rounded-md overflow-hidden mb-6 max-w-3xl">
+          <pre class="bg-gray-950/60 p-4 text-sm leading-7 overflow-x-auto dark-pane"><code set:html={v2Schema} /></pre>
+        </div>
+        <p class="text-sm text-gray-400 max-w-3xl">
+          Version 2 just added a new required email field to the person record. In mutable schema systems,
+          adding a new required field is universally forbidden. The API guidelines for <a href="https://google.aip.dev/180" class="text-teal-400 underline">Google</a>, <a href="https://github.com/microsoft/api-guidelines" class="text-teal-400 underline">Microsoft</a> and <a href="https://opensource.zalando.com/restful-api-guidelines/" class="text-teal-400 underline">Zalando</a> all ban the practice.
+          Protobuf even marks the required keyword a hazard developers
+          must avoid. These rules exist because a single definition is forced to serve every document ever written
+          against it. TSON removes this burden because schemas are immutable. <strong class="text-gray-200">A version
+          is simply a new document with a new hash</strong>. Two contracts coexist at full strength, and employee
+          composing person inherits the new requirement in the same declaration.
+        </p>
+        <div class="grid sm:grid-cols-2 gap-x-8 gap-y-5 pt-7">
+          {ripples.map((r) => (
+            <div>
+              <h3 class="font-semibold text-gray-100 text-sm mb-1">{r.title}</h3>
+              <p class="text-sm text-gray-400">{r.body}</p>
+            </div>
+          ))}
+        </div>
+        <a href={guideUrl} class="inline-block font-mono text-sm font-semibold text-teal-400 hover:underline pt-7">The full versioning story →</a>
+      </div>
+    </div>
+
+    <!-- ═══ Section 2b: the schema grammar, row by row ═══ -->
+    <div class="max-w-5xl mx-auto px-6 pt-16">
+      <div class="font-mono text-xs font-semibold uppercase tracking-widest text-teal-800 mb-2">TSON Schema</div>
+      <h2 class="text-2xl md:text-3xl font-bold font-mono tracking-tight mb-3">A succinct schema built on a solid foundation</h2>
+      <p class="text-gray-500 max-w-2xl mb-6">
+        Contracts you'd otherwise scatter through validation code, stated in declarations. The
+        foundation: an <a href="/research/proto-schema/part-1-a-theoretical-model-for-data-schemas" class="text-teal-700 hover:underline">eight-article research series</a> deriving
+        what a schema is, from first principles, before any syntax was written.
+      </p>
+      <div>
+        {schemaRows.map((row) => (
+          <div class="grid md:grid-cols-[5fr_7fr] gap-x-8 gap-y-3 py-6 border-t border-gray-200">
+            <div>
+              <a href={row.href} class={chipClass}>{row.chip}</a>
+              <h3 class="font-semibold mb-1">{row.title}</h3>
+              <p class="text-sm text-gray-500">{row.why}</p>
+            </div>
+            <pre class="bg-gray-50 border border-gray-100 rounded-md p-4 text-sm leading-7 overflow-x-auto self-start"><code set:html={row.code} /></pre>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- ═══ Section 3: a notation worth reading ═══ -->
+    <div class="max-w-5xl mx-auto px-6 pt-16">
+      <div class="font-mono text-xs font-semibold uppercase tracking-widest text-teal-800 mb-2">TSON Data</div>
+      <h2 class="text-2xl md:text-3xl font-bold font-mono tracking-tight mb-3">A notation worth reading</h2>
+      <p class="text-gray-500 max-w-2xl mb-8">
+        The schema system required a better JSON, so it got a Unicode-first superset of JSON.
+      </p>
       <div class="grid md:grid-cols-2 gap-6">
         <div class="border border-gray-200 rounded-md overflow-hidden">
           <div class="flex justify-between items-baseline px-4 py-2.5 border-b border-gray-200 font-mono text-xs tracking-widest">
             <span class="font-semibold uppercase text-gray-700">json</span>
             <span class="text-gray-400" id="count-json"></span>
           </div>
-          <pre class="bg-gray-50 p-4 text-sm leading-7 overflow-x-auto" id="pane-json"><code set:html={heroJson} /></pre>
+          <pre class="bg-gray-50 p-4 text-sm leading-7 overflow-x-auto" id="pane-json"><code set:html={diffJson} /></pre>
         </div>
         <div class="border border-gray-200 rounded-md overflow-hidden">
           <div class="flex justify-between items-baseline px-4 py-2.5 border-b border-gray-200 font-mono text-xs tracking-widest">
             <span class="font-semibold uppercase text-teal-700">tson</span>
             <span class="text-gray-400" id="count-tson"></span>
           </div>
-          <pre class="bg-gray-50 p-4 text-sm leading-7 overflow-x-auto" id="pane-tson"><code set:html={heroTson} /></pre>
+          <pre class="bg-gray-50 p-4 text-sm leading-7 overflow-x-auto" id="pane-tson"><code set:html={diffTson} /></pre>
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-5 pt-5">
@@ -177,65 +353,67 @@ const layers = [
           </span>
         </p>
       </div>
+
+      <!-- ledger: description left, examples right -->
+      <div class="pt-6">
+        {ledger.map((row) => (
+          <div class="grid md:grid-cols-[5fr_7fr] gap-5 md:gap-8 py-7 border-t border-gray-200 last:border-b">
+            <div>
+              <a href={row.href} class={chipClass}>{row.chip}</a>
+              <h3 class="text-lg font-semibold mb-1.5">{row.title}</h3>
+              <p class="text-sm text-gray-500 max-w-md">{row.why}</p>
+            </div>
+            <div class="grid gap-3 content-start">
+              {row.snippets.map((s) => (
+                <div class={`border border-gray-200 rounded-md border-l-3 ${s.kind === 'tson' ? 'border-l-teal-600' : 'border-l-gray-300'}`}>
+                  <div class="font-mono text-[11px] uppercase tracking-widest text-gray-400 px-3.5 pt-2">{s.tag}</div>
+                  <pre class="px-3.5 pb-3 pt-1 text-sm leading-6 overflow-x-auto"><code set:html={s.html} /></pre>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
     </div>
 
-    <!-- Ledger -->
-    <div class="max-w-5xl mx-auto px-6 pt-14">
-      <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-2">What changes</h2>
-      <p class="text-gray-500 max-w-2xl mb-8">
-        Nine differences, each with its home in the specification. The chips cite TSON Part 1
-        (Data Format) unless marked otherwise.
-      </p>
-
-      {rows.map((row) => (
-        <div class="grid md:grid-cols-[5fr_7fr] gap-5 md:gap-8 py-7 border-t border-gray-200 last:border-b">
-          <div>
-            <a
-              href={row.href}
-              class={`inline-block font-mono text-xs font-semibold rounded-full px-3 py-1 mb-3 hover:underline ${row.chipAlt ? 'bg-indigo-50 text-indigo-800' : 'bg-gray-100 text-teal-800'}`}
-            >{row.chip}</a>
-            <h3 class="text-lg font-semibold mb-1.5">{row.title}</h3>
-            <p class="text-sm text-gray-500 max-w-md">{row.why}</p>
-          </div>
-          <div class="grid gap-3 content-start">
-            {row.snippets.map((s) => (
-              <div class={`border border-gray-200 rounded-md border-l-3 ${s.kind === 'tson' ? 'border-l-teal-600' : 'border-l-gray-300'}`}>
-                <div class="font-mono text-[11px] uppercase tracking-widest text-gray-400 px-3.5 pt-2">{s.tag}</div>
-                <pre class="px-3.5 pb-3 pt-1 text-sm leading-6 overflow-x-auto"><code set:html={s.html} /></pre>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-
-    <!-- Compatibility band -->
-    <div class="max-w-5xl mx-auto px-6 py-16">
+    <!-- ═══ Compatibility ═══ -->
+    <div class="max-w-5xl mx-auto px-6 py-8">
       <div class="bg-gray-900 text-gray-200 rounded-xl px-8 py-10 md:px-10">
         <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-3">Compatibility</h2>
         <p class="font-mono font-semibold text-xl md:text-2xl leading-snug max-w-xl">
-          Every valid JSON document is a valid <span class="text-teal-400">TSON</span> document.
+          Every valid JSON document is valid <span class="text-teal-400">TSON</span>.
         </p>
         <p class="mt-4 text-sm text-gray-400 max-w-2xl">
-          Paste your JSON in unchanged — the commas and quoted keys JSON requires are simply
-          optional in TSON. And two things TSON deliberately doesn't add: comment syntax
-          (annotations are metadata that survives parsing) and anchors or merge operators
-          (a value is complete where it stands — no resolution hops to read a document).
+          TSON is a strict superset of JSON, with its four atomic types (null, boolean, number and string), plus <span class="text-teal-400">UUIDs</span>, <span class="text-teal-400">dates</span>, <span class="text-teal-400">binary data</span>, and <span class="text-teal-400">arbitrary-precision numbers</span> as first-class
+          values — parsed straight from quoted or unquoted text, no schema required.
         </p>
       </div>
     </div>
 
-    <!-- Series strip -->
-    <div class="max-w-5xl mx-auto px-6 pb-16">
-      <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-5">
-        The specification, in two parts
-      </h2>
-      <div class="grid md:grid-cols-2 gap-4">
-        {layers.map((l) => (
-          <a href={l.href} class="block border border-gray-200 rounded-md p-5 hover:border-gray-400">
-            <div class="font-mono text-xs font-semibold uppercase tracking-widest text-teal-800">{l.part}</div>
-            <h3 class="font-semibold mt-1.5 mb-1">{l.title}</h3>
-            <p class="text-sm text-gray-500">{l.body}</p>
+    <!-- ═══ Current status ═══ -->
+    <div class="max-w-5xl mx-auto px-6 pt-8">
+      <div class="border border-gray-200 rounded-md p-6 md:p-8">
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-3">Current status</h2>
+        <p class="text-sm text-gray-500 max-w-3xl">
+          The honest part: TSON is a <strong class="text-gray-900">working draft</strong>. The
+          specification is published under the 2026 revision series and remains subject to change
+          until it freezes as version 1. Implementations are coming — the meta-kernel,
+          meta-schema, and core type library are already published with resolved fixtures, so
+          parsers and resolvers will have reference answers to test against. If the design
+          interests you, this is the stage where feedback shapes it.
+        </p>
+      </div>
+    </div>
+
+    <!-- ═══ Section 5: routing ═══ -->
+    <div class="max-w-5xl mx-auto px-6 py-16">
+      <div class="grid md:grid-cols-3 gap-4">
+        {routes.map((r) => (
+          <a href={r.href} class="block border border-gray-200 rounded-md p-5 hover:border-gray-400">
+            <div class="font-mono text-xs font-semibold uppercase tracking-widest text-teal-800">{r.label}</div>
+            <h3 class="font-semibold mt-1.5 mb-1">{r.title}</h3>
+            <p class="text-sm text-gray-500">{r.body}</p>
           </a>
         ))}
       </div>
@@ -264,6 +442,21 @@ const layers = [
   }
   #vsjson.diff .gain { background: #ccfbf1; }         /* teal-100 */
   #vsjson.diff .diff-legend { opacity: 1; }
+
+  /* dark pane (forbidden-edit band): remap tokens for dark bg */
+  #vsjson .dark-pane .tk { color: #e5e7eb; }          /* gray-200 */
+  #vsjson .dark-pane .ts { color: #d6c3a5; }
+  #vsjson .dark-pane .tn { color: #e5e7eb; }
+  #vsjson .dark-pane .tp { color: #6b7280; }          /* gray-500 */
+  #vsjson .dark-pane .gain { color: #2dd4bf; }        /* teal-400 */
+  #vsjson .dark-pane .added {
+    background: rgba(45, 212, 191, 0.12);
+    outline: 1px solid rgba(45, 212, 191, 0.35);
+    border-radius: 3px;
+    padding: 0 3px;
+  }
+  #vsjson .dark-pane .added .tk,
+  #vsjson .dark-pane .added .ts { color: #2dd4bf; }
 </style>
 
 <script>
