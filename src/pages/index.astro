@@ -145,7 +145,7 @@ const diffTson = `{
 const ledger = [
   {
     chip: '§2.4', href: `${part1Url}#24-tokens`, title: 'Quotes are optional',
-    why: 'Identifiers and scalar values are unquoted tokens, defined over Unicode identifier properties — so this works in every script, not just ASCII. Quote only what needs quoting: spaces, colons, free text.',
+    why: 'Identifiers and scalar values are unquoted tokens, defined over Unicode identifier properties, so this works in every script, not just ASCII. Quote only what needs quoting: spaces, colons, free text.',
     snippets: [
       { tag: 'json', kind: 'json', html: '<span class="tp">"</span><span class="tk">city</span><span class="tp">": "</span><span class="ts">Melbourne</span><span class="tp">", "</span><span class="tk">имя</span><span class="tp">": "</span><span class="ts">Алиса</span><span class="tp">"</span>' },
       { tag: 'tson', kind: 'tson', html: '<span class="tk">city</span><span class="tp">:</span> <span class="ts">Melbourne</span>  <span class="tk">имя</span><span class="tp">:</span> <span class="ts">Алиса</span>' },
@@ -161,9 +161,9 @@ const ledger = [
   },
   {
     chip: '§7.6', href: `${part1Url}#76-number-grammar`, title: 'Numbers you can actually write',
-    why: 'Arbitrary precision, hex and binary, and digit separators resolve with no annotation at all — the exact tier by default. Infinities and NaN are approximate-tier values and need an explicit !float64; rationals and complex numbers need their own annotation too, since base resolution treats them as strings otherwise.',
+    why: 'Arbitrary precision, hex and binary, and digit separators resolve with no annotation at all. Infinities and NaN are approximate-tier values and need an explicit !float64; rationals and complex numbers need their own annotation too, since base resolution treats them as strings otherwise.',
     snippets: [
-      { tag: 'json — closest you can get', kind: 'json', html: '<span class="tp">"</span><span class="tk">mask</span><span class="tp">":</span> <span class="tn">255</span><span class="tp">, "</span><span class="tk">budget</span><span class="tp">":</span> <span class="tn">1000000</span><span class="tp">,</span>\n<span class="tp">"</span><span class="tk">ratio</span><span class="tp">":</span> <span class="tn">3.142857142857143</span><span class="tp">, "</span><span class="tk">limit</span><span class="tp">":</span> <span class="ts">"Infinity"</span>' },
+      { tag: 'json (closest you can get)', kind: 'json', html: '<span class="tp">"</span><span class="tk">mask</span><span class="tp">":</span> <span class="tn">255</span><span class="tp">, "</span><span class="tk">budget</span><span class="tp">":</span> <span class="tn">1000000</span><span class="tp">,</span>\n<span class="tp">"</span><span class="tk">ratio</span><span class="tp">":</span> <span class="tn">3.142857142857143</span><span class="tp">, "</span><span class="tk">limit</span><span class="tp">":</span> <span class="ts">"Infinity"</span>' },
       { tag: 'tson', kind: 'tson', html: '<span class="tk">mask</span><span class="tp">:</span> <span class="gain">0xFF</span>   <span class="tk">budget</span><span class="tp">:</span> <span class="gain">1_000_000</span>   <span class="tk">ratio</span><span class="tp">:</span> <span class="gain">!rational</span> <span class="tn">22/7</span>\n<span class="tk">atoms</span><span class="tp">:</span> <span class="tn">6.02e23</span>   <span class="tk">limit</span><span class="tp">:</span> <span class="gain">!float64</span> <span class="tn">.inf</span>   <span class="tk">gap</span><span class="tp">:</span> <span class="gain">!float64</span> <span class="tn">.nan</span>' },
     ],
   },
@@ -177,33 +177,33 @@ const ledger = [
   },
   {
     chip: '§2.6', href: `${part1Url}#26-map`, title: 'Maps with real keys',
-    why: 'JSON objects force every key into a string. TSON keeps records (fixed named fields, :) and maps (variable associations, =>) distinct — and map keys can be any value.',
+    why: 'JSON objects force every key into a string. TSON keeps records (fixed named fields) and maps (variable associations) distinct, and map keys can be any value.',
     snippets: [
-      { tag: 'json — keys stringified', kind: 'json', html: '{ <span class="tp">"</span><span class="tk">1</span><span class="tp">": "</span><span class="ts">one</span><span class="tp">", "</span><span class="tk">2026-03-13</span><span class="tp">": "</span><span class="ts">launch</span><span class="tp">"</span> }' },
+      { tag: 'json (keys stringified)', kind: 'json', html: '{ <span class="tp">"</span><span class="tk">1</span><span class="tp">": "</span><span class="ts">one</span><span class="tp">", "</span><span class="tk">2026-03-13</span><span class="tp">": "</span><span class="ts">launch</span><span class="tp">"</span> }' },
       { tag: 'tson', kind: 'tson', html: '{ <span class="tn">1</span> <span class="gain">=&gt;</span> <span class="ts">one</span>  <span class="tn">2026-03-13</span> <span class="gain">=&gt;</span> <span class="ts">launch</span> }' },
     ],
   },
   {
     chip: '§2.9', href: `${part1Url}#29-the-absent-sentinel`, title: 'Absent is not null',
-    why: 'JSON gives two states — key missing, or null — to do three jobs. TSON\'s absent sentinel _ says "this position exists and holds no value", leaving null to be a value.',
+    why: 'JSON gives two states (key missing, or null) to do three jobs. TSON\'s absent sentinel _ says "this position exists and holds no value".',
     snippets: [
-      { tag: 'json — is this unset, unknown, or removed?', kind: 'json', html: '<span class="tp">"</span><span class="tk">phone</span><span class="tp">":</span> <span class="tn">null</span>' },
+      { tag: 'json (is this unset, unknown, or removed?)', kind: 'json', html: '<span class="tp">"</span><span class="tk">phone</span><span class="tp">":</span> <span class="tn">null</span>' },
       { tag: 'tson', kind: 'tson', html: '<span class="tk">phone</span><span class="tp">:</span> <span class="gain">_</span>   <span class="tk">scores</span><span class="tp">:</span> <span class="tp">[</span><span class="tn">1</span> <span class="gain">_</span> <span class="tn">3</span> <span class="gain">_</span> <span class="tn">5</span><span class="tp">]</span>' },
     ],
   },
   {
     chip: '§3.1', href: `${part1Url}#31-annotations`, title: 'Metadata that travels with the value',
-    why: 'Annotations attach ordered, preserved metadata to any value — no more _comment fields pretending to be data. This is also why TSON needs no comment syntax: annotations survive parsing.',
+    why: 'Annotations attach ordered, preserved metadata to any value: no more "_comment" fields pretending to be data. This is also why TSON needs no comment syntax: annotations survive parsing.',
     snippets: [
-      { tag: 'json — the workaround', kind: 'json', html: '<span class="tp">"</span><span class="tk">phone_comment</span><span class="tp">": "</span><span class="ts">deprecated, use mobile</span><span class="tp">",</span>\n<span class="tp">"</span><span class="tk">phone</span><span class="tp">": "</span><span class="ts">555-0100</span><span class="tp">"</span>' },
+      { tag: 'json (the workaround)', kind: 'json', html: '<span class="tp">"</span><span class="tk">phone_comment</span><span class="tp">": "</span><span class="ts">deprecated, use mobile</span><span class="tp">",</span>\n<span class="tp">"</span><span class="tk">phone</span><span class="tp">": "</span><span class="ts">555-0100</span><span class="tp">"</span>' },
       { tag: 'tson', kind: 'tson', html: '<span class="gain">@deprecated:"use mobile"</span> <span class="tk">phone</span><span class="tp">:</span> <span class="ts">555-0100</span>' },
     ],
   },
   {
     chip: '§5.1', href: `${part1Url}#51-applicability`, title: 'Types when you want them',
-    why: 'Type annotations tag a value with what it is. A built-in vocabulary — dates, UUIDs, binary, precise numerics — works with no schema at all, and the value parses to the native type, not a string.',
+    why: 'Type annotations tag a value with what it is. A built-in vocabulary (dates, UUIDs, binary, precise numerics) works with no schema at all, and the value parses to the native type, not a string.',
     snippets: [
-      { tag: 'json — strings that mean things', kind: 'json', html: '<span class="tp">"</span><span class="tk">id</span><span class="tp">": "</span><span class="ts">550e8400-e29b-41d4-a716-446655440000</span><span class="tp">",</span>\n<span class="tp">"</span><span class="tk">price</span><span class="tp">":</span> <span class="tn">19.99</span>' },
+      { tag: 'json (strings that mean things)', kind: 'json', html: '<span class="tp">"</span><span class="tk">id</span><span class="tp">": "</span><span class="ts">550e8400-e29b-41d4-a716-446655440000</span><span class="tp">",</span>\n<span class="tp">"</span><span class="tk">price</span><span class="tp">":</span> <span class="tn">19.99</span>' },
       { tag: 'tson', kind: 'tson', html: '<span class="tk">id</span><span class="tp">:</span> <span class="gain">!uuid</span> <span class="tn">550e8400-e29b-41d4-a716-446655440000</span>\n<span class="tk">price</span><span class="tp">:</span> <span class="gain">!number</span> <span class="tn">19.99</span>' },
     ],
   },
@@ -386,7 +386,7 @@ const routes = [
         </p>
         <p class="mt-4 text-sm text-gray-400 max-w-2xl">
           TSON is a strict superset of JSON, with its four atomic types (null, boolean, number and string), plus <span class="text-teal-400">UUIDs</span>, <span class="text-teal-400">dates</span>, <span class="text-teal-400">binary data</span>, and <span class="text-teal-400">arbitrary-precision numbers</span> as first-class
-          values — parsed straight from quoted or unquoted text, no schema required.
+          values, parsed straight from quoted or unquoted text, no schema required.
         </p>
       </div>
     </div>
@@ -398,7 +398,7 @@ const routes = [
         <p class="text-sm text-gray-500 max-w-3xl">
           The honest part: TSON is a <strong class="text-gray-900">working draft</strong>. The
           specification is published under the 2026 revision series and remains subject to change
-          until it freezes as version 1. Implementations are coming — the meta-kernel,
+          until it freezes as version 1. Implementations are next; the meta-kernel,
           meta-schema, and core type library are already published with resolved fixtures, so
           parsers and resolvers will have reference answers to test against. If the design
           interests you, this is the stage where feedback shapes it.
