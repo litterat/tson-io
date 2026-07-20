@@ -87,10 +87,10 @@
 
   @doc:"""
     Complex number, a pair of components (real and imaginary parts).
-    Components default to `number` (exact); a narrowing may set
-    `component` to another numeric type — e.g. `complex { component:
-    integer }` for Gaussian integers, `complex { component: float64 }`
-    for floating-point complex. Exactness follows the component type,
+    Components default to `NUMBER` (exact); a narrowing may set
+    `component` to another member of the closed vocabulary — e.g.
+    `!complex ^ { component: INTEGER }` for Gaussian integers,
+    `!complex ^ { component: FLOAT64 }` for floating-point complex. Exactness follows the component type,
     so `complex` carries no `@exact` marker. Surface forms a+bi and
     a+bj are both accepted; component representation is host-defined.
     """

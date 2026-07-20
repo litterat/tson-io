@@ -160,10 +160,10 @@ schema-doc = meta-directive ws *( import-directive ws ) schema-map ws
            ; schema-map — the schema document's annotated, braced
            ; declaration map — is defined normatively in [TSON-SCHEMA]
 
-id-directive     = "!!" "id"     ":" quoted-token
-schema-directive = "!!" "schema" ":" quoted-token
-meta-directive   = "!!" "meta"   ":" quoted-token
-import-directive = "!!" "import" ":" quoted-token
+id-directive     = "!!" "id"     ":" single-line-token
+schema-directive = "!!" "schema" ":" single-line-token
+meta-directive   = "!!" "meta"   ":" single-line-token
+import-directive = "!!" "import" ":" single-line-token
 ```
 
 **Kind dispatch.** A parser consumes the `!!id` directive if present; if the next token is the directive `!!meta`, the document is a **schema document** — its header continues with any `!!import` directives, per the grammar above, and its body is a `schema-map`, defined normatively in [TSON-SCHEMA] — otherwise it is a **data document**, defined by this document. Classification therefore requires at most two directives of lookahead, no value parsing, and no backtracking. `!!id` is optional in the grammar for both kinds; publication and hash-pinning of a schema require it ([TSON-SCHEMA]). A Class 1 processor rejects schema documents with a categorized diagnostic (§1.5, §8.1).
@@ -183,7 +183,7 @@ _
 
 The `!!id` directive names the document: its argument is a URI identifying the document as a published artifact. `!!id` is optional in the grammar for both document kinds (§2.2). Publishing a schema — registering it for reference by other documents under its own name, or pinning it by content hash — requires it ([TSON-SCHEMA]); an id-less schema is a development artifact. Identity gives diagnostics, imports, and registries a stable way to refer to the document independent of its storage location.
 
-When the identifying URI carries a content hash (the convention is defined below), the document is **content-addressed** and immutable: any change to its bytes changes its hash, which the canonical identity (defined below) binds to the document. A content-addressed document MUST be encoded in UTF-8. The grammar places the `id-directive` at the very start of the document (§2.2); a content-addressed document MUST follow it with a line terminator. The hash input is every byte after that terminator — the id line, up to and including its terminator, is excluded so a document can carry its own hash without the circularity of hashing it. A byte order mark, if present, is stripped before parsing (§7.1) and never enters a hash input. The target of a hashed reference MUST carry an id line: the hash input is then always well-defined, and the embedded identity is available for the cross-check below.
+When the identifying URI carries a content hash (the convention is defined below), the document is **content-addressed** and immutable: any change to its bytes changes its hash, which the canonical identity (defined below) binds to the document. A content-addressed document MUST be encoded in UTF-8. The grammar places the `id-directive` at the very start of the document (§2.2); a content-addressed document MUST follow it with a line terminator (any `line-term` of §7.3; for CR LF the hash input begins after the LF). The hash input is every byte after that terminator — well-defined because a directive argument is a single-line token (§3.3), so the id line is exactly one physical line — the id line, up to and including its terminator, is excluded so a document can carry its own hash without the circularity of hashing it. A byte order mark, if present, is stripped before parsing (§7.1) and never enters a hash input. The target of a hashed reference MUST carry an id line: the hash input is then always well-defined, and the embedded identity is available for the cross-check below.
 
 **The hash-parameter URI convention.** A content hash rides on the identifying URI as a query parameter named for its algorithm: `?sha256=<hash>`, with the value in lowercase hexadecimal at full length — a truncated hash is an error. `sha256` is the algorithm of this revision; future algorithms use their own parameter names. The hash parameter is **verification metadata, not identity** (canonical identity is defined below); a query component, when present, MUST consist solely of hash parameters, and a query parameter whose name is not a recognized hash algorithm is an error — never silently retained, so identity never depends on which algorithms a given reader happens to recognize.
 
@@ -191,7 +191,7 @@ When the identifying URI carries a content hash (the convention is defined below
 
 Canonical identity stays at RFC 3986's cheapest rung by *restricting the input* rather than normalizing it, in the manner of the unquoted-token profile (§7.1): an identifying URI MUST already be in canonical form apart from scheme and hash query — lowercase host, no userinfo, no port (default or otherwise), no percent-encoding of unreserved characters, no dot-segments (`.`/`..`), and no fragment. An identifier that is not in this form is an error, not a candidate for normalization; no case folding, path resolution, or percent-decoding is ever performed at comparison time (rationale in [TSON-GUIDE]).
 
-A consumer holding a hashed reference MUST verify the content against the declared hash before use and MUST NOT silently use mismatched content: a mismatch is an error, never a fallback. The authenticating hash always comes from the referencing side or another trusted source, never from the document alone: a body verified against its own embedded id-line hash is self-consistent, not authentic — an attacker who can rewrite the body can rewrite the id line to match. An embedded id whose canonical identity differs from the reference under which the document was obtained is likewise an error. Because the hash attaches to the *canonical identity* and not to the reference string, two references that share a canonical identity but declare different hashes are in conflict — at most one describes the real bytes — and a consumer that observes both MUST report an error rather than choosing between them ([TSON-SCHEMA] §10.2 defines the schema-library treatment).
+A consumer holding a hashed reference MUST verify the content against the declared hash before use and MUST NOT silently use mismatched content: a mismatch is an error, never a fallback. The authenticating hash always comes from the referencing side or another trusted source, never from the document alone: a body verified against its own embedded id-line hash is self-consistent, not authentic — an attacker who can rewrite the body can rewrite the id line to match. An embedded id whose canonical identity differs from the reference under which the document was obtained is likewise an error. Because the hash attaches to the *canonical identity* and not to the reference string, references sharing a canonical identity combine rather than compete: two that declare different hashes are in conflict — at most one describes the real bytes — and a consumer that observes both MUST report an error rather than choosing between them; a pinned and a plain reference to one identity are NOT in conflict — the declared hash governs the identity, the plain reference resolves to the verified content, and a verification failure fails both ([TSON-SCHEMA] §10.2 defines the schema-library treatment).
 
 Content addressing composes: a data document may reference its schema by hashed URI, that schema its meta-schema, and so on to the pre-loaded bootstrap ([TSON-SCHEMA]), so a consumer holding a single identifier can verify a document together with its entire contract chain. Ordering, consensus, and mutability policy are application concerns outside this series.
 
@@ -204,7 +204,7 @@ The data grammar has two closely related value rules. A **scoped value** is an o
 ```
 scoped-value     = [ schema-directive ws ] data-value
 
-schema-directive = "!!" "schema" ":" quoted-token
+schema-directive = "!!" "schema" ":" single-line-token
 
 data-value       = *annotation [type-ref] core-value
 
@@ -234,8 +234,10 @@ Field values, map entry values, and array elements are scoped values; map keys a
 A token is the atom of TSON data: **text plus form**. The text is the token's content after escape processing (and, for multi-line tokens, whitespace stripping); the form is one of three:
 
 - **Unquoted** — `name`, `42`, `0xFF`, `2025-03-13`, `名前`, `v1.2.3`, `snake_case`, `A-100`. Available when every character is in the unquoted-token profile (§7.1).
-- **Quoted** — `"has spaces"`, `"alice@example.com"`, `"42"`. Any single-line content, with escape sequences (§7.2.2).
-- **Multi-line** — `"""` blocks for multi-line content with indentation stripping (§7.2.3).
+- **Single-line quoted** — `"has spaces"`, `"alice@example.com"`, `"42"`. Any single-line content, with escape sequences (§7.2.2).
+- **Multi-line quoted** — `"""` blocks for multi-line content with indentation stripping (§7.2.3).
+
+The two quoted forms are distinct token kinds in the stream (§7.4): the grammar discriminates them where form matters — a directive argument admits only the single-line kind (§3.3) — and the unqualified term *quoted token* refers to either. The kind split is grammatical, never semantic: it governs which positions admit which form, and two tokens with the same text denote the same value regardless of form — identity is text.
 
 **Form is not meaning.** Throughout this series, a token's form is consulted exactly once: by base type resolution (§4), where quoting is the author's way to say "the string `42`, not the number". Everywhere else only the text matters. Type contracts operate on text — `!number 10.2`, `!number "10.2"`, and `!number """10.2"""` are the same value (§5.2) — and identity is form-blind: `name` and `"name"` are the same field name (§2.5), and `Alice` and `"Alice"` are duplicate map keys (§2.6). Quoting is a lexical necessity, not a semantic signal: content containing characters outside the profile — spaces, colons (timestamps, URLs), `@` (email addresses), `/` (paths, networks, rationals), `%` and currency symbols — MUST be quoted; content inside it may be written in any form.
 
@@ -386,13 +388,13 @@ Type expression syntax is not available in data values: array brackets, type arg
 ### 3.3 Directives
 
 
-A configuration directive provides pre-interpretation configuration: the `!!` compound token followed by a name, an adjacent `:`, and a quoted-token argument. Every directive in the series shares this lexical shape:
+A configuration directive provides pre-interpretation configuration: the `!!` compound token followed by a name, an adjacent `:`, and a single-line-token argument. Every directive in the series shares this lexical shape:
 
 ```
-"!!" name ":" quoted-token
+"!!" name ":" single-line-token
 ```
 
-The `:` MUST be adjacent to the directive name. The argument is a single quoted token; in every directive of this series it is a URI or file reference (RFC 3986).
+The `:` MUST be adjacent to the directive name. The argument is a single **single-line** quoted token (§7.2.2) — a multi-line token at a directive argument is a parse error; in every directive of this series the argument is a URI or file reference (RFC 3986). The restriction keeps every directive on one physical line — in particular the id line, whose terminator bounds the hash input (§2.2.1).
 
 Directives appear only in the document header (§2.2) and in scoped-value positions (§2.3): record field values, map entry values, and array elements. A directive scopes to the document or value it prefixes. Directives are not permitted before map keys, field names, or annotation values: keys and names are identity-bearing, so a schema scope on a key would make identity scope-dependent (§2.6), and annotation values are metadata resolved against the governing target's namespace by the one-hop rule ([TSON-SCHEMA] §3.3.3), which a local scope switch would subvert.
 
@@ -633,7 +635,7 @@ The lexer produces a stream of tokens from the input, classifying each token by 
 
 1. **Whitespace** — Characters with the `Pattern_White_Space` property are consumed and not emitted as tokens. The set is immutable: U+0009 (TAB), U+000A (LF), U+000B (VT), U+000C (FF), U+000D (CR), U+0020 (SPACE), U+0085 (NEL), U+200E (LRM), U+200F (RLM), U+2028 (LINE SEPARATOR), U+2029 (PARAGRAPH SEPARATOR).
 
-2. **Quoted token** — `"` begins a quoted token. If the next two characters are also `"`, the lexer enters multi-line mode; otherwise single-line mode. This is the first of the lexer's lookahead rules; §7.2.4 defines the others.
+2. **Quoted token** — `"` begins a quoted token. If the next two characters are also `"`, the lexer enters multi-line mode and emits a `multi-line-token`; otherwise single-line mode, emitting a `single-line-token` — two distinct kinds in the stream (§7.4). This is the first of the lexer's lookahead rules; §7.2.4 defines the others.
 
 3. **Unquoted token** — A character in the unquoted start set of the profile (§7.1) begins an unquoted token; the lexer consumes characters while they match the continuation set, with one termination rule: a `.` whose immediately following character is also `.` is not consumed — the token ends before the first dot, which then begins a range token (§7.2.4). Consecutive dots never appear inside an unquoted token.
 
@@ -749,14 +751,15 @@ Any character that falls into no token-producing category is an **unrecognised c
 Every token is a single character except quoted tokens, unquoted tokens, and the compound tokens (map arrow, directive).
 
 ```
-token-stream  = *( ws / quoted-token / unquoted-token
+token-stream  = *( ws / single-line-token / multi-line-token
+                 / unquoted-token
                  / structural-delimiter / absent-token
                  / map-arrow-token / directive-token
                  / range-token / special-token )
 
-; ── Quoted tokens ──────────────────────────────────────────
+; ── Quoted tokens (two distinct token kinds; the grammar
+; discriminates them where form matters, e.g. directives) ──
 
-quoted-token      = single-line-token / multi-line-token
 single-line-token = DQUOTE *char DQUOTE
 multi-line-token  = TDQUOTE ws-indent line-term
                     ml-content ws-indent TDQUOTE
@@ -885,10 +888,10 @@ schema-doc      = meta-directive ws *( import-directive ws )
                 ; [TSON-SCHEMA]; a Class 1 processor rejects
                 ; schema documents (§1.5, §8.1).
 
-id-directive     = "!!" "id"     ":" quoted-token
-schema-directive = "!!" "schema" ":" quoted-token
-meta-directive   = "!!" "meta"   ":" quoted-token
-import-directive = "!!" "import" ":" quoted-token
+id-directive     = "!!" "id"     ":" single-line-token
+schema-directive = "!!" "schema" ":" single-line-token
+meta-directive   = "!!" "meta"   ":" single-line-token
+import-directive = "!!" "import" ":" single-line-token
                 ; ":" MUST be adjacent to the directive name (§7.5).
                 ; "!!" whose name is not followed by an adjacent ":"
                 ; is a parse error (§1.3). String literals match
@@ -918,7 +921,8 @@ scoped-value    = [ schema-directive ws ] data-value
 ; ── Shared terminals ──────────────────────────────────────
 
 annotation      = "@" unquoted-token [ ":" data-value ]
-token           = unquoted-token / quoted-token
+token           = unquoted-token / single-line-token
+                / multi-line-token
 field-name      = token
 empty-brace     = "{" ws "}"
 absent          = "_"
@@ -1017,7 +1021,7 @@ Errors fall into four categories corresponding to the processing layers. The cat
 
 - **Lexer errors** — Malformed tokens: unterminated quoted or multi-line tokens, invalid escapes, unpaired surrogate escapes, unrecognised characters, unquoted tokens that are not NFC-normalized.
 - **Parser errors** — Structural mismatches: unclosed brackets, adjacency violations, unexpected tokens, missing separators, `!!` without an adjacent colon form, a directive name outside the closed positional set or outside its placement (§3.3).
-- **Resolver errors** — Reference and resolution failures. At the data-format layer: an absent sentinel in map key position; a built-in type annotation on a container value (§5.1). [TSON-SCHEMA] adds unresolved type names and schema resolution failures.
+- **Resolver errors** — Reference and resolution failures. At the data-format layer: an absent sentinel in map key position; a built-in type annotation on a container value (§5.1). [TSON-SCHEMA] adds unresolved type names, schema resolution failures, and schema compilation failures: every error that makes a schema fail to load or ingest — incoherent constraint values, invalid defaults, refuted assertions, failed ingest checks — is a resolver error, however value-like the violated rule, because it is detected while resolving the schema. Validation errors are reserved for data checked against a successfully loaded schema.
 - **Validation errors** — Type and constraint violations. At the data-format layer: range violations by the numeric atoms and CIDR prefix lengths (§5). [TSON-SCHEMA] generalises validation to author-declared constraints.
 
 **Canonical phrasing.** Normative rules throughout this series refer to errors using one of four canonical phrasings, each mapping unambiguously to a category: "is a lexer error", "is a parse error", "is a resolver error", "is a validation error". Where conformance language appears without an explicit category, the layer that detects the violation determines the category.

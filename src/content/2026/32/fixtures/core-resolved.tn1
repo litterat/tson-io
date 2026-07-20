@@ -67,7 +67,7 @@
     body: !rational_type {}
   }
 
-  @doc:"Complex number, a pair of components. `component` defaults to number; exactness follows the component type."
+  @doc:"Complex number, a pair of components. `component` defaults to NUMBER; exactness follows the component type."
   @ordered:NONE @bounded:false @numeric
   complex => !type_definition {
     kind: ATOM
