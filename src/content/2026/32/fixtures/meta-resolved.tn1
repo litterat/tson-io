@@ -66,12 +66,12 @@
     body: !record { fields: [
       !record_field { name: access_pattern  type: product_access_type  state: REQUIRED_FIXED  value: INDEX }
       !record_field { name: size_type       type: product_size_type    state: REQUIRED_FIXED  value: VARIABLE }
-      !record_field { name: element_type    type: T }
+      !record_field { name: element_type    type: type_ref  value_param: T }
       !record_field { name: state           type: element_state  state: REQUIRED_DEFAULT  value: REQUIRED }
       !record_field { name: unordered       type: boolean  state: REQUIRED_DEFAULT  value: false }
       !record_field { name: unique_items    type: boolean  state: REQUIRED_DEFAULT  value: false }
-      !record_field { name: min_items       type: integer  state: OPTIONAL_FIXED  value_param: S }
-      !record_field { name: max_items       type: integer  state: OPTIONAL_FIXED  value_param: S }
+      !record_field { name: min_items       type: integer  value_param: S }
+      !record_field { name: max_items       type: integer  value_param: S }
     ] }
   }
 

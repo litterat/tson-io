@@ -22,10 +22,20 @@
     (Part 2 Section 8.3), recursively inside type arguments.
   - Type-reference positions (`record_field.type`,
     `tuple_element.element_type`, `type_definition.source`, choice
-    variant elements) hold type_ref values; `name` is type_ref's
-    only REQUIRED field, so a bare name token is the positional
-    form (Part 2 Section 5.6, general over schema-backed data) and
-    a braced record appears only when `arguments` is present.
+    variant elements, binding-record type slots, and the resolved
+    `value` of a `type_ref`-typed pin) hold type_ref values; `name`
+    is type_ref's only REQUIRED field, so a bare name token is the
+    positional form (Part 2 Section 5.6, general over schema-backed
+    data) and a braced record appears only when `arguments` is
+    present.
+  - Type slots of the parameterized constructors are ordinary
+    `type_ref`-typed fields whose value is routed from the
+    application by parameter (`element_type: type_ref = T`, Part 2
+    Section 4.2): open bodies carry the route as a `value_param`
+    member on a REQUIRED field (state omitted; a parametric `= P`
+    fixes nothing and promotes OPTIONAL to REQUIRED, `~ P` yields
+    REQUIRED_DEFAULT — Part 2 Section 5.7); a closed binding record
+    supplies the bound reference as the field's value.
   - `arguments` elements are type_argument records: `{ name: ... }`
     is a reference — including, in template bodies, parameter
     references of either kind, read against `parameters` — and
@@ -34,7 +44,7 @@
     indexes; a declaration's structured provenance lives in
     `source`, which records the applied form.
   - Open templates carry vocabulary-record bodies (`!record`, with
-    `value_param` members for parameter-pinned values); closed
+    `value_param` members for parameter-routed values); closed
     definitions carry binding-record bodies headed by the nearest
     `~` constructor. Instantiation entries are internally named
     (implementation-chosen, non-normative); none appear here, as
@@ -382,7 +392,7 @@
     body: !record { supertypes: [product]  fields: [
       !record_field { name: access_pattern  type: product_access_type  state: REQUIRED_FIXED  value: INDEX }
       !record_field { name: size_type       type: product_size_type    state: REQUIRED_FIXED  value: VARIABLE }
-      !record_field { name: element_type    type: T }
+      !record_field { name: element_type    type: type_ref  value_param: T }
       !record_field { name: state           type: element_state  state: REQUIRED_DEFAULT  value: REQUIRED }
       !record_field { name: unordered       type: boolean  state: REQUIRED_DEFAULT  value: false }
       !record_field { name: unique_items    type: boolean  state: REQUIRED_DEFAULT  value: false }
@@ -400,7 +410,7 @@
     body: !record { fields: [
       !record_field { name: access_pattern  type: product_access_type  state: REQUIRED_FIXED  value: INDEX }
       !record_field { name: size_type       type: product_size_type    state: REQUIRED_FIXED  value: VARIABLE }
-      !record_field { name: element_type    type: T }
+      !record_field { name: element_type    type: type_ref  value_param: T }
       !record_field { name: state           type: element_state  state: REQUIRED_FIXED  value: REQUIRED }
       !record_field { name: unordered       type: boolean  state: REQUIRED_FIXED  value: true }
       !record_field { name: unique_items    type: boolean  state: REQUIRED_FIXED  value: true }
@@ -417,11 +427,11 @@
     body: !record { fields: [
       !record_field { name: access_pattern  type: product_access_type  state: REQUIRED_FIXED  value: INDEX }
       !record_field { name: size_type       type: product_size_type    state: REQUIRED_FIXED  value: VARIABLE }
-      !record_field { name: element_type    type: T }
+      !record_field { name: element_type    type: type_ref  value_param: T }
       !record_field { name: state           type: element_state  state: REQUIRED_DEFAULT  value: REQUIRED }
       !record_field { name: unordered       type: boolean  state: REQUIRED_DEFAULT  value: false }
       !record_field { name: unique_items    type: boolean  state: REQUIRED_DEFAULT  value: false }
-      !record_field { name: min_items       type: integer  state: OPTIONAL_FIXED  value_param: MIN }
+      !record_field { name: min_items       type: integer  value_param: MIN }
       !record_field { name: max_items       type: integer  state: OPTIONAL }
     ] }
   }
@@ -434,12 +444,12 @@
     body: !record { fields: [
       !record_field { name: access_pattern  type: product_access_type  state: REQUIRED_FIXED  value: INDEX }
       !record_field { name: size_type       type: product_size_type    state: REQUIRED_FIXED  value: VARIABLE }
-      !record_field { name: element_type    type: T }
+      !record_field { name: element_type    type: type_ref  value_param: T }
       !record_field { name: state           type: element_state  state: REQUIRED_DEFAULT  value: REQUIRED }
       !record_field { name: unordered       type: boolean  state: REQUIRED_DEFAULT  value: false }
       !record_field { name: unique_items    type: boolean  state: REQUIRED_DEFAULT  value: false }
       !record_field { name: min_items       type: integer  state: OPTIONAL }
-      !record_field { name: max_items       type: integer  state: OPTIONAL_FIXED  value_param: MAX }
+      !record_field { name: max_items       type: integer  value_param: MAX }
     ] }
   }
 
@@ -451,12 +461,12 @@
     body: !record { fields: [
       !record_field { name: access_pattern  type: product_access_type  state: REQUIRED_FIXED  value: INDEX }
       !record_field { name: size_type       type: product_size_type    state: REQUIRED_FIXED  value: VARIABLE }
-      !record_field { name: element_type    type: T }
+      !record_field { name: element_type    type: type_ref  value_param: T }
       !record_field { name: state           type: element_state  state: REQUIRED_DEFAULT  value: REQUIRED }
       !record_field { name: unordered       type: boolean  state: REQUIRED_DEFAULT  value: false }
       !record_field { name: unique_items    type: boolean  state: REQUIRED_DEFAULT  value: false }
-      !record_field { name: min_items       type: integer  state: OPTIONAL_FIXED  value_param: MIN }
-      !record_field { name: max_items       type: integer  state: OPTIONAL_FIXED  value_param: MAX }
+      !record_field { name: min_items       type: integer  value_param: MIN }
+      !record_field { name: max_items       type: integer  value_param: MAX }
     ] }
   }
 
@@ -469,8 +479,8 @@
     body: !record { supertypes: [product]  fields: [
       !record_field { name: access_pattern  type: product_access_type  state: REQUIRED_FIXED  value: NAMED }
       !record_field { name: size_type       type: product_size_type    state: REQUIRED_FIXED  value: VARIABLE }
-      !record_field { name: key_type        type: K }
-      !record_field { name: value_type      type: V }
+      !record_field { name: key_type        type: type_ref  value_param: K }
+      !record_field { name: value_type      type: type_ref  value_param: V }
       !record_field { name: min_items       type: integer  state: OPTIONAL }
       !record_field { name: max_items       type: integer  state: OPTIONAL }
     ] }

@@ -250,8 +250,8 @@
     bare positional form; compound references never reach this
     channel, since source modifiers are scalar tokens and
     substitution writes compound arguments only into binding
-    records. `value_param`, legal only in template bodies, binds
-    the fixed or default value to a parameter (`= P` and `~ P`,
+    records. `value_param`, legal only in template bodies, routes
+    the field's value or default from a parameter (`= P` and `~ P`,
     [TSON-SCHEMA] §5.7) — a value parameter on a scalar-typed
     field, a type parameter on a type_ref-typed slot ([TSON-SCHEMA]
     §5.10). The labelled split exists because the value channel
@@ -289,9 +289,10 @@
   @doc:"""
     Constructors — ~ marks type factories. Type slots (array's
     element_type, map's key_type and value_type) are ordinary fields
-    typed type_ref and pinned by parameter (= T): the slot's type
-    never varies — it is always a reference — and the parameter
-    rides the value channel like any other pin. A closed application
+    typed type_ref, their values routed from the application by
+    parameter (= T): the slot's type never varies — it is always a
+    reference — and the parameter rides the value channel like any
+    other value modifier. A closed application
     therefore carries the bound reference as the field's value
     (!array { element_type: person }), and its binding record is
     ordinary data of this vocabulary.
