@@ -23,8 +23,8 @@ const heroSchema = `<span class="gain">!!id:</span><span class="ts">"https://exa
 <span class="gain">!!import:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/core.tn1?sha256=3f9d2c71…b8e5c194"</span>
 {
   <span class="tk">person</span>   <span class="gain">=&gt;</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">born</span><span class="tp">:</span> <span class="ts">date</span> }
-  <span class="tk">employee</span> <span class="gain">=&gt;</span> <span class="ts">person</span> <span class="gain">&amp;</span> { <span class="tk">department</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">level</span><span class="tp">:</span> <span class="ts">level</span> <span class="gain">~</span> <span class="tn">L1</span> }
-  <span class="tk">level</span>    <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>
+  <span class="tk">employee</span> <span class="gain">=&gt;</span> <span class="ts">person</span> <span class="gain">&amp;</span> { <span class="tk">department</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">level</span><span class="tp">:</span> <span class="ts">rank</span> <span class="gain">~</span> <span class="tn">L1</span> }
+  <span class="tk">rank</span>    <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>
 }`;
 
 // ── the forbidden edit: v2 with a REQUIRED field ─────────────
@@ -33,8 +33,8 @@ const v2Schema = `<span class="gain">!!id:</span><span class="ts">"https://examp
 <span class="gain">!!import:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/core.tn1?sha256=3f9d2c71…b8e5c194"</span>
 {
   <span class="tk">person</span>   <span class="gain">=&gt;</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">born</span><span class="tp">:</span> <span class="ts">date</span>  <span class="added"><span class="tk">email</span><span class="tp">:</span> <span class="ts">text</span></span> }
-  <span class="tk">employee</span> <span class="gain">=&gt;</span> <span class="ts">person</span> <span class="gain">&amp;</span> { <span class="tk">department</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">level</span><span class="tp">:</span> <span class="ts">level</span> <span class="gain">~</span> <span class="tn">L1</span> }
-  <span class="tk">level</span>    <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>
+  <span class="tk">employee</span> <span class="gain">=&gt;</span> <span class="ts">person</span> <span class="gain">&amp;</span> { <span class="tk">department</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">level</span><span class="tp">:</span> <span class="ts">rank</span> <span class="gain">~</span> <span class="tn">L1</span> }
+  <span class="tk">rank</span>    <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>
 }`;
 
 const ripples = [
@@ -73,7 +73,7 @@ const schemaRows = [
     why: 'Refine an atom\'s constraint vocabulary with ^, or mint a fresh atom family with a constructor. The refinement IS-A its source; the enum is its own family.',
     code: `<span class="tk">port</span>  <span class="gain">=&gt;</span> <span class="gain">!integer</span> <span class="gain">^</span> { <span class="tk">min</span><span class="tp">:</span> <span class="tn">1</span>  <span class="tk">max</span><span class="tp">:</span> <span class="tn">65535</span> }
 <span class="tk">sku</span>   <span class="gain">=&gt;</span> <span class="gain">!text</span> <span class="gain">^</span> { <span class="tk">pattern</span><span class="tp">:</span> <span class="ts">"[A-Z]-[0-9]{3}"</span> }
-<span class="tk">level</span> <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>`,
+<span class="tk">rank</span> <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>`,
   },
   {
     chip: '§5.3', href: `${part2Url}#53-type-expressions`, title: 'Arrays, tuples, sets',
@@ -196,7 +196,7 @@ const ledger = [
     why: 'Annotations attach ordered, preserved metadata to any value: no more "_comment" fields pretending to be data. This is also why TSON needs no comment syntax: annotations survive parsing.',
     snippets: [
       { tag: 'json (the workaround)', kind: 'json', html: '<span class="tp">"</span><span class="tk">phone_comment</span><span class="tp">": "</span><span class="ts">deprecated, use mobile</span><span class="tp">",</span>\n<span class="tp">"</span><span class="tk">phone</span><span class="tp">": "</span><span class="ts">555-0100</span><span class="tp">"</span>' },
-      { tag: 'tson', kind: 'tson', html: '<span class="gain">@deprecated:"use mobile"</span> <span class="tk">phone</span><span class="tp">:</span> <span class="ts">555-0100</span>' },
+      { tag: 'tson', kind: 'tson', html: '<span class="tk">phone</span><span class="tp">:</span> <span class="gain">@deprecated:"use mobile"</span> <span class="ts">"555-0100"</span>' },
     ],
   },
   {
@@ -230,7 +230,7 @@ const routes = [
       <p class="text-gray-500 max-w-2xl">
         <strong class="text-gray-900">TSON (Typed Schema Object Notation)</strong> is a schema
         system with immutable, hash-pinned schemas whose definitions are themselves data. A
-        document names its schema, the schema names its meta-schema; <strong class="text-gray-900">one hash verifies the whole chain</strong>. For the finishing touch, TSON's data format is a Unicode-first superset of JSON you'll actually
+        document names its schema, the schema names its meta-schema; <strong class="text-gray-900">one hash verifies the whole chain</strong>. The finishing touch, TSON's data format is a Unicode-first superset of JSON you'll actually
         enjoy writing.
       </p>
       <div class="flex flex-wrap gap-3 pt-6">
@@ -299,8 +299,8 @@ const routes = [
       <h2 class="text-2xl md:text-3xl font-bold font-mono tracking-tight mb-3">A succinct schema built on a solid foundation</h2>
       <p class="text-gray-500 max-w-2xl mb-6">
         Contracts you'd otherwise scatter through validation code, stated in declarations. The
-        foundation: an <a href="/research/proto-schema/part-1-a-theoretical-model-for-data-schemas" class="text-teal-700 hover:underline">eight-article research series</a> deriving
-        what a schema is, from first principles, before any syntax was written.
+        foundation: an <a href="/research/proto-schema/part-1-a-theoretical-model-for-data-schemas" class="text-teal-700 hover:underline">eighteen-article research series</a> understanding JSON and deriving
+        what a schema is, from first principles, before any syntax or code was written.
       </p>
       <div>
         {schemaRows.map((row) => (
@@ -407,7 +407,7 @@ const routes = [
     </div>
 
     <!-- ═══ Section 5: routing ═══ -->
-    <div class="max-w-5xl mx-auto px-6 py-16">
+    <div class="max-w-5xl mx-auto px-6 pt-16">
       <div class="grid md:grid-cols-3 gap-4">
         {routes.map((r) => (
           <a href={r.href} class="block border border-gray-200 rounded-md p-5 hover:border-gray-400">
@@ -416,6 +416,23 @@ const routes = [
             <p class="text-sm text-gray-500">{r.body}</p>
           </a>
         ))}
+      </div>
+    </div>
+
+    <!-- ═══ What comes next ═══ -->
+    <div class="max-w-5xl mx-auto px-6 pt-8 pb-16">
+      <div class="bg-gray-900 text-gray-200 rounded-xl px-8 py-10 md:px-10">
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-3">What comes next</h2>
+        <p class="font-mono font-semibold text-xl md:text-2xl leading-snug max-w-xl">
+          One schema. <span class="text-teal-400">Multiple encodings</span>.
+        </p>
+        <p class="mt-4 text-sm text-gray-400 max-w-2xl">
+          The TSON Schema and its underlying type system are agnostic to the encoding; the same
+          architecture as ASN.1, where the schema is the product and formats serve it. The TSON
+          text data format is the first encoding, but won't be the only one. The plan is to develop encoding rules for <span class="text-teal-400">JSON</span>,
+          compact formats like <span class="text-teal-400">TOON</span>, and <span class="text-teal-400">binary</span>, each carrying
+          the same schema-verified values.
+        </p>
       </div>
     </div>
   </div>
