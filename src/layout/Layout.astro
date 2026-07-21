@@ -7,14 +7,13 @@ interface Props {
   description?: string;
   image?: string;
   type?: 'website' | 'article';
+  home?: boolean;
   publishedTime?: string;
   modifiedTime?: string;
   noindex?: boolean;
 }
 
-const { title, description, image, type, publishedTime, modifiedTime, noindex } = Astro.props;
-const siteTitle = 'tson.io';
-const home = title === siteTitle;
+const { title, description, image, type, home = false, publishedTime, modifiedTime, noindex } = Astro.props;
 ---
 
 <!doctype html>

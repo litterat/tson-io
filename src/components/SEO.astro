@@ -44,7 +44,7 @@ const DEFAULT_DESCRIPTION =
 const origin = Astro.site?.origin ?? "https://tson.io";
 const canonical = new URL(Astro.url.pathname, origin).href;
 const ogImage = image ? new URL(image, origin).href : undefined;
-const fullTitle = home ? title : `${title} — ${SITE_NAME}`;
+const fullTitle = home || /^TSON\b/i.test(title) ? title : `TSON - ${title}`;
 const metaDescription = description ?? DEFAULT_DESCRIPTION;
 
 // --- JSON-LD structured data -------------------------------------------------
