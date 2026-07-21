@@ -1,0 +1,32 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" font-family="'SF Mono', 'Menlo', 'Consolas', monospace" xml:space="preserve">
+  <rect width="1200" height="630" fill="#ffffff"/>
+
+  <!-- left: wordmark + tagline -->
+  <text x="80" y="190" font-size="118" font-weight="700" fill="#111827">TSON</text>
+  <text x="83" y="240" font-size="28" fill="#6b7280" letter-spacing="0.5">Typed Schema</text>
+  <text x="83" y="285" font-size="28" fill="#6b7280" letter-spacing="0.5">Object Notation</text>
+  <text x="83" y="385" font-size="32" font-weight="600" fill="#111827">Data with an</text>
+  <text x="83" y="430" font-size="32" font-weight="600" xml:space="preserve"><tspan fill="#0f766e">immutable</tspan><tspan fill="#111827"> schema.</tspan></text>
+  <text x="83" y="535" font-size="24" fill="#6b7280">tson.io</text>
+
+  <!-- right: schema code panel -->
+  <rect x="510" y="95" width="600" height="445" rx="14" fill="#0b1120" stroke="#374151" stroke-width="1.5"/>
+  <text x="530" y="139" font-size="20" letter-spacing="2" fill="#6b7280">TSON SCHEMA</text>
+  <line x1="510" y1="157" x2="1110" y2="157" stroke="#1f2937" stroke-width="1"/>
+
+  <g font-size="18" font-weight="500" xml:space="preserve">
+    <text x="530" y="190" xml:space="preserve"><tspan fill="#2dd4bf">!!id:</tspan><tspan fill="#d6c3a5">"…people.tn1?sha256=c4d5e6f7…a2b3c4d5"</tspan></text>
+    <text x="530" y="218" xml:space="preserve"><tspan fill="#2dd4bf">!!meta:</tspan><tspan fill="#d6c3a5">"…meta.tn1?sha256=8b1e4a9c…d7f2a640"</tspan></text>
+    <text x="530" y="246" xml:space="preserve"><tspan fill="#2dd4bf">!!import:</tspan><tspan fill="#d6c3a5">"…core.tn1?sha256=3f9d2c71…b8e5c194"</tspan></text>
+    <text x="530" y="274"><tspan fill="#6b7280">{</tspan></text>
+    <text x="530" y="302" xml:space="preserve"><tspan fill="#e5e7eb">  person</tspan><tspan fill="#2dd4bf" xml:space="preserve"> =&gt;</tspan><tspan fill="#6b7280" xml:space="preserve"> {</tspan></text>
+    <text x="530" y="328" xml:space="preserve"><tspan fill="#e5e7eb" xml:space="preserve">    name</tspan><tspan fill="#6b7280">:</tspan><tspan fill="#d6c3a5" xml:space="preserve"> text</tspan></text>
+    <text x="530" y="356" xml:space="preserve"><tspan fill="#e5e7eb" xml:space="preserve">    born</tspan><tspan fill="#6b7280">:</tspan><tspan fill="#d6c3a5" xml:space="preserve"> date</tspan></text>
+    <text x="530" y="384"><tspan fill="#6b7280" xml:space="preserve">  }</tspan></text>
+
+    <text x="530" y="426" xml:space="preserve"><tspan fill="#e5e7eb">  employee</tspan><tspan fill="#2dd4bf" xml:space="preserve"> =&gt;</tspan><tspan fill="#d6c3a5" xml:space="preserve"> person</tspan><tspan fill="#2dd4bf" xml:space="preserve"> &amp;</tspan><tspan fill="#6b7280" xml:space="preserve"> {</tspan></text>
+    <text x="530" y="454" xml:space="preserve"><tspan fill="#e5e7eb" xml:space="preserve">    dept</tspan><tspan fill="#6b7280">:</tspan><tspan fill="#d6c3a5" xml:space="preserve"> text</tspan></text>
+    <text x="530" y="482"><tspan fill="#6b7280" xml:space="preserve">  }</tspan></text>
+    <text x="530" y="510"><tspan fill="#6b7280">}</tspan></text>
+  </g>
+</svg>
