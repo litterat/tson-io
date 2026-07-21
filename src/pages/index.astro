@@ -56,71 +56,99 @@ const ripples = [
   },
 ];
 
-// ── schema grammar ledger ────────────────────────────────────
+// ── schema grammar ledger: description left, schema + data right ─
 const schemaRows = [
   {
     chip: '§5.2', href: `${part2Url}#52-field-states`, title: 'Records and field states',
     why: 'Fields are required by default. ~ supplies a default, = pins a value, ? makes the field optional. Five states, every one explicit in the declaration.',
-    code: `<span class="tk">config</span> <span class="gain">=&gt;</span> {
+    snippets: [
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">config</span> <span class="gain">=&gt;</span> {
   <span class="tk">host</span><span class="tp">:</span>    <span class="ts">text</span>
   <span class="tk">port</span><span class="tp">:</span>    <span class="ts">integer</span> <span class="gain">~</span> <span class="tn">8080</span>
   <span class="tk">retries</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">=</span> <span class="tn">3</span>
   <span class="tk">comment</span><span class="tp">:</span> <span class="ts">text</span><span class="gain">?</span>
-}`,
-  },
-  {
-    chip: '§5.5', href: `${part2Url}#55-constructor-application-and-atom-refinement`, title: 'Atoms and enums',
-    why: 'Refine an atom\'s constraint vocabulary with ^, or mint a fresh atom family with a constructor. The refinement IS-A its source; the enum is its own family.',
-    code: `<span class="tk">port</span>  <span class="gain">=&gt;</span> <span class="gain">!integer</span> <span class="gain">^</span> { <span class="tk">min</span><span class="tp">:</span> <span class="tn">1</span>  <span class="tk">max</span><span class="tp">:</span> <span class="tn">65535</span> }
-<span class="tk">sku</span>   <span class="gain">=&gt;</span> <span class="gain">!text</span> <span class="gain">^</span> { <span class="tk">pattern</span><span class="tp">:</span> <span class="ts">"[A-Z]-[0-9]{3}"</span> }
-<span class="tk">rank</span> <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>`,
+}` },
+      { tag: 'data', kind: 'data', html: `<span class="gain">!config</span> { <span class="tk">host</span><span class="tp">:</span> <span class="ts">"prod.db.internal"</span>  <span class="tk">port</span><span class="tp">:</span> <span class="tn">5555</span> }` },
+    ],
   },
   {
     chip: '§5.3', href: `${part2Url}#53-type-expressions`, title: 'Arrays, tuples, sets',
     why: 'Sized homogeneous arrays, fixed-shape tuples, unique-membered sets. Three contracts that all read as one bracket syntax in the data.',
-    code: `<span class="tk">tags</span>   <span class="gain">=&gt;</span> <span class="tp">[</span><span class="ts">text</span><span class="gain">;</span> <span class="tn">1..10</span><span class="tp">]</span>
+    snippets: [
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">tags</span>   <span class="gain">=&gt;</span> <span class="tp">[</span><span class="ts">text</span><span class="gain">;</span> <span class="tn">1..10</span><span class="tp">]</span>
 <span class="tk">point</span>  <span class="gain">=&gt;</span> <span class="tp">[</span><span class="ts">number</span><span class="tp">,</span> <span class="ts">number</span><span class="tp">]</span>
-<span class="tk">badges</span> <span class="gain">=&gt;</span> <span class="ts">set</span><span class="gain">&lt;</span><span class="ts">text</span><span class="gain">&gt;</span>`,
+<span class="tk">badges</span> <span class="gain">=&gt;</span> <span class="ts">set</span><span class="gain">&lt;</span><span class="ts">text</span><span class="gain">&gt;</span>` },
+      { tag: 'data (array, tuple and set all encode as array)', kind: 'data', html: `<span class="gain">!tags</span> <span class="tp">[</span><span class="ts">urgent reviewed</span><span class="tp">]</span>\n<span class="gain">!point</span> <span class="tp">[</span><span class="tn">3.5 7.2</span><span class="tp">]</span>\n<span class="gain">!badges</span> <span class="tp">[</span><span class="ts">alpha beta</span><span class="tp">]</span>` },
+    ],
+  },
+  {
+    chip: '§5.5', href: `${part2Url}#55-constructor-application-and-atom-refinement`, title: 'Atoms and enums',
+    why: 'Refine an atom\'s constraint vocabulary with ^, or mint a fresh atom family with a constructor. The refinement IS-A its source; the enum is its own family.',
+    snippets: [
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">port</span>  <span class="gain">=&gt;</span> <span class="gain">!integer</span> <span class="gain">^</span> { <span class="tk">min</span><span class="tp">:</span> <span class="tn">1</span>  <span class="tk">max</span><span class="tp">:</span> <span class="tn">65535</span> }
+<span class="tk">sku</span>   <span class="gain">=&gt;</span> <span class="gain">!text</span> <span class="gain">^</span> { <span class="tk">pattern</span><span class="tp">:</span> <span class="ts">"[A-Z]-[0-9]{3}"</span> }
+<span class="tk">rank</span> <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>` },
+      { tag: 'data', kind: 'data', html: `<span class="gain">!port</span> <span class="tn">8080</span>\n<span class="gain">!sku</span> <span class="ts">"A-123"</span>\n<span class="gain">!rank</span> <span class="tn">L2</span>` },
+    ],
   },
   {
     chip: '§5.8', href: `${part2Url}#58-supertype-composition`, title: 'Composition',
     why: 'New fields with declared ancestry: ticket IS-A audit, and contributed field sets must be disjoint. No silent overrides, no diamond ambiguity.',
-    code: `<span class="tk">audit</span>  <span class="gain">=&gt;</span> { <span class="tk">created</span><span class="tp">:</span> <span class="ts">datetime</span>  <span class="tk">updated</span><span class="tp">:</span> <span class="ts">datetime</span><span class="gain">?</span> }
-<span class="tk">ticket</span> <span class="gain">=&gt;</span> <span class="ts">audit</span> <span class="gain">&amp;</span> { <span class="tk">id</span><span class="tp">:</span> <span class="ts">uuid</span>  <span class="tk">title</span><span class="tp">:</span> <span class="ts">text</span> }`,
+    snippets: [
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">audit</span>  <span class="gain">=&gt;</span> { <span class="tk">created</span><span class="tp">:</span> <span class="ts">datetime</span>  <span class="tk">updated</span><span class="tp">:</span> <span class="ts">datetime</span><span class="gain">?</span> }
+<span class="tk">ticket</span> <span class="gain">=&gt;</span> <span class="ts">audit</span> <span class="gain">&amp;</span> { <span class="tk">id</span><span class="tp">:</span> <span class="ts">uuid</span>  <span class="tk">title</span><span class="tp">:</span> <span class="ts">text</span> }` },
+      { tag: 'data', kind: 'data', html: `<span class="gain">!ticket</span> {\n  <span class="tk">created</span><span class="tp">:</span> <span class="tn">2026-07-01T09:00:00Z</span>\n  <span class="tk">id</span><span class="tp">:</span> <span class="tn">550e8400-e29b-41d4-a716-446655440000</span>\n  <span class="tk">title</span><span class="tp">:</span> <span class="ts">"Server unreachable"</span>\n}` },
+    ],
   },
   {
     chip: '§5.7', href: `${part2Url}#57-refinement`, title: 'Refinement',
     why: 'Tighten inherited fields without adding any: defaults can move, pins can\'t, contracts only narrow. One transition table governs every step.',
-    code: `<span class="tk">service</span>    <span class="gain">=&gt;</span> { <span class="tk">host</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">port</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">~</span> <span class="tn">8080</span> }
-<span class="tk">production</span> <span class="gain">=&gt;</span> <span class="ts">service</span> <span class="gain">^</span> { <span class="tk">host</span><span class="tp">:</span> <span class="gain">=</span> <span class="ts">"prod.internal"</span>  <span class="tk">port</span><span class="tp">:</span> <span class="gain">=</span> <span class="tn">443</span> }`,
+    snippets: [
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">service</span>    <span class="gain">=&gt;</span> { <span class="tk">host</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">port</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">~</span> <span class="tn">8080</span> }
+<span class="tk">production</span> <span class="gain">=&gt;</span> <span class="ts">service</span> <span class="gain">^</span> { <span class="tk">port</span><span class="tp">:</span> <span class="gain">=</span> <span class="tn">443</span> }` },
+      { tag: "data (port fixed at 443; value doesn't need repeating)", kind: 'data', html: `<span class="gain">!production</span> { <span class="tk">host</span><span class="tp">:</span> <span class="ts">"prod.internal"</span> }` },
+    ],
   },
   {
     chip: '§5.9', href: `${part2Url}#59-subtraction`, title: 'Subtraction',
     why: 'Removal is allowed, and loud: public is not substitutable for account, and the resolved output records exactly that.',
-    code: `<span class="tk">account</span> <span class="gain">=&gt;</span> { <span class="tk">user</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">email</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">password</span><span class="tp">:</span> <span class="ts">text</span> }
-<span class="tk">public</span>  <span class="gain">=&gt;</span> <span class="ts">account</span> <span class="gain">-</span> { <span class="tk">password</span> }`,
+    snippets: [
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">account</span> <span class="gain">=&gt;</span> { <span class="tk">user</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">email</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">password</span><span class="tp">:</span> <span class="ts">text</span> }
+<span class="tk">public</span>  <span class="gain">=&gt;</span> <span class="ts">account</span> <span class="gain">-</span> { <span class="tk">password</span> }` },
+      { tag: 'data', kind: 'data', html: `<span class="gain">!public</span> { <span class="tk">user</span><span class="tp">:</span> <span class="ts">"ada"</span>  <span class="tk">email</span><span class="tp">:</span> <span class="ts">"ada@example.com"</span> }` },
+    ],
   },
   {
     chip: '§5.4', href: `${part2Url}#54-choice-types`, title: 'Choice',
     why: 'Sum types. Structurally disjoint variants need no tag in data; overlapping ones require one. The resolver derives which, per encoding.',
-    code: `<span class="tk">shape</span>  <span class="gain">=&gt;</span> <span class="tp">(</span><span class="ts">circle</span> <span class="gain">|</span> <span class="ts">rect</span><span class="tp">)</span>
+    snippets: [
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">shape</span>  <span class="gain">=&gt;</span> <span class="tp">(</span><span class="ts">circle</span> <span class="gain">|</span> <span class="ts">rect</span><span class="tp">)</span>
 <span class="tk">circle</span> <span class="gain">=&gt;</span> { <span class="tk">radius</span><span class="tp">:</span> <span class="ts">number</span> }
-<span class="tk">rect</span>   <span class="gain">=&gt;</span> { <span class="tk">width</span><span class="tp">:</span> <span class="ts">number</span>  <span class="tk">height</span><span class="tp">:</span> <span class="ts">number</span> }`,
+<span class="tk">rect</span>   <span class="gain">=&gt;</span> { <span class="tk">width</span><span class="tp">:</span> <span class="ts">number</span>  <span class="tk">height</span><span class="tp">:</span> <span class="ts">number</span> }
+<span class="tk">shapes</span> <span class="gain">=&gt;</span> <span class="tp">[</span><span class="ts">shape</span><span class="gain">;</span> <span class="tn">1..5</span><span class="tp">]</span>` },
+      { tag: 'data (type tag required for records)', kind: 'data', html: `<span class="gain">!shapes</span> <span class="tp">[</span>\n  <span class="gain">!circle</span> { <span class="tk">radius</span><span class="tp">:</span> <span class="tn">4</span> }\n  <span class="gain">!rect</span> { <span class="tk">width</span><span class="tp">:</span> <span class="tn">2</span>  <span class="tk">height</span><span class="tp">:</span> <span class="tn">3</span> }\n<span class="tp">]</span>` },
+    ],
   },
   {
     chip: '§5.11', href: `${part2Url}#511-field-groups`, title: 'Field groups',
     why: 'Exactly-one-of, stated structurally: the data carries one member under its own label, and no synthetic tag is invented.',
-    code: `<span class="tk">contact</span> <span class="gain">=&gt;</span> {
+    snippets: [
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">contact</span> <span class="gain">=&gt;</span> {
   <span class="tk">name</span><span class="tp">:</span> <span class="ts">text</span>
   <span class="tp">(</span> <span class="tk">email</span><span class="tp">:</span> <span class="ts">email</span> <span class="gain">|</span> <span class="tk">phone</span><span class="tp">:</span> <span class="ts">text</span> <span class="tp">)</span>
-}`,
+}` },
+      { tag: 'data (only phone or email is allowed)', kind: 'data', html: `<span class="gain">!contact</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">"Grace Hopper"</span>  <span class="tk">phone</span><span class="tp">:</span> <span class="ts">"555-0142"</span> }` },
+    ],
   },
   {
     chip: '§5.10', href: `${part2Url}#510-templates-and-parameters`, title: 'Templates',
     why: 'Definitions with blanks, over type parameters and value parameters both. A fully bound application becomes a real, named type in the resolved schema.',
-    code: `<span class="tk">paged</span>  <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">T</span><span class="gain">&gt;</span> { <span class="tk">items</span><span class="tp">:</span> <span class="tp">[</span><span class="ts">T</span><span class="tp">]</span>  <span class="tk">cursor</span><span class="tp">:</span> <span class="ts">text</span><span class="gain">?</span> }
-<span class="tk">window</span> <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">T</span><span class="tp">,</span> <span class="ts">N</span><span class="gain">&gt;</span> <span class="tp">[</span><span class="ts">T</span><span class="gain">;</span> <span class="ts">N</span><span class="tp">]</span>
-<span class="tk">batch</span>  <span class="gain">=&gt;</span> <span class="ts">window</span><span class="gain">&lt;</span><span class="ts">text</span><span class="tp">,</span> <span class="tn">100</span><span class="gain">&gt;</span>`,
+    snippets: [
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">paged</span>         <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">T</span><span class="gain">&gt;</span> { <span class="tk">items</span><span class="tp">:</span> <span class="tp">[</span><span class="ts">T</span><span class="tp">]</span>  <span class="tk">cursor</span><span class="tp">:</span> <span class="ts">text</span><span class="gain">?</span> }
+<span class="tk">retry_policy</span> <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">N</span><span class="gain">&gt;</span> { <span class="tk">attempts</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">~</span> <span class="ts">N</span> }
+<span class="tk">checkout</span>     <span class="gain">=&gt;</span> <span class="ts">retry_policy</span><span class="gain">&lt;</span><span class="tn">5</span><span class="gain">&gt;</span>` },
+      { tag: 'data', kind: 'data', html: `<span class="gain">!checkout</span> { <span class="tk">attempts</span><span class="tp">:</span> <span class="tn">10</span> }` },
+    ],
   },
 ];
 
@@ -304,13 +332,20 @@ const routes = [
       </p>
       <div>
         {schemaRows.map((row) => (
-          <div class="grid md:grid-cols-[5fr_7fr] gap-x-8 gap-y-3 py-6 border-t border-gray-200">
+          <div class="grid md:grid-cols-[5fr_7fr] gap-5 md:gap-8 py-7 border-t border-gray-200 last:border-b">
             <div>
               <a href={row.href} class={chipClass}>{row.chip}</a>
-              <h3 class="font-semibold mb-1">{row.title}</h3>
-              <p class="text-sm text-gray-500">{row.why}</p>
+              <h3 class="text-lg font-semibold mb-1.5">{row.title}</h3>
+              <p class="text-sm text-gray-500 max-w-md">{row.why}</p>
             </div>
-            <pre class="bg-gray-50 border border-gray-100 rounded-md p-4 text-sm leading-7 overflow-x-auto self-start"><code set:html={row.code} /></pre>
+            <div class="grid gap-3 content-start">
+              {row.snippets.map((s) => (
+                <div class={`border border-gray-200 rounded-md border-l-3 ${s.kind === 'schema' ? 'border-l-teal-600' : 'border-l-gray-300'}`}>
+                  <div class="font-mono text-[11px] uppercase tracking-widest text-gray-400 px-3.5 pt-2">{s.tag}</div>
+                  <pre class="px-3.5 pb-3 pt-1 text-sm leading-6 overflow-x-auto"><code set:html={s.html} /></pre>
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
