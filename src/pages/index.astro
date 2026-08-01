@@ -27,6 +27,17 @@ const heroSchema = `<span class="gain">!!id:</span><span class="ts">"https://exa
   <span class="tk">rank</span>    <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>
 }`;
 
+// ── try it: the CLI session ──────────────────────────────────
+const trySession = `<span class="tp">$</span> <span class="tk">git clone https://github.com/litterat/ltr8-io-tson-java.git</span>
+<span class="tp">$</span> <span class="tk">cd ltr8-io-tson-java &amp;&amp; ./gradlew :tson-cli:installDist</span>
+<span class="tp">$</span> <span class="tk">export PATH="$PWD/tson-cli/build/install/tson/bin:$PATH"</span>
+
+<span class="tp">$</span> <span class="tk">tson init-example</span>
+<span class="ts">Wrote ./person.tn and ./person-data.tn.</span>
+
+<span class="tp">$</span> <span class="tk">tson validate person.tn person-data.tn</span>
+<span class="gain">OK</span>`;
+
 // ── the forbidden edit: v2 with a REQUIRED field ─────────────
 const v2Schema = `<span class="gain">!!id:</span><span class="ts">"https://example.com/people-v2.tn1?sha256=ac3f2e1a…a8e5be21"</span>
 <span class="gain">!!meta:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/meta.tn1?sha256=8b1e4a9c…d7f2a640"</span>
@@ -292,34 +303,23 @@ const routes = [
       </p>
     </div>
 
-    <!-- ═══ Section 1: the forbidden edit ═══ -->
-    <div class="max-w-5xl mx-auto px-6 pt-8">
-      <div class="bg-gray-900 text-gray-200 rounded-xl px-8 py-10 md:px-10">
-        <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-3">Schema Versioning</h2>
+    <!-- ═══ Try it: the CLI ═══ -->
+    <div class="max-w-5xl mx-auto px-6 pt-10">
+      <div class="bg-teal-900 text-teal-50 rounded-xl px-8 py-10 md:px-10">
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-teal-300/80 mb-3">Try it</h2>
         <p class="font-mono font-semibold text-xl md:text-2xl leading-snug max-w-2xl mb-6">
-          Adding a new <span class="text-teal-400">required</span> field with ease
+          Skip the reading. <span class="text-teal-300">Run it.</span>
         </p>
-        <div class="border border-gray-700 rounded-md overflow-hidden mb-6 max-w-3xl">
-          <pre class="bg-gray-950/60 p-4 text-sm leading-7 overflow-x-auto dark-pane"><code set:html={v2Schema} /></pre>
-        </div>
-        <p class="text-sm text-gray-400 max-w-3xl">
-          Version 2 just added a new required email field to the person record. In mutable schema systems,
-          adding a new required field is universally forbidden. The API guidelines for <a href="https://google.aip.dev/180" class="text-teal-400 underline">Google</a>, <a href="https://github.com/microsoft/api-guidelines" class="text-teal-400 underline">Microsoft</a> and <a href="https://opensource.zalando.com/restful-api-guidelines/" class="text-teal-400 underline">Zalando</a> all ban the practice.
-          Protobuf even marks the required keyword a hazard developers
-          must avoid. These rules exist because a single definition is forced to serve every document ever written
-          against it. TSON removes this burden because schemas are immutable. <strong class="text-gray-200">A version
-          is simply a new document with a new hash</strong>. Two contracts coexist at full strength, and employee
-          composing person inherits the new requirement in the same declaration.
+        <p class="text-sm text-teal-100/70 max-w-3xl mb-6">
+          There is a working implementation: <a href="https://github.com/litterat/ltr8-io-tson-java" class="text-teal-300 underline">tson-java</a>.
+          The command-line tool's init-example command writes you an example schema and a data document pair. You can use the validate command
+          to see how the data gets validated against the schema. Break the data (e.g. quote the age, delete a field)
+          and it reports every problem at once, each with a path and a reason.
         </p>
-        <div class="grid sm:grid-cols-2 gap-x-8 gap-y-5 pt-7">
-          {ripples.map((r) => (
-            <div>
-              <h3 class="font-semibold text-gray-100 text-sm mb-1">{r.title}</h3>
-              <p class="text-sm text-gray-400">{r.body}</p>
-            </div>
-          ))}
+        <div class="border border-teal-700/60 rounded-md overflow-hidden max-w-3xl">
+          <pre class="bg-gray-950 p-4 text-sm leading-7 overflow-x-auto teal-pane"><code set:html={trySession} /></pre>
         </div>
-        <a href={guideUrl} class="inline-block font-mono text-sm font-semibold text-teal-400 hover:underline pt-7">The full versioning story →</a>
+        <a href="https://github.com/litterat/ltr8-io-tson-java" class="inline-block font-mono text-sm font-semibold text-teal-300 hover:underline pt-7">Get the implementation →</a>
       </div>
     </div>
 
@@ -350,6 +350,37 @@ const routes = [
             </div>
           </div>
         ))}
+      </div>
+    </div>
+
+    <!-- ═══ Section 1: the forbidden edit ═══ -->
+    <div class="max-w-5xl mx-auto px-6 pt-8">
+      <div class="bg-gray-900 text-gray-200 rounded-xl px-8 py-10 md:px-10">
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-3">Schema Versioning</h2>
+        <p class="font-mono font-semibold text-xl md:text-2xl leading-snug max-w-2xl mb-6">
+          Adding a new <span class="text-teal-400">required</span> field with ease
+        </p>
+        <div class="border border-gray-700 rounded-md overflow-hidden mb-6 max-w-3xl">
+          <pre class="bg-gray-950/60 p-4 text-sm leading-7 overflow-x-auto dark-pane"><code set:html={v2Schema} /></pre>
+        </div>
+        <p class="text-sm text-gray-400 max-w-3xl">
+          Version 2 just added a new required email field to the person record. In mutable schema systems,
+          adding a new required field is universally forbidden. The API guidelines for <a href="https://google.aip.dev/180" class="text-teal-400 underline">Google</a>, <a href="https://github.com/microsoft/api-guidelines" class="text-teal-400 underline">Microsoft</a> and <a href="https://opensource.zalando.com/restful-api-guidelines/" class="text-teal-400 underline">Zalando</a> all ban the practice.
+          Protobuf even marks the required keyword a hazard developers
+          must avoid. These rules exist because a single definition is forced to serve every document ever written
+          against it. TSON removes this burden because schemas are immutable. <strong class="text-gray-200">A version
+          is simply a new document with a new hash</strong>. Two contracts coexist at full strength, and employee
+          composing person inherits the new requirement in the same declaration.
+        </p>
+        <div class="grid sm:grid-cols-2 gap-x-8 gap-y-5 pt-7">
+          {ripples.map((r) => (
+            <div>
+              <h3 class="font-semibold text-gray-100 text-sm mb-1">{r.title}</h3>
+              <p class="text-sm text-gray-400">{r.body}</p>
+            </div>
+          ))}
+        </div>
+        <a href={guideUrl} class="inline-block font-mono text-sm font-semibold text-teal-400 hover:underline pt-7">The full versioning story →</a>
       </div>
     </div>
 
@@ -435,7 +466,7 @@ const routes = [
         <p class="text-sm text-gray-500 max-w-3xl">
           TSON is a <strong class="text-gray-900">working draft</strong>. The
           specification is published under the 2026 revision series and remains subject to change
-          until it freezes as version 1. Implementations are underway: the first, <a href="https://github.com/litterat/ltr8-io-tson-java" class="text-teal-700 hover:underline">a Java implementation</a>, is in progress. The meta-kernel, meta-schema, and core type library are already published
+          until it freezes as version 1. Implementations are underway: the first, <a href="https://github.com/litterat/ltr8-io-tson-java" class="text-teal-700 hover:underline">a Java implementation</a>, is already functioning. The meta-kernel, meta-schema, and core type library are already published
           with resolved fixtures, so parsers and resolvers will have reference answers to test
           against. If the design interests you, this is the stage where feedback shapes it.
         </p>
@@ -502,6 +533,12 @@ const routes = [
   #vsjson .dark-pane .tn { color: #e5e7eb; }
   #vsjson .dark-pane .tp { color: #6b7280; }          /* gray-500 */
   #vsjson .dark-pane .gain { color: #2dd4bf; }        /* teal-400 */
+
+  /* teal pane (try-it band): a terminal on the teal call-to-action */
+  #vsjson .teal-pane .tk { color: #f0fdfa; }          /* commands — teal-50 */
+  #vsjson .teal-pane .ts { color: #99f6e4; }          /* output — teal-200 */
+  #vsjson .teal-pane .tp { color: #2dd4bf; }          /* prompt — teal-400 */
+  #vsjson .teal-pane .gain { color: #fef08a; }        /* OK — yellow-200 */
   #vsjson .dark-pane .added {
     background: rgba(45, 212, 191, 0.12);
     outline: 1px solid rgba(45, 212, 191, 0.35);
