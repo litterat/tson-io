@@ -10,7 +10,7 @@ const specHubUrl = '/2026'; // redirects to /2026/{CURRENT_REVISION} via public/
 const chipClass = 'inline-block font-mono text-xs font-semibold rounded-full px-3 py-1 mb-2 bg-gray-100 text-teal-800 hover:underline';
 
 // ── hero: the chain, two documents ───────────────────────────
-const heroData = `<span class="gain">!!schema:</span><span class="ts">"https://example.com/people.tn1?sha256=c4d5e6f7…a2b3c4d5"</span>
+const heroData = `<span class="gain">!!schema:</span><span class="ts">"https://example.com/people.tn?sha256=c4d5e6f7…a2b3c4d5"</span>
 <span class="gain">!employee</span> {
   <span class="tk">name</span><span class="tp">:</span>       <span class="ts">"Ada Lovelace"</span>
   <span class="tk">born</span><span class="tp">:</span>       <span class="tn">1815-12-10</span>
@@ -18,9 +18,9 @@ const heroData = `<span class="gain">!!schema:</span><span class="ts">"https://e
   <span class="tk">level</span><span class="tp">:</span>      <span class="ts">L2</span>
 }<br/><br/>`;
 
-const heroSchema = `<span class="gain">!!id:</span><span class="ts">"https://example.com/people.tn1?sha256=c4d5e6f7…a2b3c4d5"</span>
-<span class="gain">!!meta:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/meta.tn1?sha256=8b1e4a9c…d7f2a640"</span>
-<span class="gain">!!import:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/core.tn1?sha256=3f9d2c71…b8e5c194"</span>
+const heroSchema = `<span class="gain">!!id:</span><span class="ts">"https://example.com/people.tn?sha256=c4d5e6f7…a2b3c4d5"</span>
+<span class="gain">!!meta:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/meta.tn?sha256=8b1e4a9c…d7f2a640"</span>
+<span class="gain">!!import:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/core.tn?sha256=3f9d2c71…b8e5c194"</span>
 {
   <span class="tk">person</span>   <span class="gain">=&gt;</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">born</span><span class="tp">:</span> <span class="ts">date</span> }
   <span class="tk">employee</span> <span class="gain">=&gt;</span> <span class="ts">person</span> <span class="gain">&amp;</span> { <span class="tk">department</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">level</span><span class="tp">:</span> <span class="ts">rank</span> <span class="gain">~</span> <span class="tn">L1</span> }
@@ -39,9 +39,9 @@ const trySession = `<span class="tp">$</span> <span class="tk">git clone https:/
 <span class="gain">OK</span>`;
 
 // ── the forbidden edit: v2 with a REQUIRED field ─────────────
-const v2Schema = `<span class="gain">!!id:</span><span class="ts">"https://example.com/people-v2.tn1?sha256=ac3f2e1a…a8e5be21"</span>
-<span class="gain">!!meta:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/meta.tn1?sha256=8b1e4a9c…d7f2a640"</span>
-<span class="gain">!!import:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/core.tn1?sha256=3f9d2c71…b8e5c194"</span>
+const v2Schema = `<span class="gain">!!id:</span><span class="ts">"https://example.com/people-v2.tn?sha256=ac3f2e1a…a8e5be21"</span>
+<span class="gain">!!meta:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/meta.tn?sha256=8b1e4a9c…d7f2a640"</span>
+<span class="gain">!!import:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/core.tn?sha256=3f9d2c71…b8e5c194"</span>
 {
   <span class="tk">person</span>   <span class="gain">=&gt;</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">born</span><span class="tp">:</span> <span class="ts">date</span>  <span class="added"><span class="tk">email</span><span class="tp">:</span> <span class="ts">text</span></span> }
   <span class="tk">employee</span> <span class="gain">=&gt;</span> <span class="ts">person</span> <span class="gain">&amp;</span> { <span class="tk">department</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">level</span><span class="tp">:</span> <span class="ts">rank</span> <span class="gain">~</span> <span class="tn">L1</span> }

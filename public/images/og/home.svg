@@ -15,9 +15,9 @@
   <line x1="510" y1="157" x2="1110" y2="157" stroke="#1f2937" stroke-width="1"/>
 
   <g font-size="18" font-weight="500" xml:space="preserve">
-    <text x="530" y="190" xml:space="preserve"><tspan fill="#2dd4bf">!!id:</tspan><tspan fill="#d6c3a5">"…people.tn1?sha256=c4d5e6f7…a2b3c4d5"</tspan></text>
-    <text x="530" y="218" xml:space="preserve"><tspan fill="#2dd4bf">!!meta:</tspan><tspan fill="#d6c3a5">"…meta.tn1?sha256=8b1e4a9c…d7f2a640"</tspan></text>
-    <text x="530" y="246" xml:space="preserve"><tspan fill="#2dd4bf">!!import:</tspan><tspan fill="#d6c3a5">"…core.tn1?sha256=3f9d2c71…b8e5c194"</tspan></text>
+    <text x="530" y="190" xml:space="preserve"><tspan fill="#2dd4bf">!!id:</tspan><tspan fill="#d6c3a5">"…people.tn?sha256=c4d5e6f7…a2b3c4d5"</tspan></text>
+    <text x="530" y="218" xml:space="preserve"><tspan fill="#2dd4bf">!!meta:</tspan><tspan fill="#d6c3a5">"…meta.tn?sha256=8b1e4a9c…d7f2a640"</tspan></text>
+    <text x="530" y="246" xml:space="preserve"><tspan fill="#2dd4bf">!!import:</tspan><tspan fill="#d6c3a5">"…core.tn?sha256=3f9d2c71…b8e5c194"</tspan></text>
     <text x="530" y="274"><tspan fill="#6b7280">{</tspan></text>
     <text x="530" y="302" xml:space="preserve"><tspan fill="#e5e7eb">  person</tspan><tspan fill="#2dd4bf" xml:space="preserve"> =&gt;</tspan><tspan fill="#6b7280" xml:space="preserve"> {</tspan></text>
     <text x="530" y="328" xml:space="preserve"><tspan fill="#e5e7eb" xml:space="preserve">    name</tspan><tspan fill="#6b7280">:</tspan><tspan fill="#d6c3a5" xml:space="preserve"> text</tspan></text>

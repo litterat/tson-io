@@ -64,7 +64,7 @@ src/
     2026/
       32/                # A revision-scoped draft — see "Revision-scoped paths" below
         *.md             # TSON Part 1/2 and companion docs (tson-guide.md)
-        m/                # .tn1 schema source files (meta-kernel, meta, core)
+        m/                # .tn schema source files (meta-kernel, meta, core)
         fixtures/          # Non-normative resolved-output fixtures for the schema source files
     research/
       deep-dive-into-json/   # "A Deep Dive into JSON" article series
@@ -87,7 +87,7 @@ src/
     llmsTxt.ts          # Shared helpers for the llms.txt endpoints
     spec.ts             # CURRENT_REVISION — the single source of truth for "the latest draft"
 public/
-  2026/32/m/             # Static .tn1 schema + resolved-fixture files served as-is
+  2026/32/m/             # Static .tn schema + resolved-fixture files served as-is
   _redirects              # /2026 -> /2026/{current revision}, a real 302
   images/                # Images extracted from the research articles
   robots.txt             # Content-Signal preferences + sitemap reference

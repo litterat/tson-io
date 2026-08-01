@@ -6,7 +6,7 @@
 
   The canonical meta-schema for user schemas: a schema governed by the
   meta-kernel that adds the type constructors the core type library
-  (core.tn1) instantiates. Type constructors are a meta-schema concern:
+  (core.tn) instantiates. Type constructors are a meta-schema concern:
   user schemas use them but should not define new ones.
 
   User schemas normally chain to this file via `!!meta`. The
