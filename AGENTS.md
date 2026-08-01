@@ -33,6 +33,13 @@ key off it. `/2026` itself is a redirect (real 302 via `public/_redirects`, plus
 meta-refresh fallback page for local preview) to `/2026/{CURRENT_REVISION}` — it is never itself a
 real, hash-pinnable document.
 
+**Why `.tn`, not `.tn1`** — the versioned extension belongs to a released version. Part 1 reserves
+`.tn1` for TSON version 1 (and `.tn2`, … for later major versions), and the spec is still a working
+draft, so no file here has earned that name yet: writing `.tn1` today would claim a conformance the
+format hasn't frozen into. Everything unversioned therefore uses the bare `.tn` extension, which
+reads as "development file, pre-v1 spec". When the draft freezes as version 1, the released
+artifacts take `.tn1`.
+
 **Starting a new revision** (e.g. 32 -> 33):
 1. Copy `src/content/2026/32/` to `src/content/2026/33/` (all three subtrees).
 2. Update the copies' self-referencing `!!id`/`!!meta`/`!!import`/`!!schema` URLs from
