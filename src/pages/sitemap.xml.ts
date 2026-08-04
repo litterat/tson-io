@@ -3,21 +3,23 @@
  * https://www.sitemaps.org/protocol.html
  *
  * Lists rendered HTML pages only (home, research index/articles, spec
- * index/documents) — not the raw-markdown or llms.txt endpoints, which are
- * for LLM/tool consumption rather than search indexing.
+ * index/documents, reports) — not the raw-markdown or llms.txt endpoints,
+ * which are for LLM/tool consumption rather than search indexing.
  */
 
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { resolveBase } from '../lib/llmsTxt';
+import { reportSlug } from '../lib/reports';
 import { CURRENT_REVISION } from '../lib/spec';
 
 export const GET: APIRoute = async ({ site }) => {
   const base = resolveBase(site);
 
-  const [researchEntries, specEntries] = await Promise.all([
+  const [researchEntries, specEntries, reportEntries] = await Promise.all([
     getCollection('research'),
     getCollection('spec'),
+    getCollection('reports'),
   ]);
 
   const urls = [
@@ -26,6 +28,8 @@ export const GET: APIRoute = async ({ site }) => {
     ...researchEntries.map(e => `${base}/research/${e.id}`),
     `${base}/2026/${CURRENT_REVISION}`,
     ...specEntries.map(e => `${base}/2026/${e.id}`),
+    // e.id is `{revision}/reports/{slug}`; the URL keeps that same shape.
+    ...reportEntries.map(e => `${base}/2026/${e.id.split('/')[0]}/reports/${reportSlug(e.id)}`),
   ];
 
   const body = [

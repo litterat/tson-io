@@ -20,6 +20,13 @@ const specSchema = z.object({
   description: z.string().optional(),
 });
 
+// Reports carry no frontmatter — they're author-supplied working documents.
+// Their titles and descriptions live in src/lib/reports.ts.
+const reportSchema = z.object({
+  title: z.string().optional(),
+  description: z.string().optional(),
+});
+
 export const collections = {
   research: defineCollection({
     loader: glob({ pattern: '*/*.md', base: './src/content/research' }),
@@ -29,5 +36,10 @@ export const collections = {
   spec: defineCollection({
     loader: glob({ pattern: '*/*.md', base: './src/content/2026' }),
     schema: specSchema,
+  }),
+
+  reports: defineCollection({
+    loader: glob({ pattern: '*/reports/*.md', base: './src/content/2026' }),
+    schema: reportSchema,
   }),
 };

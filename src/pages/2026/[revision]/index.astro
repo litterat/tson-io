@@ -1,19 +1,29 @@
 ---
 import Layout from '../../../layout/Layout.astro';
 import { getCollection } from 'astro:content';
+import { byReportOrder, reportInfo, reportSlug } from '../../../lib/reports';
 
 export async function getStaticPaths() {
-  const entries = await getCollection('spec');
+  const [entries, reportEntries] = await Promise.all([
+    getCollection('spec'),
+    getCollection('reports'),
+  ]);
   const revisions = [...new Set(entries.map(e => e.id.split('/')[0]))];
 
   return revisions.map(revision => ({
     params: { revision },
-    props: { entries: entries.filter(e => e.id.split('/')[0] === revision) },
+    props: {
+      entries: entries.filter(e => e.id.split('/')[0] === revision),
+      reports: reportEntries
+        .filter(e => e.id.split('/')[0] === revision)
+        .sort((a, b) => byReportOrder(a.id, b.id))
+        .map(e => ({ id: e.id, ...reportInfo(e.id, e.body ?? '') })),
+    },
   }));
 }
 
 const { revision } = Astro.params;
-const { entries } = Astro.props;
+const { entries, reports } = Astro.props;
 
 const tsonParts = entries
   .filter(e => e.data.part !== undefined)
@@ -105,7 +115,7 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
       </ul>
     </section>
 
-    <section>
+    <section class="mb-12">
       <h2 class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200">Resolved Fixtures</h2>
       <p class="text-sm text-gray-600 mb-4">
         Non-normative resolver output for the schema source files above. Parse the source, run the
@@ -121,5 +131,34 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
         ))}
       </ul>
     </section>
+
+    {reports.length > 0 && (
+      <section>
+        <h2 class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200">Reports</h2>
+        <p class="text-sm text-gray-600 mb-6 max-w-2xl">
+          Non-normative working documents prepared against this revision as input to the next
+          development cycle: gap analyses mapping other schema systems onto TSON, and feedback
+          gathered from building the first implementation. They record findings and design
+          directions under consideration, not committed specification.
+        </p>
+        <ul class="space-y-6">
+          {reports.map(report => (
+            <li>
+              <a href={`/2026/${revision}/reports/${reportSlug(report.id)}`} class="font-medium text-lg hover:underline">
+                {report.title}
+              </a>
+              <div class="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                <span>Non-normative</span>
+                <span>·</span>
+                <a href={`/raw/2026/${report.id}.md`} class="hover:text-gray-900 font-mono">view raw ↗</a>
+              </div>
+              {report.description && (
+                <p class="text-sm text-gray-500 mt-1 max-w-2xl">{report.description}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
   </div>
 </Layout>
