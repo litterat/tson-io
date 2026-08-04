@@ -1,2 +1,24 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+
+/* ── Markdown tables ───────────────────────────────────────────
+   Mapping tables in the reports carry long slash-joined code runs
+   (`datetime`/`date`/`time`/…) with no space to break at, which sets a
+   min-content width the column can't go below and pushes the page wide.
+   src/lib/rehypeTableScroll.mjs adds <wbr> after each slash so the run may
+   break there, and wraps every table in .table-scroll as the fallback for
+   anything still too wide. */
+
+.table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.prose :where(td, th) {
+  /* last resort for a single token longer than its column */
+  overflow-wrap: break-word;
+}
+
+.prose :where(td, th) code {
+  white-space: normal;
+}
