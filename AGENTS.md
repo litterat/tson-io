@@ -21,6 +21,31 @@ astro dev --background
 ```
 
 Manage the background server with `astro dev stop`, `astro dev status`, and `astro dev logs`.
+`astro dev stop` only tracks the most recent instance, so repeated restarts leave orphans
+listening on 4321, 4322, 4323 … — check with `lsof -nP -iTCP:4321-4330 -sTCP:LISTEN` if the site
+looks stale or broken locally, since the browser is probably pointed at an older one.
+
+Markdown is rendered through a rehype plugin (`src/lib/rehypeTables.mjs`), and Astro caches the
+rendered result in `.astro/`. **Editing that plugin changes nothing until the cache is cleared** —
+`rm -rf .astro node_modules/.astro` — and a dev server left running across the delete serves
+broken pages.
+
+## Dependencies must be declared
+
+Anything imported by `src/` or named in `astro.config.mjs` belongs in `package.json`
+`dependencies`, even when it already resolves locally. A local `node_modules` hoists transitive
+packages, so an undeclared import works here and fails on Cloudflare, whose clean install from the
+lockfile skips optional peers. This has broken deploys twice: `micromark` (imported by
+`/research`) and `@astrojs/markdown-remark` (required for `markdown.rehypePlugins` to run at all
+under Astro 7's new default processor — its absence silently disables the plugin rather than
+erroring).
+
+Note `@astrojs/markdown-remark` is pinned **exactly**, not with a caret: astro declares a
+`peerOptional` on one exact version, so `^7.2.0` resolves higher and fails `npm ci` with ERESOLVE.
+
+To verify a dependency change the way Cloudflare sees it, clone to a temp dir, copy in
+`package.json`/`package-lock.json`, then `npm ci` and build — `npx astro build` in this working
+tree will not catch a missing declaration.
 
 ## Revision-scoped `/2026` paths
 
