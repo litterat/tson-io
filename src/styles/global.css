@@ -22,3 +22,29 @@
 .prose :where(td, th) code {
   white-space: normal;
 }
+
+/* ── Report mapping tables ─────────────────────────────────────
+   Every table in the reports is the same shape — source construct, TSON
+   mapping, notes — but auto layout sizes each one by its own longest cell,
+   so no two line up. Pin the three columns to the same split throughout,
+   and let a table narrower than min-width scroll rather than crush its
+   code columns on a phone. Only cols-3 (tagged by rehypeTables.mjs) is
+   pinned; a table of any other shape keeps auto layout. */
+
+.report-prose table.cols-3 {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 34rem;
+}
+
+.report-prose table.cols-3 :is(th, td):nth-child(1) {
+  width: 27%;
+}
+
+.report-prose table.cols-3 :is(th, td):nth-child(2) {
+  width: 33%;
+}
+
+.report-prose table.cols-3 :is(th, td):nth-child(3) {
+  width: 40%;
+}

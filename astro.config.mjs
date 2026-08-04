@@ -1,12 +1,12 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
-import rehypeTableScroll from './src/lib/rehypeTableScroll.mjs';
+import rehypeTables from './src/lib/rehypeTables.mjs';
 
 export default defineConfig({
   site: 'https://tson.io',
   markdown: {
-    rehypePlugins: [rehypeTableScroll],
+    rehypePlugins: [rehypeTables],
   },
   vite: {
     plugins: [tailwindcss()],
