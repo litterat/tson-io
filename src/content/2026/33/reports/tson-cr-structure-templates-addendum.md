@@ -1,6 +1,6 @@
 ---
 title: "TSON Change Report Addendum: Open-Form Representation — Two Endpoints"
-against: "TSON 2026 Revision 33 (Working Draft), Part 2 §5.3, §5.10, §8.1–§8.2, §12.1; CR-structure-templates (adopted in Revision 33)"
+against: "TSON 2026 Revision 33 (Working Draft)"
 status: "Proposed"
 id: "CR-structure-templates-addendum-1"
 revised: "2026-08-25 — rebased from the CR-as-drafted baseline onto Revision 33 as executed"

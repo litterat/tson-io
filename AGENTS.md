@@ -76,11 +76,11 @@ Routes:
 
 | Path | Collection | Shown as |
 | --- | --- | --- |
-| `{revision}/tson-part1-data.md`, `tson-part2-schema.md` | `spec` (`part` set) | "TSON Specification" |
-| `{revision}/tson-guide.md`, any other spec doc | `spec` (no `part`) | "Companion Specifications" |
-| `{revision}/*-changelog.md` | `changelog` | "Change Log" |
+| `{revision}/tson-part1-data.md`, `tson-part2-schema.md` | `spec` (`part` set) | "TSON Specification", first |
+| `{revision}/tson-guide.md`, any other spec doc | `spec` (no `part`) | "TSON Specification", after the parts |
+| `{revision}/*-changelog.md` | `changelog` | "Reports" → "Change Log" |
 | `{revision}/reports/*.md` | `reports` | "Reports", split by kind |
-| `{revision}/m/*.tn`, `{revision}/fixtures/*.tn` | — (static, see below) | "Schema Source Files" / "Resolved Fixtures" |
+| `{revision}/m/*.tn`, `{revision}/fixtures/*.tn` | — (static, see below) | "Schema Source Files", each source with its fixture in parentheses |
 
 **Change logs** are matched by the `-changelog.md` filename suffix, and the `spec` glob excludes
 that suffix — so a change log must be named `…-changelog.md` or it will load as a spec document

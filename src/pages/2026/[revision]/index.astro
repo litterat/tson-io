@@ -5,7 +5,6 @@ import { getCollection } from 'astro:content';
 import { byReportOrder, reportInfo, reportKind, reportSlug } from '../../../lib/reports';
 import {
   CURRENT_REVISION,
-  FIXTURE_FILES,
   SCHEMA_FILES,
   SERIES,
   compareRevisionsDesc,
@@ -49,16 +48,20 @@ const { entries, changelogs, reports } = Astro.props;
 const current = isCurrentRevision(revision);
 
 // Change reports propose specific edits; analysis reports study and report.
-// They're listed apart because a reader looking for "what is being changed"
-// should not have to sift it out of the research.
+// The listing runs the proposals first, so a reader looking for "what is being
+// changed" reaches it before the research it argues from.
 const changeReports = reports.filter(r => r.kind === 'change');
 const analysisReports = reports.filter(r => r.kind === 'analysis');
 
-const tsonParts = entries
-  .filter(e => e.data.part !== undefined)
-  .sort((a, b) => (a.data.part ?? 0) - (b.data.part ?? 0));
-
-const otherDocs = entries.filter(e => e.data.part === undefined);
+// The numbered parts lead, then the companion documents developed alongside
+// them (the guide) — one list, because a reader looking for the specification
+// wants the guide in the same place, not under a separate heading.
+const specDocs = [
+  ...entries
+    .filter(e => e.data.part !== undefined)
+    .sort((a, b) => (a.data.part ?? 0) - (b.data.part ?? 0)),
+  ...entries.filter(e => e.data.part === undefined),
+];
 ---
 
 <Layout
@@ -69,18 +72,11 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
     <RevisionNotice revision={revision} currentHref={revisionPath(CURRENT_REVISION)} />
 
     <h1 class="text-3xl font-bold mb-2">Specification</h1>
-    <p class="text-gray-600 mb-4">
-      The TSON specification, split into two parts, plus room for companion specifications
-      developed alongside it.
-    </p>
-    <p class="text-sm text-gray-500 mb-4 max-w-2xl border border-gray-200 rounded-md px-4 py-3">
-      These documents describe the specification text. Implementations of TSON (parsers,
-      encoders, libraries) may be licensed however you choose; the specification's license
-      applies to the written text, not to code that implements it.
-    </p>
-    <p class="text-sm text-gray-500 mb-12 max-w-2xl">
-      Spot an error, or have a comment on the specification? Open an issue on{' '}
-      <a href="https://github.com/litterat/tson-io/issues" rel="noopener" target="_blank" class="underline hover:text-gray-700">
+    <p class="text-gray-600 mb-12 max-w-2xl">
+      The TSON specification, split into two parts, plus the companion documents
+      developed alongside it. Spot an error, or have a comment on the specification? Open an
+      issue on{' '}
+      <a href="https://github.com/litterat/tson-io/issues" rel="noopener" target="_blank" class="underline hover:text-gray-900">
         GitHub
       </a>.
     </p>
@@ -88,7 +84,7 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
     <section class="mb-12">
       <h2 class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200">TSON Specification</h2>
       <ul class="space-y-6">
-        {tsonParts.map(entry => (
+        {specDocs.map(entry => (
           <li>
             <a href={`/2026/${entry.id}`} class="font-medium text-lg hover:underline">
               {entry.data.title}
@@ -108,111 +104,67 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
       </ul>
     </section>
 
-    {changelogs.length > 0 && (
-      <section class="mb-12">
-        <h2 id="change-log" class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200 scroll-mt-6">Change Log</h2>
-        <p class="text-sm text-gray-600 mb-6 max-w-2xl">
-          What was accepted into this revision, and the inputs it was adjudicated from. Each
-          entry records a disposition, so a reader can trace a change back to the feedback or
-          change report that prompted it.
-        </p>
-        <ul class="space-y-6">
-          {changelogs.map(entry => (
-            <li>
-              <a href={`/${SERIES}/${entry.id}`} class="font-medium text-lg hover:underline">
-                {entry.title}
-              </a>
-              <div class="flex items-center gap-3 mt-1 text-sm text-gray-500">
-                {entry.against && <><span>Against {entry.against}</span><span>·</span></>}
-                <a href={`/raw/${SERIES}/${entry.id}.md`} class="hover:text-gray-900 font-mono">view raw ↗</a>
-              </div>
-              {entry.status && (
-                <p class="text-sm text-gray-500 mt-1 max-w-2xl">{entry.status}</p>
-              )}
-              {entry.inputs.length > 0 && (
-                <ul class="mt-2 text-sm text-gray-500 list-disc pl-5 space-y-0.5 max-w-2xl">
-                  {entry.inputs.map(input => <li>{input}</li>)}
-                </ul>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
-    )}
-
-    {otherDocs.length > 0 && (
-      <section class="mb-12">
-        <h2 class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200">Companion Specifications</h2>
-        <ul class="space-y-6">
-          {otherDocs.map(entry => (
-            <li>
-              <a href={`/2026/${entry.id}`} class="font-medium text-lg hover:underline">
-                {entry.data.title}
-              </a>
-              <div class="flex items-center gap-3 mt-1 text-sm text-gray-500">
-                <span>Draft {entry.data.draft}</span>
-                <span>·</span>
-                <span>{entry.data.status}</span>
-                <span>·</span>
-                <a href={`/raw/2026/${entry.id}.md`} class="hover:text-gray-900 font-mono">view raw ↗</a>
-              </div>
-              {entry.data.description && (
-                <p class="text-sm text-gray-500 mt-1">{entry.data.description}</p>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
-    )}
-
     <section class="mb-12">
-      <h2 id="schema-source-files" class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200 scroll-mt-6">Schema Source Files</h2>
+      <h2 id="schema-source-files" class="text-xl font-semibold mb-3 pb-2 border-b border-gray-200 scroll-mt-6">Schema Source Files</h2>
       <p class="text-sm text-gray-600 mb-4">
-        The normative TSON schema source files in <code class="font-mono bg-gray-100 px-1 rounded">.tn</code> format.
+        The normative TSON schema source files in <code class="font-mono bg-gray-100 px-1 rounded">.tn</code>
+        format, each followed in parentheses by its non-normative resolved-output fixture. To check
+        an implementation: parse the source, run the resolver, canonicalise, and compare against
+        the fixture.
       </p>
       <ul class="space-y-2 font-mono text-sm">
         {SCHEMA_FILES.map(file => (
           <li>
-            <a href={`/2026/${revision}/m/${file}`} class="text-gray-700 hover:text-gray-900 hover:underline">
-              {file}
+            <a href={`/2026/${revision}/m/${file.source}`} class="text-gray-700 hover:text-gray-900 hover:underline">
+              {file.source}
             </a>
+            <span class="text-gray-400">{' ('}</span>
+            <a href={`/2026/${revision}/m/${file.resolved}`} class="text-gray-500 hover:text-gray-900 hover:underline">
+              {file.resolved}
+            </a>
+            <span class="text-gray-400">{')'}</span>
           </li>
         ))}
       </ul>
     </section>
 
-    <section class="mb-12">
-      <h2 id="resolved-fixtures" class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200 scroll-mt-6">Resolved Fixtures</h2>
-      <p class="text-sm text-gray-600 mb-4">
-        Non-normative resolver output for the schema source files above. Parse the source, run the
-        resolver, canonicalise, and compare against these fixtures.
-      </p>
-      <ul class="space-y-2 font-mono text-sm">
-        {FIXTURE_FILES.map(file => (
-          <li>
-            <a href={`/2026/${revision}/m/${file}`} class="text-gray-700 hover:text-gray-900 hover:underline">
-              {file}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </section>
-
-    {reports.length > 0 && (
+    {(reports.length > 0 || changelogs.length > 0) && (
       <section>
-        <h2 id="reports" class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200 scroll-mt-6">Reports</h2>
+        <h2 id="reports" class="text-xl font-semibold mb-3 pb-2 border-b border-gray-200 scroll-mt-6">Reports</h2>
         <p class="text-sm text-gray-600 mb-6 max-w-2xl">
-          Non-normative working documents written against this revision. They record findings
-          and design directions under consideration, not committed specification.
+          The working documents belonging to this revision: the change log of what was accepted
+          into it, and the non-normative reports written against it, which record findings and
+          design directions under consideration rather than committed specification.
         </p>
 
+        {changelogs.length > 0 && (
+          <div class="mb-6">
+            <ul class="space-y-6">
+              {changelogs.map(entry => (
+                <li>
+                  <a href={`/${SERIES}/${entry.id}`} class="font-medium text-lg hover:underline">
+                    {entry.title}
+                  </a>
+                  <div class="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                    {entry.against && <><span>Against {entry.against}</span><span>·</span></>}
+                    <a href={`/raw/${SERIES}/${entry.id}.md`} class="hover:text-gray-900 font-mono">view raw ↗</a>
+                  </div>
+                  {entry.status && (
+                    <p class="text-sm text-gray-500 mt-1 max-w-2xl">{entry.status}</p>
+                  )}
+                  {entry.inputs.length > 0 && (
+                    <ul class="mt-2 text-sm text-gray-500 list-disc pl-5 space-y-0.5 max-w-2xl">
+                      {entry.inputs.map(input => <li>{input}</li>)}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {changeReports.length > 0 && (
-          <div class="mb-10">
-            <h3 class="text-base font-semibold mb-2">Change Reports</h3>
-            <p class="text-sm text-gray-600 mb-5 max-w-2xl">
-              Proposals for specific edits to the specification, each argued in full and carrying
-              a decision the revision editor can accept or decline.
-            </p>
+          <div class="mb-6">
             <ul class="space-y-6">
               {changeReports.map(report => (
                 <li>
@@ -236,12 +188,6 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
 
         {analysisReports.length > 0 && (
           <div>
-            <h3 class="text-base font-semibold mb-2">Analysis Reports</h3>
-            <p class="text-sm text-gray-600 mb-5 max-w-2xl">
-              Studies and reviews: gap analyses mapping other schema systems onto TSON, feedback
-              gathered from building the first implementation, and editorial reviews measuring
-              those inputs against the revision — the research a change report argues from.
-            </p>
             <ul class="space-y-6">
               {analysisReports.map(report => (
                 <li>
@@ -263,5 +209,10 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
         )}
       </section>
     )}
+
+    <p class="text-sm text-gray-500 mt-12 max-w-2xl border border-gray-200 rounded-md px-4 py-3">
+      Implementations of TSON (parsers, encoders, libraries) may be licensed however you choose;
+      the specification's license applies to the written text, not to code that implements it.
+    </p>
   </div>
 </Layout>

@@ -83,12 +83,14 @@ export function slugOf(id: string): string {
   return id.split('/').slice(1).join('/');
 }
 
-/** The normative schema sources published under `/{series}/{revision}/m/`. */
-export const SCHEMA_FILES = ['meta-kernel.tn', 'meta.tn', 'core.tn'];
-
-/** Their non-normative resolved-output fixtures, served from the same directory. */
-export const FIXTURE_FILES = [
-  'meta-kernel-resolved.tn',
-  'meta-resolved.tn',
-  'core-resolved.tn',
+/**
+ * The normative schema sources published under `/{series}/{revision}/m/`, each
+ * paired with its non-normative resolved-output fixture. Both are served from
+ * that same directory, and the listing shows them together so a source and its
+ * resolver output are never a scroll apart.
+ */
+export const SCHEMA_FILES = [
+  { source: 'meta-kernel.tn', resolved: 'meta-kernel-resolved.tn' },
+  { source: 'meta.tn', resolved: 'meta-resolved.tn' },
+  { source: 'core.tn', resolved: 'core-resolved.tn' },
 ];
