@@ -88,7 +88,7 @@ const schemaRows = [
     snippets: [
       { tag: 'schema', kind: 'schema', html: `<span class="tk">tags</span>   <span class="gain">=&gt;</span> <span class="tp">[</span><span class="ts">text</span><span class="gain">;</span> <span class="tn">1..10</span><span class="tp">]</span>
 <span class="tk">point</span>  <span class="gain">=&gt;</span> <span class="tp">[</span><span class="ts">number</span><span class="tp">,</span> <span class="ts">number</span><span class="tp">]</span>
-<span class="tk">badges</span> <span class="gain">=&gt;</span> <span class="ts">set</span><span class="gain">&lt;</span><span class="ts">text</span><span class="gain">&gt;</span>` },
+<span class="tk">badges</span> <span class="gain">=&gt;</span> <span class="gain">!set</span> { <span class="tk">element_type</span><span class="tp">:</span> <span class="ts">text</span> }` },
       { tag: 'data (array, tuple and set all encode as array)', kind: 'data', html: `<span class="gain">!tags</span> <span class="tp">[</span><span class="ts">urgent reviewed</span><span class="tp">]</span>\n<span class="gain">!point</span> <span class="tp">[</span><span class="tn">3.5 7.2</span><span class="tp">]</span>\n<span class="gain">!badges</span> <span class="tp">[</span><span class="ts">alpha beta</span><span class="tp">]</span>` },
     ],
   },
