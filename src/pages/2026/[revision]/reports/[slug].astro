@@ -17,7 +17,17 @@ const { entry } = Astro.props;
 const revision = revisionOf(entry.id);
 const { title, description } = reportInfo(entry.id, entry.body ?? '', entry.data);
 const kind = reportKind(entry.data);
-const { against, status } = entry.data;
+const { against, baseline, inputs, revised, status } = entry.data;
+
+// Provenance a report declares in frontmatter. Which fields appear varies by
+// report — a change report names what it argues against, a review names the
+// baseline it measured and the inputs it measured against it.
+const provenance = [
+  { label: 'Against', value: against },
+  { label: 'Baseline', value: baseline },
+  { label: 'Inputs', value: inputs },
+  { label: 'Revised', value: revised },
+].filter(row => row.value);
 const rawUrl = `/raw/2026/${entry.id}.md`;
 const pageTitle = isCurrentRevision(revision) ? title : `${title} (Revision ${revision})`;
 
@@ -50,7 +60,16 @@ const { Content } = await render(entry);
         <span>·</span>
         <a href={rawUrl} class="hover:text-gray-900 font-mono">view raw ↗</a>
       </div>
-      {against && <p class="text-sm text-gray-500 mt-3">Against {against}</p>}
+      {provenance.length > 0 && (
+        <dl class="mt-4 text-sm text-gray-500 space-y-1">
+          {provenance.map(({ label, value }) => (
+            <div class="sm:flex sm:gap-2">
+              <dt class="font-medium text-gray-600 sm:w-20 sm:shrink-0">{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
     </header>
 
     <!-- Content -->

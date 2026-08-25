@@ -238,8 +238,9 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
           <div>
             <h3 class="text-base font-semibold mb-2">Analysis Reports</h3>
             <p class="text-sm text-gray-600 mb-5 max-w-2xl">
-              Gap analyses mapping other schema systems onto TSON, and feedback gathered from
-              building the first implementation — the research a change report argues from.
+              Studies and reviews: gap analyses mapping other schema systems onto TSON, feedback
+              gathered from building the first implementation, and editorial reviews measuring
+              those inputs against the revision — the research a change report argues from.
             </p>
             <ul class="space-y-6">
               {analysisReports.map(report => (
@@ -248,7 +249,7 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
                     {report.title}
                   </a>
                   <div class="flex items-center gap-3 mt-1 text-sm text-gray-500">
-                    <span>Non-normative</span>
+                    <span>{report.status ?? 'Non-normative'}</span>
                     <span>·</span>
                     <a href={`/raw/${SERIES}/${report.id}.md`} class="hover:text-gray-900 font-mono">view raw ↗</a>
                   </div>

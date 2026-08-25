@@ -38,13 +38,28 @@ const changelogSchema = z.object({
 // Reports are author-supplied working documents. Early ones carry no
 // frontmatter at all and take their titles from src/lib/reports.ts; newer ones
 // declare it here, which wins. Change reports are identified by a `CR-` id.
+//
+// The provenance fields are all optional and vary by report — a change report
+// names what it argues `against`, a review names the `baseline` it measures
+// against and the `inputs` it measured. Anything declared here is rendered on
+// the report page; anything not declared is simply absent.
 const reportSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
   /** What the report argues against — a revision, or another report. */
   against: z.string().optional(),
+  /** The revision a review measures its inputs against. */
+  baseline: z.string().optional(),
+  /** The documents a review takes as input. */
+  inputs: z.string().optional(),
+  /** The series the report belongs to. */
+  series: z.string().optional(),
   /** e.g. "Proposed", "Accepted". */
   status: z.string().optional(),
+  /** When the report was written. */
+  date: z.coerce.date().optional(),
+  /** A note on the most recent revision of the report itself. */
+  revised: z.string().optional(),
   /** The report's own identifier; a `CR-` prefix marks a change report. */
   id: z.string().optional(),
 });

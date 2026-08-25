@@ -29,7 +29,12 @@ export interface ReportFrontmatter {
   title?: string;
   description?: string;
   against?: string;
+  baseline?: string;
+  inputs?: string;
+  series?: string;
   status?: string;
+  date?: Date;
+  revised?: string;
   id?: string;
 }
 
@@ -75,6 +80,11 @@ export const REPORT_META: Record<string, ReportMeta> = {
     description:
       'Removes the one place in the grammar where an unmarked token in a type-ref position resolves against the structure namespace, which was also a shadowing hazard. The kernel container constructors become parameterless, the map type gains a sugar form mirroring the data notation, and generic application becomes purely schema-local. Accepted in full into revision 33.',
   },
+  'tson-schema-mappings-rev33': {
+    title: 'Review Inputs Measured Against Revision 33',
+    description:
+      'Seven review documents prepared against revision 32 arrived after revision 33 was executed. This measures each against what revision 33 actually contains — separating the asks it already answers from the remainder — and assembles what is left into a recommended scope and sequence for revision 34. The implementation feedback register comes out fully subsumed.',
+  },
   'tson-cr-structure-templates-addendum': {
     title: 'Addendum: Open-Form Representation — Two Endpoints',
     description:
@@ -84,6 +94,7 @@ export const REPORT_META: Record<string, ReportMeta> = {
 
 /** Listing order on the specification page; unlisted reports follow, alphabetically. */
 export const REPORT_ORDER = [
+  'tson-schema-mappings-rev33',
   'tson-cr-structure-templates',
   'tson-cr-structure-templates-addendum',
   'schema-mappings-synthesis',
