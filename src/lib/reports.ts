@@ -2,16 +2,35 @@
  * Titles and descriptions for the non-normative reports under
  * `src/content/2026/{revision}/reports/`.
  *
- * The report documents are written outside this repo and carry no frontmatter,
- * so their metadata lives here rather than in the files — a regenerated report
- * keeps its listing. REPORT_ORDER drives the order they're listed in; a report
- * with no entry here still publishes, falling back to its first markdown
- * heading with no description.
+ * Reports are written outside this repo. The earlier ones carry no frontmatter,
+ * so their metadata lives in REPORT_META here — a regenerated report keeps its
+ * listing. Newer ones declare `title`/`description` in frontmatter, which wins.
+ * The resolution order is frontmatter, then REPORT_META, then the file's first
+ * markdown heading; a report with none of those still publishes under its slug.
+ *
+ * REPORT_ORDER drives the listing order, with unlisted reports after it,
+ * alphabetically.
  */
 
 export interface ReportMeta {
   title: string;
   description: string;
+}
+
+/**
+ * Reports come in two kinds, listed separately because they do different work.
+ * An *analysis* report studies something and reports findings; a *change*
+ * report proposes specific edits to the specification and carries a `CR-` id.
+ */
+export type ReportKind = 'analysis' | 'change';
+
+/** Frontmatter a report may declare; every field is optional. */
+export interface ReportFrontmatter {
+  title?: string;
+  description?: string;
+  against?: string;
+  status?: string;
+  id?: string;
 }
 
 /** Keyed by the file's slug (the basename without `.md`). */
@@ -51,10 +70,22 @@ export const REPORT_META: Record<string, ReportMeta> = {
     description:
       'Issues, ambiguities, and inconsistencies found in the specification while building the first implementation, each recorded with the reading that implementation chose and a suggested resolution. The most direct feedback loop the draft currently has.',
   },
+  'tson-cr-structure-templates': {
+    title: 'Change Report: Removal of Cross-Namespace Template Linkage',
+    description:
+      'Removes the one place in the grammar where an unmarked token in a type-ref position resolves against the structure namespace, which was also a shadowing hazard. The kernel container constructors become parameterless, the map type gains a sugar form mirroring the data notation, and generic application becomes purely schema-local. Accepted in full into revision 33.',
+  },
+  'tson-cr-structure-templates-addendum': {
+    title: 'Addendum: Open-Form Representation — Two Endpoints',
+    description:
+      'Finds that the change report\'s inability to represent a parameter inside a collection-valued slot is a symptom rather than a missing feature: a quotation typed slot-by-slot is incomplete wherever the vocabulary it quotes recurses. Sets out the two coherent completions — grow the template vocabulary, or drop typed open representation and bind once at materialisation — and recommends the second.',
+  },
 };
 
 /** Listing order on the specification page; unlisted reports follow, alphabetically. */
 export const REPORT_ORDER = [
+  'tson-cr-structure-templates',
+  'tson-cr-structure-templates-addendum',
   'schema-mappings-synthesis',
   'json-schema-to-tson-mapping',
   'protobuf-to-tson-mapping',
@@ -69,14 +100,30 @@ export function reportSlug(id: string): string {
   return id.split('/').pop() ?? id;
 }
 
-/** Metadata for a report, falling back to its first markdown heading. */
-export function reportInfo(id: string, body = ''): ReportMeta {
+/**
+ * Metadata for a report: frontmatter first, then REPORT_META, then the file's
+ * first markdown heading. Title and description resolve independently, so a
+ * report may declare a title in frontmatter and still take its listing
+ * description from REPORT_META.
+ */
+export function reportInfo(
+  id: string,
+  body = '',
+  data: ReportFrontmatter = {},
+): ReportMeta {
   const slug = reportSlug(id);
   const meta = REPORT_META[slug];
-  if (meta) return meta;
-
   const heading = body.match(/^#\s+(.+)$/m)?.[1]?.trim();
-  return { title: heading ?? slug, description: '' };
+
+  return {
+    title: data.title ?? meta?.title ?? heading ?? slug,
+    description: data.description ?? meta?.description ?? '',
+  };
+}
+
+/** A report is a change report when it carries a `CR-` identifier. */
+export function reportKind(data: ReportFrontmatter = {}): ReportKind {
+  return data.id?.startsWith('CR-') ? 'change' : 'analysis';
 }
 
 /** Sorts report ids by REPORT_ORDER, with anything unlisted after, alphabetically. */

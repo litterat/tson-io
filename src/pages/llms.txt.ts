@@ -11,14 +11,21 @@
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { resolveBase, specLine } from '../lib/llmsTxt';
-import { CURRENT_REVISION } from '../lib/spec';
+import { CURRENT_REVISION, isCurrentRevision, revisionOf } from '../lib/spec';
 import about from '../lib/llms-about.txt?raw';
 import otherTsons from '../lib/llms-other-tsons.txt?raw';
 
 export const GET: APIRoute = async ({ site }) => {
   const base = resolveBase(site);
 
-  const specEntries = await getCollection('spec');
+  // Scoped to the current revision: retained revisions stay published and
+  // linkable, but the index an LLM reads must name one text, not several.
+  const [allSpec, allChangelogs] = await Promise.all([
+    getCollection('spec'),
+    getCollection('changelog'),
+  ]);
+  const specEntries = allSpec.filter(e => isCurrentRevision(revisionOf(e.id)));
+  const changelogs = allChangelogs.filter(e => isCurrentRevision(revisionOf(e.id)));
   const tsonParts = specEntries
     .filter(e => e.data.part !== undefined)
     .sort((a, b) => (a.data.part ?? 0) - (b.data.part ?? 0));
@@ -48,6 +55,17 @@ export const GET: APIRoute = async ({ site }) => {
     '',
     `- [Research & Papers](${base}/research-llms.txt): Background research articles that led to TSON's design — not required to use TSON, useful for understanding why it's designed the way it is.`,
     '',
+    '## Revisions',
+    '',
+    `This index describes revision ${CURRENT_REVISION}, the current working revision of the 2026 series. Earlier revisions stay published at their own paths so hash-pinned references keep resolving: [all revisions](${base}/2026/revisions).`,
+    '',
+    ...changelogs.map(
+      e =>
+        `- [${e.data.title}](${base}/raw/2026/${e.id}.md)${
+          e.data.against ? `: what this revision changed against ${e.data.against}, with a disposition for every input.` : ''
+        }`,
+    ),
+    ...(changelogs.length > 0 ? [''] : []),
     '## Licensing',
     '',
     'The specification text is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/); implementations (parsers, encoders, libraries) may be licensed however their authors choose.',

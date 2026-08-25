@@ -52,11 +52,53 @@ tree will not catch a missing declaration.
 The spec/schema files live under a revision number so a hash-pinned reference never breaks:
 `src/content/2026/{revision}/*.md` (Part 1/2, the guide), `src/content/2026/{revision}/m/*.tn`
 (meta-kernel, meta, core), and `src/content/2026/{revision}/fixtures/*.tn` (their resolved-output
-fixtures). `CURRENT_REVISION` in `src/lib/spec.ts` is the single source of truth for which
-revision is "current" — the home page, `/llms.txt`, `/sitemap.xml`, and `public/_redirects` all
-key off it. `/2026` itself is a redirect (real 302 via `public/_redirects`, plus a static
-meta-refresh fallback page for local preview) to `/2026/{CURRENT_REVISION}` — it is never itself a
-real, hash-pinnable document.
+fixtures). Every revision stays published at its own path forever; nothing is deleted when the
+next one opens.
+
+`src/lib/spec.ts` is the revision registry. **Which** revisions exist is derived from the content
+directories, so every page, the sitemap, and the revisions index pick a new one up automatically.
+Only two things are declared by hand: `CURRENT_REVISION` (which one is the working draft — the
+home page, `/llms.txt`, `/sitemap.xml`, and `public/_redirects` key off it) and `REVISION_NOTES`
+(an optional one-line summary per revision for the listing).
+
+Routes:
+
+- `/2026` — a redirect (real 302 via `public/_redirects`, plus a static meta-refresh fallback page
+  for local preview) to `/2026/{CURRENT_REVISION}`. Never itself a real, hash-pinnable document.
+- `/2026/revisions` — the index of every revision, current and retained. A static route, so it
+  wins over `[revision]`; revisions are numeric, so the name can never collide.
+- `/2026/{revision}/…` — the revision's own pages. Each renders `RevisionNotice`: a quiet
+  "current working draft" line on `CURRENT_REVISION`, and an amber "retained revision" banner
+  everywhere else, linking to the same document in the current revision. Retained pages also get
+  a `(Revision N)` title suffix so search results distinguish them.
+
+### What a revision directory holds
+
+| Path | Collection | Shown as |
+| --- | --- | --- |
+| `{revision}/tson-part1-data.md`, `tson-part2-schema.md` | `spec` (`part` set) | "TSON Specification" |
+| `{revision}/tson-guide.md`, any other spec doc | `spec` (no `part`) | "Companion Specifications" |
+| `{revision}/*-changelog.md` | `changelog` | "Change Log" |
+| `{revision}/reports/*.md` | `reports` | "Reports", split by kind |
+| `{revision}/m/*.tn`, `{revision}/fixtures/*.tn` | — (static, see below) | "Schema Source Files" / "Resolved Fixtures" |
+
+**Change logs** are matched by the `-changelog.md` filename suffix, and the `spec` glob excludes
+that suffix — so a change log must be named `…-changelog.md` or it will load as a spec document
+and fail the schema (it has no `draft`). Frontmatter is `title` plus optional `against`, `status`,
+and `inputs` (a list). It renders through the same `[slug].astro` route as the spec documents,
+branching on the absence of `draft`.
+
+**Reports** are revision-scoped and are **not** carried forward: a report is written against the
+revision it names, as input to the next one, and stays there. Retained-revision report pages say
+so rather than claiming they've been superseded.
+
+Report metadata resolves frontmatter first, then `REPORT_META` in `src/lib/reports.ts`, then the
+file's first markdown heading — title and description resolve independently, so a report that
+declares only a `title` in frontmatter still takes its listing description from `REPORT_META`. The
+early reports carry no frontmatter at all and depend entirely on `REPORT_META`; don't remove those
+entries. A report whose frontmatter `id` starts with `CR-` is listed as a **change report**
+(a proposal for specific edits, shown with its `status` and `against`); everything else is an
+**analysis report**. `REPORT_ORDER` drives listing order within each group.
 
 **Why `.tn`, not `.tn1`** — the versioned extension belongs to a released version. Part 1 reserves
 `.tn1` for TSON version 1 (and `.tn2`, … for later major versions), and the spec is still a working
@@ -65,15 +107,29 @@ format hasn't frozen into. Everything unversioned therefore uses the bare `.tn` 
 reads as "development file, pre-v1 spec". When the draft freezes as version 1, the released
 artifacts take `.tn1`.
 
-**Starting a new revision** (e.g. 32 -> 33):
-1. Copy `src/content/2026/32/` to `src/content/2026/33/` (all three subtrees).
-2. Update the copies' self-referencing `!!id`/`!!meta`/`!!import`/`!!schema` URLs from
-   `/2026/32/...` to `/2026/33/...`.
-3. Bump `CURRENT_REVISION` in `src/lib/spec.ts` to `'33'`.
-4. Add a `/2026/33/m/*.tn` block to `public/_headers` (leave the old revision's block in place —
-   it's still served).
-5. Update the target in `public/_redirects` to `/2026/33`.
-6. Run the public-sync step below for the new revision's files.
+**Starting a new revision** (e.g. 33 -> 34):
+1. Copy the previous revision's `*.md`, `m/`, and `fixtures/` into `src/content/2026/34/`.
+   Do **not** copy `reports/` or the previous revision's `*-changelog.md` — both belong to the
+   revision they were written against.
+2. In the copies, rewrite `2026/33` -> `2026/34` (the self-referencing
+   `!!id`/`!!meta`/`!!import`/`!!schema` URLs and the spec's own cross-references), and the
+   `## 2026 Revision 33` headings. Drop the previous revision's "what changed" sentence from the
+   **Status:** paragraph — it describes the old revision, not the new one.
+3. Bump `CURRENT_REVISION` in `src/lib/spec.ts` to `'34'`, and add `REVISION_NOTES` entries: one
+   for the new revision, and a closing summary for the one it supersedes.
+4. Update the target in `public/_redirects` to `/2026/34`.
+5. Run the public-sync step below for the new revision's files.
+6. `npx astro build`, and check `/2026/revisions` lists both, `/llms.txt` names only the new
+   revision, and the retained revision's pages carry the banner.
+
+`public/_headers` needs **no** change: the `/2026/:revision/m/*` rule covers every revision. It
+uses one Cloudflare placeholder plus one splat, which is the maximum a single rule allows.
+
+The `.tn` files' hash pins are placeholders, not computed digests: from revision 33 they spell
+the digest as the literal token `xxhash` (`?sha256=xxhash`, and `…_xxhash` in synthetic entry
+names), which keeps the pin's *shape* normative without freezing draft byte content — the
+meta-kernel header says so. Copying them forward is therefore safe; real digests are computed
+bottom-up at publication, not when a revision opens.
 
 ## Schema files and public sync
 
@@ -84,7 +140,8 @@ Astro's content-collection pipeline. After editing any of them, copy the changed
 source and the build both look correct:
 
 ```
-cp src/content/2026/32/m/*.tn src/content/2026/32/fixtures/*.tn public/2026/32/m/
+mkdir -p public/2026/33/m
+cp src/content/2026/33/m/*.tn src/content/2026/33/fixtures/*.tn public/2026/33/m/
 ```
 
 Run `npx astro build` before committing spec or schema changes — it's the only check that

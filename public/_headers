@@ -1,7 +1,10 @@
 /
   Link: </llms.txt>; rel="alternate"; type="text/plain"; title="llms.txt — machine-readable site index"
 
-/2026/32/m/*.tn
+# Schema sources and fixtures for every revision, current and retained.
+# One placeholder plus one splat is the most Cloudflare allows in a rule,
+# so this covers /2026/{revision}/m/… without a per-revision entry.
+/2026/:revision/m/*
   Content-Type: text/plain; charset=utf-8
 
 /raw/*

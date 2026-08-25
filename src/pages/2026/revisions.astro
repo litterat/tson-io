@@ -1,0 +1,117 @@
+---
+/**
+ * /2026/revisions — the index of every revision in the series.
+ *
+ * Revisions are discovered from the spec collection, so a new
+ * `src/content/2026/{revision}/` directory lists here automatically; only
+ * CURRENT_REVISION decides which one is marked as the working draft.
+ */
+import Layout from '../../layout/Layout.astro';
+import { getCollection } from 'astro:content';
+import {
+  CURRENT_REVISION,
+  REVISION_NOTES,
+  SERIES,
+  compareRevisionsDesc,
+  isCurrentRevision,
+  revisionOf,
+  revisionPath,
+  revisionStatusLabel,
+} from '../../lib/spec';
+
+const [specEntries, changelogEntries, reportEntries] = await Promise.all([
+  getCollection('spec'),
+  getCollection('changelog'),
+  getCollection('reports'),
+]);
+
+const revisions = [...new Set(specEntries.map(e => revisionOf(e.id)))]
+  .sort(compareRevisionsDesc)
+  .map(revision => ({
+    revision,
+    current: isCurrentRevision(revision),
+    note: REVISION_NOTES[revision],
+    documents: specEntries
+      .filter(e => revisionOf(e.id) === revision)
+      .sort((a, b) => (a.data.part ?? 99) - (b.data.part ?? 99)),
+    changelogs: changelogEntries.filter(e => revisionOf(e.id) === revision),
+    reportCount: reportEntries.filter(e => revisionOf(e.id) === revision).length,
+  }));
+---
+
+<Layout
+  title={`${SERIES} Revision Series`}
+  description="Every revision of the TSON specification in the 2026 working-draft series, current and retained."
+>
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <nav class="text-sm text-gray-500 mb-8 flex items-center gap-1.5">
+      <a href={revisionPath(CURRENT_REVISION)} class="hover:text-gray-900">Specification</a>
+      <span>/</span>
+      <span class="text-gray-700">Revisions</span>
+    </nav>
+
+    <h1 class="text-3xl font-bold mb-2">{SERIES} Revision Series</h1>
+    <p class="text-gray-600 mb-4 max-w-2xl">
+      The specification is a {SERIES} working draft. Each revision is published under its own
+      path and kept there permanently, so a hash-pinned reference into a revision never breaks
+      when the next one opens. Revision {CURRENT_REVISION} is the working draft; earlier
+      revisions are retained as-published.
+    </p>
+    <p class="text-sm text-gray-500 mb-12 max-w-2xl">
+      When the draft is finalised it will be published as <strong>TSON version 1</strong> and
+      frozen; until then the series is subject to change without compatibility guarantees.
+    </p>
+
+    <ul class="space-y-10">
+      {revisions.map(({ revision, current, note, documents, changelogs, reportCount }) => (
+        <li class:list={[
+          'rounded-lg border px-6 py-6',
+          current ? 'border-teal-700/30 bg-teal-50/40' : 'border-gray-200',
+        ]}>
+          <div class="flex items-baseline justify-between gap-4 flex-wrap">
+            <a href={revisionPath(revision)} class="text-xl font-semibold hover:underline">
+              Revision {revision}
+            </a>
+            <span class:list={[
+              'font-mono text-xs font-semibold rounded-full px-3 py-1',
+              current ? 'bg-teal-100 text-teal-800' : 'bg-gray-100 text-gray-600',
+            ]}>
+              {revisionStatusLabel(revision)}
+            </span>
+          </div>
+
+          {note && <p class="text-sm text-gray-600 mt-3 max-w-2xl">{note}</p>}
+
+          <ul class="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
+            {documents.map(entry => (
+              <li>
+                <a href={`/${SERIES}/${entry.id}`} class="hover:text-gray-900 hover:underline">
+                  {entry.data.title}
+                </a>
+              </li>
+            ))}
+            {changelogs.map(entry => (
+              <li>
+                <a href={`/${SERIES}/${entry.id}`} class="hover:text-gray-900 hover:underline">
+                  Change log
+                </a>
+              </li>
+            ))}
+            <li>
+              <a href={`${revisionPath(revision)}#schema-source-files`} class="hover:text-gray-900 hover:underline font-mono">
+                m/*.tn
+              </a>
+            </li>
+            {reportCount > 0 && (
+              <li>
+                <a href={`${revisionPath(revision)}#reports`} class="hover:text-gray-900 hover:underline">
+                  {reportCount} report{reportCount === 1 ? '' : 's'}
+                </a>
+              </li>
+            )}
+          </ul>
+        </li>
+      ))}
+    </ul>
+  </div>
+</Layout>

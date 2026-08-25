@@ -1,29 +1,58 @@
 ---
 import Layout from '../../../layout/Layout.astro';
+import RevisionNotice from '../../../components/RevisionNotice.astro';
 import { getCollection } from 'astro:content';
-import { byReportOrder, reportInfo, reportSlug } from '../../../lib/reports';
+import { byReportOrder, reportInfo, reportKind, reportSlug } from '../../../lib/reports';
+import {
+  CURRENT_REVISION,
+  FIXTURE_FILES,
+  SCHEMA_FILES,
+  SERIES,
+  compareRevisionsDesc,
+  isCurrentRevision,
+  revisionOf,
+  revisionPath,
+} from '../../../lib/spec';
 
 export async function getStaticPaths() {
-  const [entries, reportEntries] = await Promise.all([
+  const [entries, changelogEntries, reportEntries] = await Promise.all([
     getCollection('spec'),
+    getCollection('changelog'),
     getCollection('reports'),
   ]);
-  const revisions = [...new Set(entries.map(e => e.id.split('/')[0]))];
+  const revisions = [...new Set(entries.map(e => revisionOf(e.id)))].sort(compareRevisionsDesc);
 
   return revisions.map(revision => ({
     params: { revision },
     props: {
-      entries: entries.filter(e => e.id.split('/')[0] === revision),
+      entries: entries.filter(e => revisionOf(e.id) === revision),
+      changelogs: changelogEntries
+        .filter(e => revisionOf(e.id) === revision)
+        .map(e => ({ id: e.id, ...e.data })),
       reports: reportEntries
-        .filter(e => e.id.split('/')[0] === revision)
+        .filter(e => revisionOf(e.id) === revision)
         .sort((a, b) => byReportOrder(a.id, b.id))
-        .map(e => ({ id: e.id, ...reportInfo(e.id, e.body ?? '') })),
+        .map(e => ({
+          id: e.id,
+          ...reportInfo(e.id, e.body ?? '', e.data),
+          kind: reportKind(e.data),
+          status: e.data.status,
+          against: e.data.against,
+        })),
     },
   }));
 }
 
 const { revision } = Astro.params;
-const { entries, reports } = Astro.props;
+const { entries, changelogs, reports } = Astro.props;
+
+const current = isCurrentRevision(revision);
+
+// Change reports propose specific edits; analysis reports study and report.
+// They're listed apart because a reader looking for "what is being changed"
+// should not have to sift it out of the research.
+const changeReports = reports.filter(r => r.kind === 'change');
+const analysisReports = reports.filter(r => r.kind === 'analysis');
 
 const tsonParts = entries
   .filter(e => e.data.part !== undefined)
@@ -32,8 +61,13 @@ const tsonParts = entries
 const otherDocs = entries.filter(e => e.data.part === undefined);
 ---
 
-<Layout title="Specification" description="The TSON specification, in two parts.">
+<Layout
+  title={current ? 'Specification' : `Specification (Revision ${revision})`}
+  description={`The TSON specification, in two parts — ${SERIES} revision ${revision}.`}
+>
   <div class="max-w-5xl mx-auto px-6 py-12">
+    <RevisionNotice revision={revision} currentHref={revisionPath(CURRENT_REVISION)} />
+
     <h1 class="text-3xl font-bold mb-2">Specification</h1>
     <p class="text-gray-600 mb-4">
       The TSON specification, split into two parts, plus room for companion specifications
@@ -74,6 +108,38 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
       </ul>
     </section>
 
+    {changelogs.length > 0 && (
+      <section class="mb-12">
+        <h2 id="change-log" class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200 scroll-mt-6">Change Log</h2>
+        <p class="text-sm text-gray-600 mb-6 max-w-2xl">
+          What was accepted into this revision, and the inputs it was adjudicated from. Each
+          entry records a disposition, so a reader can trace a change back to the feedback or
+          change report that prompted it.
+        </p>
+        <ul class="space-y-6">
+          {changelogs.map(entry => (
+            <li>
+              <a href={`/${SERIES}/${entry.id}`} class="font-medium text-lg hover:underline">
+                {entry.title}
+              </a>
+              <div class="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                {entry.against && <><span>Against {entry.against}</span><span>·</span></>}
+                <a href={`/raw/${SERIES}/${entry.id}.md`} class="hover:text-gray-900 font-mono">view raw ↗</a>
+              </div>
+              {entry.status && (
+                <p class="text-sm text-gray-500 mt-1 max-w-2xl">{entry.status}</p>
+              )}
+              {entry.inputs.length > 0 && (
+                <ul class="mt-2 text-sm text-gray-500 list-disc pl-5 space-y-0.5 max-w-2xl">
+                  {entry.inputs.map(input => <li>{input}</li>)}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
     {otherDocs.length > 0 && (
       <section class="mb-12">
         <h2 class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200">Companion Specifications</h2>
@@ -100,12 +166,12 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
     )}
 
     <section class="mb-12">
-      <h2 class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200">Schema Source Files</h2>
+      <h2 id="schema-source-files" class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200 scroll-mt-6">Schema Source Files</h2>
       <p class="text-sm text-gray-600 mb-4">
         The normative TSON schema source files in <code class="font-mono bg-gray-100 px-1 rounded">.tn</code> format.
       </p>
       <ul class="space-y-2 font-mono text-sm">
-        {['meta-kernel.tn', 'meta.tn', 'core.tn'].map(file => (
+        {SCHEMA_FILES.map(file => (
           <li>
             <a href={`/2026/${revision}/m/${file}`} class="text-gray-700 hover:text-gray-900 hover:underline">
               {file}
@@ -116,13 +182,13 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
     </section>
 
     <section class="mb-12">
-      <h2 class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200">Resolved Fixtures</h2>
+      <h2 id="resolved-fixtures" class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200 scroll-mt-6">Resolved Fixtures</h2>
       <p class="text-sm text-gray-600 mb-4">
         Non-normative resolver output for the schema source files above. Parse the source, run the
         resolver, canonicalise, and compare against these fixtures.
       </p>
       <ul class="space-y-2 font-mono text-sm">
-        {['meta-kernel-resolved.tn', 'meta-resolved.tn', 'core-resolved.tn'].map(file => (
+        {FIXTURE_FILES.map(file => (
           <li>
             <a href={`/2026/${revision}/m/${file}`} class="text-gray-700 hover:text-gray-900 hover:underline">
               {file}
@@ -134,30 +200,66 @@ const otherDocs = entries.filter(e => e.data.part === undefined);
 
     {reports.length > 0 && (
       <section>
-        <h2 class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200">Reports</h2>
+        <h2 id="reports" class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200 scroll-mt-6">Reports</h2>
         <p class="text-sm text-gray-600 mb-6 max-w-2xl">
-          Non-normative working documents prepared against this revision as input to the next
-          development cycle: gap analyses mapping other schema systems onto TSON, and feedback
-          gathered from building the first implementation. They record findings and design
-          directions under consideration, not committed specification.
+          Non-normative working documents written against this revision. They record findings
+          and design directions under consideration, not committed specification.
         </p>
-        <ul class="space-y-6">
-          {reports.map(report => (
-            <li>
-              <a href={`/2026/${revision}/reports/${reportSlug(report.id)}`} class="font-medium text-lg hover:underline">
-                {report.title}
-              </a>
-              <div class="flex items-center gap-3 mt-1 text-sm text-gray-500">
-                <span>Non-normative</span>
-                <span>·</span>
-                <a href={`/raw/2026/${report.id}.md`} class="hover:text-gray-900 font-mono">view raw ↗</a>
-              </div>
-              {report.description && (
-                <p class="text-sm text-gray-500 mt-1 max-w-2xl">{report.description}</p>
-              )}
-            </li>
-          ))}
-        </ul>
+
+        {changeReports.length > 0 && (
+          <div class="mb-10">
+            <h3 class="text-base font-semibold mb-2">Change Reports</h3>
+            <p class="text-sm text-gray-600 mb-5 max-w-2xl">
+              Proposals for specific edits to the specification, each argued in full and carrying
+              a decision the revision editor can accept or decline.
+            </p>
+            <ul class="space-y-6">
+              {changeReports.map(report => (
+                <li>
+                  <a href={`/${SERIES}/${revision}/reports/${reportSlug(report.id)}`} class="font-medium text-lg hover:underline">
+                    {report.title}
+                  </a>
+                  <div class="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                    <span>{report.status ?? 'Non-normative'}</span>
+                    {report.against && <><span>·</span><span>Against {report.against}</span></>}
+                    <span>·</span>
+                    <a href={`/raw/${SERIES}/${report.id}.md`} class="hover:text-gray-900 font-mono">view raw ↗</a>
+                  </div>
+                  {report.description && (
+                    <p class="text-sm text-gray-500 mt-1 max-w-2xl">{report.description}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {analysisReports.length > 0 && (
+          <div>
+            <h3 class="text-base font-semibold mb-2">Analysis Reports</h3>
+            <p class="text-sm text-gray-600 mb-5 max-w-2xl">
+              Gap analyses mapping other schema systems onto TSON, and feedback gathered from
+              building the first implementation — the research a change report argues from.
+            </p>
+            <ul class="space-y-6">
+              {analysisReports.map(report => (
+                <li>
+                  <a href={`/${SERIES}/${revision}/reports/${reportSlug(report.id)}`} class="font-medium text-lg hover:underline">
+                    {report.title}
+                  </a>
+                  <div class="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                    <span>Non-normative</span>
+                    <span>·</span>
+                    <a href={`/raw/${SERIES}/${report.id}.md`} class="hover:text-gray-900 font-mono">view raw ↗</a>
+                  </div>
+                  {report.description && (
+                    <p class="text-sm text-gray-500 mt-1 max-w-2xl">{report.description}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
     )}
   </div>

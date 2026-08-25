@@ -1,48 +1,56 @@
 ---
 import Layout from '../../../../layout/Layout.astro';
+import RevisionNotice from '../../../../components/RevisionNotice.astro';
 import { getCollection, render } from 'astro:content';
-import { reportInfo, reportSlug } from '../../../../lib/reports';
+import { reportInfo, reportKind, reportSlug } from '../../../../lib/reports';
+import { isCurrentRevision, revisionOf, revisionPath } from '../../../../lib/spec';
 
 export async function getStaticPaths() {
   const entries = await getCollection('reports');
-  return entries.map(entry => {
-    const [revision] = entry.id.split('/');
-    return {
-      params: { revision, slug: reportSlug(entry.id) },
-      props: { entry },
-    };
-  });
+  return entries.map(entry => ({
+    params: { revision: revisionOf(entry.id), slug: reportSlug(entry.id) },
+    props: { entry },
+  }));
 }
 
 const { entry } = Astro.props;
-const [revision] = entry.id.split('/');
-const { title, description } = reportInfo(entry.id, entry.body ?? '');
+const revision = revisionOf(entry.id);
+const { title, description } = reportInfo(entry.id, entry.body ?? '', entry.data);
+const kind = reportKind(entry.data);
+const { against, status } = entry.data;
 const rawUrl = `/raw/2026/${entry.id}.md`;
+const pageTitle = isCurrentRevision(revision) ? title : `${title} (Revision ${revision})`;
 
 const { Content } = await render(entry);
 ---
 
-<Layout title={title} description={description} type="article">
+<Layout title={pageTitle} description={description} type="article">
   <div class="max-w-3xl mx-auto px-6 py-10">
 
     <!-- Breadcrumb -->
     <nav class="text-sm text-gray-500 mb-8 flex items-center gap-1.5">
-      <a href={`/2026/${revision}`} class="hover:text-gray-900">Specification</a>
+      <a href={revisionPath(revision)} class="hover:text-gray-900">Specification</a>
       <span>/</span>
       <span>Reports</span>
       <span>/</span>
       <span class="text-gray-700">{title}</span>
     </nav>
 
+    <RevisionNotice revision={revision} kind="report" />
+
     <!-- Header -->
     <header class="mb-10">
-      <p class="text-sm font-mono text-gray-400 mb-2">Non-normative report</p>
+      <p class="text-sm font-mono text-gray-400 mb-2">
+        {kind === 'change' ? 'Non-normative change report' : 'Non-normative report'}
+      </p>
       <h1 class="text-3xl font-bold leading-tight mb-3">{title}</h1>
-      <div class="flex items-center gap-4 text-sm text-gray-500">
+      <div class="flex items-center gap-4 text-sm text-gray-500 flex-wrap">
         <span>Revision {revision}</span>
+        {status && <><span>·</span><span>{status}</span></>}
         <span>·</span>
         <a href={rawUrl} class="hover:text-gray-900 font-mono">view raw ↗</a>
       </div>
+      {against && <p class="text-sm text-gray-500 mt-3">Against {against}</p>}
     </header>
 
     <!-- Content -->
@@ -51,7 +59,7 @@ const { Content } = await render(entry);
     </article>
 
     <div class="mt-16 pt-8 border-t border-gray-200">
-      <a href={`/2026/${revision}`} class="text-sm text-gray-500 hover:text-gray-900">← Back to Specification</a>
+      <a href={revisionPath(revision)} class="text-sm text-gray-500 hover:text-gray-900">← Back to Specification</a>
     </div>
 
   </div>

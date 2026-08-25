@@ -1,0 +1,74 @@
+---
+/**
+ * The revision banner shown at the top of every `/2026/{revision}/…` page.
+ *
+ * On the current working draft it's a quiet one-liner pointing at the revisions
+ * index. On a retained revision it's a visible notice, because the reader has
+ * most likely arrived from a pinned reference or a search result and needs to
+ * know the text has been superseded — and where the current text is.
+ *
+ * `currentHref` is the same document under the current revision, when one
+ * exists; the caller resolves it, since only the caller knows whether the
+ * document carried forward.
+ *
+ * Reports get different retained wording: a report is written against one
+ * revision and stays with it, so it is never superseded by a later text.
+ */
+import {
+  CURRENT_REVISION,
+  REVISIONS_PATH,
+  isCurrentRevision,
+  revisionPath,
+  revisionStatusLabel,
+} from '../lib/spec';
+
+interface Props {
+  revision: string;
+  /** Path to the same document in the current revision, if it has one. */
+  currentHref?: string;
+  /** Reports belong to their revision permanently; specs carry forward. */
+  kind?: 'document' | 'report';
+}
+
+const { revision, currentHref, kind = 'document' } = Astro.props;
+const current = isCurrentRevision(revision);
+---
+
+{current ? (
+  <p class="text-sm text-gray-500 mb-8 flex items-center gap-3 flex-wrap">
+    <span class="font-mono text-xs font-semibold rounded-full px-3 py-1 bg-gray-100 text-teal-800">
+      Revision {revision}
+    </span>
+    <span>{revisionStatusLabel(revision)}</span>
+    <span>·</span>
+    <a href={REVISIONS_PATH} class="hover:text-gray-900 underline">All revisions</a>
+  </p>
+) : (
+  <div class="mb-8 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    {kind === 'report' ? (
+      <p>
+        <strong>Revision {revision} is a retained revision.</strong> This report was written
+        against it and stays with it — it is not carried forward or revised. Revision{' '}
+        {CURRENT_REVISION} is the current working draft.
+      </p>
+    ) : (
+      <p>
+        <strong>Revision {revision} is a retained revision.</strong> It stays published at this
+        address so hash-pinned references keep resolving, but it is no longer the working draft —
+        revision {CURRENT_REVISION} is.
+      </p>
+    )}
+    <p class="mt-2 flex items-center gap-3 flex-wrap">
+      {currentHref && (
+        <a href={currentHref} class="underline font-medium hover:text-amber-700">
+          Read this document in revision {CURRENT_REVISION} →
+        </a>
+      )}
+      <a href={revisionPath(CURRENT_REVISION)} class="underline hover:text-amber-700">
+        Revision {CURRENT_REVISION}
+      </a>
+      <span>·</span>
+      <a href={REVISIONS_PATH} class="underline hover:text-amber-700">All revisions</a>
+    </p>
+  </div>
+)}
