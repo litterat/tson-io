@@ -51,21 +51,9 @@ const { title, description, image, type, home = false, publishedTime, modifiedTi
       <slot />
     </main>
 
-    <footer class="border-t border-gray-200 mt-16">
-      <div class="max-w-5xl mx-auto px-6 py-8 text-sm text-gray-500 flex justify-between items-start">
+    <footer class="border-t border-gray-200 mt-8">
+      <div class="max-w-5xl mx-auto px-6 py-8 text-sm text-gray-500 flex flex-col gap-1 sm:gap-6 sm:flex-row sm:justify-between sm:items-start">
         <div>
-          <span>tson.io</span>
-          <div class="text-xs text-gray-400 mt-1">
-            &copy; 2026{' '}
-            <a
-              href="https://litterat.io"
-              rel="noopener"
-              target="_blank"
-              class="underline hover:text-gray-600"
-            >Litterat Pty Ltd</a>.
-          </div>
-        </div>
-        <div class="text-right">
           <span>Typed Schema Object Notation</span>
           <div class="text-xs text-gray-400 mt-1">
             Content licensed under{' '}
@@ -76,6 +64,18 @@ const { title, description, image, type, home = false, publishedTime, modifiedTi
               class="underline hover:text-gray-600"
             >CC BY-SA 4.0</a>.
           </div>
+        </div>
+        <div class="sm:text-right">
+          <div class="text-xs text-gray-400">
+            &copy; 2026{' '}
+            <a
+              href="https://litterat.io"
+              rel="noopener"
+              target="_blank"
+              class="underline hover:text-gray-600"
+            >Litterat Pty Ltd</a>.
+          </div>
+          <div class="mt-1">tson.io</div>
         </div>
       </div>
     </footer>

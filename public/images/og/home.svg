@@ -5,8 +5,8 @@
   <text x="80" y="190" font-size="118" font-weight="700" fill="#111827">TSON</text>
   <text x="83" y="240" font-size="28" fill="#6b7280" letter-spacing="0.5">Typed Schema</text>
   <text x="83" y="285" font-size="28" fill="#6b7280" letter-spacing="0.5">Object Notation</text>
-  <text x="83" y="385" font-size="32" font-weight="600" fill="#111827">Data with an</text>
-  <text x="83" y="430" font-size="32" font-weight="600" xml:space="preserve"><tspan fill="#0f766e">immutable</tspan><tspan fill="#111827"> schema.</tspan></text>
+  <text x="83" y="385" font-size="32" font-weight="600" fill="#111827">Schema and Data</text>
+  <text x="83" y="430" font-size="32" font-weight="600" xml:space="preserve"><tspan fill="#111827">for </tspan><tspan fill="#0f766e">AI</tspan><tspan fill="#111827">.</tspan></text>
   <text x="83" y="535" font-size="24" fill="#6b7280">tson.io</text>
 
   <!-- right: schema code panel -->
