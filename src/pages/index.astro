@@ -266,17 +266,36 @@ const routes = [
     <!-- ═══ Hero ═══ -->
     <div class="max-w-5xl mx-auto px-6 pt-20 pb-10">
       <h1 class="text-4xl md:text-5xl font-bold font-mono tracking-tight mb-5 leading-tight">
-        Data with an <span class="text-teal-700">immutable</span> schema.
+        Schema and Data for <span class="text-teal-700">AI</span>.
       </h1>
-      <p class="text-gray-500 max-w-2xl">
-        <strong class="text-gray-900">TSON (Typed Schema Object Notation)</strong> is a schema
-        system with immutable, hash-pinned schemas whose definitions are themselves data. A
-        document names its schema, the schema names its meta-schema; <strong class="text-gray-900">one hash verifies the whole chain</strong>. The finishing touch, TSON's data format is a Unicode-first superset of JSON you'll actually
-        enjoy writing.
-      </p>
-      <div class="flex flex-wrap gap-3 pt-6">
-        <a href={guideUrl} class="font-mono text-sm font-semibold bg-gray-900 text-white px-5 py-2.5 rounded-full hover:bg-gray-700">Read the guide</a>
-        <a href={specHubUrl} class="font-mono text-sm font-semibold border border-gray-300 text-gray-700 px-5 py-2.5 rounded-full hover:border-gray-500">Specification</a>
+      <div class="grid md:grid-cols-2 gap-8">
+        <div class="flex flex-col">
+          <p class="text-gray-500">
+            <strong class="text-gray-900">TSON (Typed Schema Object Notation)</strong> gives AI
+            structured output with one-shot correction. Schemas cost a third the tokens of JSON
+            Schema and enforce more. Every document names its schema, every schema its
+            meta-schema — <strong class="text-gray-900">one hash verifies the chain</strong>.
+          </p>
+          <div class="flex flex-wrap gap-3 pt-6 md:mt-auto">
+            <a href={guideUrl} class="font-mono text-sm font-semibold bg-gray-900 text-white px-5 py-2.5 rounded-full hover:bg-gray-700">Read the guide</a>
+            <a href={specHubUrl} class="font-mono text-sm font-semibold border border-gray-300 text-gray-700 px-5 py-2.5 rounded-full hover:border-gray-500">Specification</a>
+          </div>
+        </div>
+        <figure class="relative bg-teal-100 rounded-2xl px-6 py-5">
+          <span
+            aria-hidden="true"
+            class="hidden md:block absolute -left-1.5 top-7 h-3.5 w-3.5 rotate-45 bg-teal-100"
+          ></span>
+          <blockquote class="text-base text-teal-900 italic leading-relaxed">
+            “The best diagnostics I've seen from any schema validator. Ten planted errors, all ten
+            in one pass, each with the pointer, the constraint, and the value — where ajv gives you
+            one <span class="font-mono text-xs not-italic">must match schema</span> at a time. For
+            an LLM retry loop, this is one-shot repair.”
+          </blockquote>
+          <figcaption class="font-mono text-xs md:text-sm text-teal-800/80 mt-3">
+            — Claude Fable 5, on the reference implementation
+          </figcaption>
+        </figure>
       </div>
     </div>
 
