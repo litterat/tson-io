@@ -150,9 +150,13 @@
   #tson-demo .main-panes .pane { height: 27.5rem; }
   #tson-demo .pane-title.schema { color: var(--color-teal-700); }
 
+  /* `grid-template-rows` is load-bearing: without it the row auto-sizes to the textarea's content,
+     so a long document made the textarea taller than the pane and the pane clipped it with nothing
+     to scroll. Bounding the row lets the textarea's own `overflow: auto` do the scrolling. */
   #tson-demo .editor {
     display: grid;
     grid-template-columns: auto 1fr;
+    grid-template-rows: minmax(0, 1fr);
     background: #fff;
     flex: 1;
     min-height: 0;
@@ -171,6 +175,7 @@
     user-select: none;
     white-space: pre;
     tab-size: 2;
+    overflow: hidden;
   }
   #tson-demo .gutter .bad { color: var(--color-red-700); font-weight: 700; }
   #tson-demo .editor textarea {
@@ -352,12 +357,20 @@
 <script>
   import { classifyDocument, parse, validate } from '@ltr8/tson';
   import { CORE_TN, META_TN, standardLibrary } from '@ltr8/tson/stdlib';
-  import { declaredSha256, sha256Hex, withSha256Pin } from '@ltr8/tson/identity';
+  import {
+    canonicalizeIdentity,
+    declaredSha256,
+    sha256Hex,
+    withSha256Pin,
+  } from '@ltr8/tson/identity';
   import type { CompiledSchema, Diagnostic, Document } from '@ltr8/tson';
 
-  const SCHEMA_ID = 'https://example.com/people.tn';
+  interface SchemaSpec {
+    id: string;
+    body: string;
+  }
 
-  const SCHEMA_BODY = `@doc:"The demo schema: an employee record."
+  const PEOPLE_BODY = `@doc:"The demo schema: an employee record."
 {
   @doc:"A person on the payroll."
   employee => {
@@ -372,6 +385,164 @@
 }
 `;
 
+  const OBSERVATORY_BODY = `@doc:"A tour of the schema language: atom refinements, enums, templates, field groups, maps, sets, tuples, composition, refinement, subtraction and guarded recursion."
+{
+  @doc:"Three letters, a dash, three digits."
+  designator => !text ^ { pattern: "^[A-Z]{3}-[0-9]{3}$" }
+
+  @doc:"Metres above the reference ellipsoid."
+  altitude_m => !integer ^ { min: -500  max: 9000 }
+
+  channel => !integer ^ { min: 1  max: 64  multiple_of: 1 }
+
+  band => !enum [RADIO INFRARED OPTICAL ULTRAVIOLET XRAY GAMMA]
+
+  status => !enum [PLANNED ACTIVE DEGRADED RETIRED]
+
+  @doc:"A type parameter, used at an element position."
+  bag => <T> [T]
+
+  @doc:"Two type parameters."
+  pair => <A, B> { first: A  second: B }
+
+  @doc:"A type parameter and a value parameter: a fixed-length vector."
+  vector => <T, N> [T; N]
+
+  @doc:"Partial application re-declares the open parameter."
+  index_of => <V> {designator => V}
+
+  @doc:"A set: unordered, unique. Applied by constructor, since set has no sugar."
+  partner_set => !set { element_type: non_empty_text }
+
+  coordinate => [number, number]
+
+  reading_window => [datetime, datetime]
+
+  sample_run => vector<number, 4>
+
+  short_label => !text ^ { min_length: 1  max_length: 12 }
+
+  @doc:"Guarded recursion: the child list is optional, so the type has finite members."
+  subsystem => {
+    name:      non_empty_text
+    state:     status ~ ACTIVE
+    children:  [subsystem]?
+  }
+
+  @doc:"Mixin contributing provenance to anything that composes it."
+  provenance => {
+    recorded_by:  non_empty_text
+    recorded_at:  datetime
+  }
+
+  identified => {
+    id:    designator
+    name:  non_empty_text
+  }
+
+  @doc:"A labelled sum in record clothing: exactly one member present."
+  cadence => {
+    ( continuous:  boolean
+    | every_n_sec: positive_integer
+    | on_trigger:  non_empty_text )
+  }
+
+  @doc:"An optional group: at most one bound may be stated."
+  exposure => {
+    band:     band
+    ( max_seconds: positive_integer | max_frames: positive_integer )?
+  }
+
+  instrument => identified & provenance & {
+    @doc:"REQUIRED - must be supplied."
+    band:        band
+    @doc:"REQUIRED_DEFAULT - injected when omitted."
+    channel:     channel ~ 1
+    @doc:"REQUIRED_FIXED - immutable from here down."
+    schema_kind: text = "instrument"
+    @doc:"OPTIONAL - may be absent."
+    serial:      short_label?
+    @doc:"OPTIONAL_FIXED - if present, must be this value."
+    calibrated:  boolean? = true
+    @doc:"OPTIONAL_FIXED with no value - the field is forbidden to carry one."
+    retired_on:  date? = _
+
+    aperture_mm: positive_integer
+    cadence:     cadence
+    exposure:    exposure
+    targets:     [designator; 1..8]
+    tuning:      {non_empty_text => number; ..16}
+    samples:     sample_run
+    notes:       bag<non_empty_text>?
+  }
+
+  @doc:"Refinement pins fields of an existing record."
+  radio_instrument => instrument ^ {
+    band:        = RADIO
+    aperture_mm: ~ 25000
+  }
+
+  @doc:"Subtraction removes fields from an existing record."
+  instrument_public => instrument - { recorded_by, serial }
+
+  @doc:"A user-defined valueless annotation: presence is the information. Written bare in data."
+  @annotation
+  critical => void
+
+  @doc:"A user-defined text annotation. Written @operator:\\"...\\" in data."
+  @annotation
+  operator => text
+
+  @doc:"A user-defined record annotation: the annotation value is a whole record."
+  @annotation
+  calibration => {
+    by:         non_empty_text
+    on:         date
+    drift_ppm:  number
+    verified:   boolean ~ false
+  }
+
+  @doc:"Built-in atoms from core, each parsed and constrained by its own grammar."
+  telemetry => {
+    stream_id:  uuid
+    endpoint:   uri
+    host:       ipv4
+    heartbeat:  duration
+    checksum:   base64
+    window_utc: time
+    @deprecated:"superseded by endpoint"
+    legacy_url: uri?
+    @since:"2026-33"
+    mac_addr:   mac?
+  }
+
+  @doc:"An observatory: the document root."
+  observatory => identified & provenance & {
+    established:   date
+    site:          coordinate
+    altitude:      altitude_m
+    status:        status ~ ACTIVE
+    tree:          subsystem
+    window:        reading_window
+    instruments:   [instrument; 1..]
+    catalog:       index_of<non_empty_text>
+    contacts:      {non_empty_text => email}
+    partners:      partner_set?
+    sparse_crew:   [non_empty_text?; 3]
+    highlight:     pair<designator, non_empty_text>?
+    published:     instrument_public?
+    radio:         radio_instrument?
+    telemetry:     telemetry
+  }
+}
+`;
+
+  const PEOPLE: SchemaSpec = { id: 'https://example.com/people.tn', body: PEOPLE_BODY };
+  const OBSERVATORY: SchemaSpec = {
+    id: 'https://tson.io/2026/33/examples/observatory.tn',
+    body: OBSERVATORY_BODY,
+  };
+
   interface Scenario {
     id: string;
     label: string;
@@ -381,6 +552,10 @@
     ok?: boolean;
     /** Also restores the shipped schema, making this chip a full reset to a conforming pair. */
     resetsSchema?: boolean;
+    /** The schema this example is written against; the people schema when omitted. */
+    schema?: SchemaSpec;
+    /** Accessible name, for a chip whose visible label is an emoji and names nothing on its own. */
+    aria?: string;
   }
 
   const SCENARIOS: Scenario[] = [
@@ -473,6 +648,143 @@
 }
 `,
     },
+    {
+      // The whole schema language in one document: atom refinements, enums, templates and
+      // partial application, field groups, maps, sets, tuples, composition, refinement,
+      // subtraction and guarded recursion — and all five field states, labelled in place.
+      id: 'observatory',
+      label: '🔭',
+      aria: 'observatory — the whole schema language in one document',
+      root: 'observatory',
+      ok: true,
+      schema: OBSERVATORY,
+      data: `!!schema:"https://tson.io/2026/33/examples/observatory.tn?sha256=__PIN__"
+
+!observatory {
+  id:          "MKA-001"
+  name:        "Mauna Kea Array"
+  recorded_by: "D. Halley"
+  recorded_at: "2026-08-28T04:12:00Z"
+  established: 1968-07-20
+  site:        [19.8207 -155.4681]
+  altitude:    4207
+  status:      ACTIVE
+
+  tree: {
+    name:  "array"
+    state: ACTIVE
+    children: [
+      { name: "dish-a"  state: ACTIVE }
+      {
+        name:  "dish-b"
+        state: DEGRADED
+        children: [
+          { name: "feed-horn"  state: ACTIVE }
+          { name: "cryostat"   state: RETIRED  children: [] }
+        ]
+      }
+    ]
+  }
+
+  window: ["2026-09-01T00:00:00Z" "2026-09-30T23:59:59Z"]
+
+  instruments: [
+    @critical
+    @operator:"night crew"
+    {
+      id:          "MKA-101"
+      name:        "Wideband Receiver"
+      recorded_by: "D. Halley"
+      recorded_at: "2026-08-28T04:12:00Z"
+      band:        RADIO
+      channel:     12
+      schema_kind: "instrument"
+      serial:      "WB-7741"
+      calibrated:  true
+      aperture_mm: @calibration:{ by: "L. Meitner"  on: 2026-06-01  drift_ppm: 0.4  verified: true } 25000
+      cadence:     { every_n_sec: 30 }
+      exposure:    { band: RADIO  max_seconds: 600 }
+      targets:     [@critical "MKA-777" "MKA-303"]
+      tuning:      { "if_ghz" => 1.42  "lo_ghz" => 8.4 }
+      samples:     [0.11 0.12 0.09 0.14]
+      notes:       ["baseline drift under 2%"]
+    }
+    {
+      id:          "MKA-102"
+      name:        "Optical Imager"
+      recorded_by: "R. Feynman"
+      recorded_at: "2026-08-28T04:12:00Z"
+      band:        OPTICAL
+      schema_kind: "instrument"
+      aperture_mm: @calibration:{ by: "C. Payne"  on: 2026-07-14  drift_ppm: 1.25 } 8100
+      cadence:     { continuous: true }
+      exposure:    { band: OPTICAL }
+      targets:     ["MKA-303"]
+      tuning:      {}
+      samples:     [1.0 1.0 0.98 1.02]
+    }
+  ]
+
+  catalog: {
+    @critical "MKA-777" => @operator:"survey team" "Cygnus A"
+    "MKA-303" => "Crab Nebula"
+  }
+
+  contacts: {
+    "director"  => "director@example.org"
+    "operations" => "ops@example.org"
+  }
+
+  partners: ["IRAM" "ALMA" "NRAO"]
+
+  sparse_crew: ["A. Cannon" _ "V. Rubin"]
+
+  highlight: { first: "MKA-777"  second: "brightest radio source in Cygnus" }
+
+  telemetry: {
+    stream_id:  "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+    endpoint:   "https://tson.io/2026/33/examples/observatory.tn"
+    host:       "192.0.2.41"
+    heartbeat:  "PT30S"
+    checksum:   "3q2+7w=="
+    window_utc: "23:59:59Z"
+    mac_addr:   "00-1B-44-11-3A-B7"
+  }
+
+  published: {
+    id:          "MKA-101"
+    name:        "Wideband Receiver"
+    recorded_at: "2026-08-28T04:12:00Z"
+    band:        RADIO
+    channel:     12
+    schema_kind: "instrument"
+    calibrated:  true
+    aperture_mm: 25000
+    cadence:     { on_trigger: "burst-alert" }
+    exposure:    { band: RADIO  max_frames: 4 }
+    targets:     ["MKA-777"]
+    tuning:      { "if_ghz" => 1.42 }
+    samples:     [0.0 0.0 0.0 0.0]
+  }
+
+  radio: {
+    id:          "MKA-104"
+    name:        "Deep Field Dish"
+    recorded_by: "J. Bell"
+    recorded_at: "2026-08-28T04:12:00Z"
+    band:        RADIO
+    channel:     3
+    schema_kind: "instrument"
+    aperture_mm: 25000
+    cadence:     { every_n_sec: 1 }
+    exposure:    { band: RADIO }
+    targets:     ["MKA-909"]
+    tuning:      { "if_ghz" => 0.408 }
+    samples:     [0.5 0.5 0.5 0.5]
+  }
+}
+`,
+    },
   ];
 
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
@@ -486,11 +798,20 @@
    * `selfPin` goes on `!!id`, and stamping it does not change the digest it states: §7.3 hashes
    * from the second line on, precisely so a document can name its own content.
    */
-  function buildSchema(selfPin: string | null): string {
+  function buildSchema(spec: SchemaSpec, selfPin: string | null): string {
     const metaId = classifyDocument(encoder.encode(META_TN)).id ?? '';
     const coreId = classifyDocument(encoder.encode(CORE_TN)).id ?? '';
-    const id = selfPin ? `${SCHEMA_ID}?sha256=${selfPin}` : SCHEMA_ID;
-    return `!!id:"${id}"\n!!meta:"${metaId}"\n!!import:"${coreId}"\n${SCHEMA_BODY}`;
+    const id = selfPin ? `${spec.id}?sha256=${selfPin}` : spec.id;
+    return `!!id:"${id}"\n!!meta:"${metaId}"\n!!import:"${coreId}"\n${spec.body}`;
+  }
+
+  /** `spec` carrying its own digest on the `!!id`, the line §7.3 excludes from that digest. */
+  async function pinnedSchema(spec: SchemaSpec): Promise<string> {
+    try {
+      return buildSchema(spec, await sha256Hex(encoder.encode(buildSchema(spec, null))));
+    } catch {
+      return buildSchema(spec, null); // no hash boundary; leave it unpinned
+    }
   }
 
   const dataEl = $<HTMLTextAreaElement>('td-data');
@@ -887,14 +1208,22 @@
   async function loadScenario(scenario: Scenario) {
     if (!dataEl || !rootEl || !schemaEl) return;
 
-    // The `valid` chip is the way back: it restores the shipped schema too, so a pair broken from
-    // either side becomes a conforming pair again in one click.
-    if (scenario.resetsSchema) {
-      try {
-        schemaEl.value = buildSchema(await sha256Hex(encoder.encode(buildSchema(null))));
-      } catch {
-        schemaEl.value = buildSchema(null);
-      }
+    // An example is written against one schema, so bring that schema in when it is not already
+    // the one loaded — otherwise switching from the observatory to an employee document would
+    // read it against the wrong schema entirely. Compared on canonical identity, which ignores
+    // the pin, so a re-pinned schema still counts as the same schema and edits to it survive
+    // switching between examples in the same family. The `valid` chip always restores, which is
+    // what makes it the way back from a schema edited into a corner.
+    const want = scenario.schema ?? PEOPLE;
+    let current: string | null = null;
+    try {
+      const id = classifyDocument(encoder.encode(schemaEl.value)).id;
+      current = id ? canonicalizeIdentity(id) : null;
+    } catch {
+      current = null; // unparseable header; treat it as not being the schema we want
+    }
+    if (scenario.resetsSchema || current !== canonicalizeIdentity(want.id)) {
+      schemaEl.value = await pinnedSchema(want);
     }
 
     // Stamp the document's `!!schema` against the schema actually in scope now. Scenarios keep the
@@ -921,10 +1250,9 @@
     // carries the same. Computed once from the schema as shipped and never restamped — the pin
     // belongs to the document, and rewriting it to track an edit would forge what it proves.
     try {
-      const digest = await sha256Hex(encoder.encode(buildSchema(null)));
-      schemaEl.value = buildSchema(digest);
+      schemaEl.value = await pinnedSchema(PEOPLE);
     } catch {
-      schemaEl.value = buildSchema(null); // no hash boundary; leave both ends unpinned
+      schemaEl.value = buildSchema(PEOPLE, null);
     }
 
     for (const scenario of SCENARIOS) {
@@ -934,6 +1262,7 @@
       chip.dataset.id = scenario.id;
       chip.textContent = scenario.label;
       chip.setAttribute('aria-pressed', 'false');
+      if (scenario.aria) chip.setAttribute('aria-label', scenario.aria);
       chip.addEventListener('click', () => void loadScenario(scenario));
       chipsEl.append(chip);
     }
@@ -944,6 +1273,11 @@
       timer = setTimeout(() => void safeRun(), 120);
     };
     dataEl.addEventListener('input', debounced);
+    // The gutter is a sibling of the textarea, not part of it, so it has to be told to follow.
+    // Documents short enough not to scroll hid this; the observatory does not.
+    dataEl.addEventListener('scroll', () => {
+      if (gutterEl) gutterEl.scrollTop = dataEl.scrollTop;
+    });
     rootEl.addEventListener('input', debounced);
     // Editing the schema pins the tab: the reader is looking at the text they are typing, and a
     // fault in the *data* must not swap the pane out mid-keystroke.
