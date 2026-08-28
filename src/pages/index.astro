@@ -1,5 +1,6 @@
 ---
 import Layout from '../layout/Layout.astro';
+import Validator from '../components/Validator.astro';
 import { CURRENT_REVISION } from '../lib/spec';
 
 const part1Url = `/2026/${CURRENT_REVISION}/tson-part1-data`;
@@ -8,24 +9,6 @@ const guideUrl = `/2026/${CURRENT_REVISION}/tson-guide`;
 const specHubUrl = '/2026'; // redirects to /2026/{CURRENT_REVISION} via public/_redirects
 
 const chipClass = 'inline-block font-mono text-xs font-semibold rounded-full px-3 py-1 mb-2 bg-gray-100 text-teal-800 hover:underline';
-
-// ── hero: the chain, two documents ───────────────────────────
-const heroData = `<span class="gain">!!schema:</span><span class="ts">"https://example.com/people.tn?sha256=c4d5e6f7…a2b3c4d5"</span>
-<span class="gain">!employee</span> {
-  <span class="tk">name</span><span class="tp">:</span>       <span class="ts">"Ada Lovelace"</span>
-  <span class="tk">born</span><span class="tp">:</span>       <span class="tn">1815-12-10</span>
-  <span class="tk">department</span><span class="tp">:</span> <span class="ts">Research</span>
-  <span class="tk">level</span><span class="tp">:</span>      <span class="ts">L2</span>
-}<br/><br/>`;
-
-const heroSchema = `<span class="gain">!!id:</span><span class="ts">"https://example.com/people.tn?sha256=c4d5e6f7…a2b3c4d5"</span>
-<span class="gain">!!meta:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/meta.tn?sha256=8b1e4a9c…d7f2a640"</span>
-<span class="gain">!!import:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/core.tn?sha256=3f9d2c71…b8e5c194"</span>
-{
-  <span class="tk">person</span>   <span class="gain">=&gt;</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">born</span><span class="tp">:</span> <span class="ts">date</span> }
-  <span class="tk">employee</span> <span class="gain">=&gt;</span> <span class="ts">person</span> <span class="gain">&amp;</span> { <span class="tk">department</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">level</span><span class="tp">:</span> <span class="ts">rank</span> <span class="gain">~</span> <span class="tn">L1</span> }
-  <span class="tk">rank</span>    <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>
-}`;
 
 // ── try it: the CLI session ──────────────────────────────────
 const trySession = `<span class="tp">$</span> <span class="tk">git clone https://github.com/litterat/ltr8-io-tson-java.git</span>
@@ -264,76 +247,76 @@ const routes = [
 >
   <div id="vsjson">
     <!-- ═══ Hero ═══ -->
-    <div class="max-w-5xl mx-auto px-6 pt-5 pb-10">
-      <h1 class="text-4xl md:text-5xl font-bold font-mono tracking-tight mb-5 leading-tight">
-        Schema and Data <span class="whitespace-nowrap">for <span class="text-teal-700">AI</span>.</span>
-      </h1>
+    <div class="max-w-5xl mx-auto px-6 pt-5 pb-5">
       <div class="grid md:grid-cols-2 gap-8">
         <div class="flex flex-col">
+          <!-- 35.5px is the last size that stays on one line in this 472px column; 34px keeps a
+               little headroom for font-rendering differences. -->
+          <h1 class="text-3xl lg:text-[34px] font-bold font-mono tracking-tight mb-3 leading-tight">
+            Schema and Data <span class="whitespace-nowrap">for <span class="text-teal-700">AI</span>.</span>
+          </h1>
           <p class="text-gray-500">
             <strong class="text-gray-900">TSON (Typed Schema Object Notation)</strong> gives AI
             structured output with one-shot correction. Schemas cost a third the tokens of JSON
             Schema and enforce more. Every document names its schema, every schema its
             meta-schema — <strong class="text-gray-900">one hash verifies the chain</strong>.
           </p>
-          <div class="flex flex-wrap gap-3 pt-6 md:mt-auto">
-            <a href={guideUrl} class="font-mono text-sm font-semibold bg-gray-900 text-white px-5 py-2.5 rounded-full hover:bg-gray-700">Read the guide</a>
-            <a href={specHubUrl} class="font-mono text-sm font-semibold border border-gray-300 text-gray-700 px-5 py-2.5 rounded-full hover:border-gray-500">Specification</a>
-          </div>
         </div>
-        <figure class="relative bg-teal-100 rounded-2xl px-6 py-5">
+        <figure class="relative bg-teal-100 rounded-2xl px-5 py-4">
           <span
             aria-hidden="true"
-            class="hidden md:block absolute -left-1.5 top-7 h-3.5 w-3.5 rotate-45 bg-teal-100"
+            class="hidden md:block absolute -left-1.5 top-6 h-3.5 w-3.5 rotate-45 bg-teal-100"
           ></span>
-          <blockquote class="text-base text-teal-900 italic leading-relaxed">
+          <blockquote class="text-[15px] text-teal-900 italic leading-normal">
             “The best diagnostics I've seen from any schema validator. Ten planted errors, all ten
             in one pass, each with the pointer, the constraint, and the value — where ajv gives you
             one <span class="font-mono text-xs not-italic">must match schema</span> at a time. For
             an LLM retry loop, this is one-shot repair.”
           </blockquote>
-          <figcaption class="font-mono text-xs md:text-sm text-teal-800/80 mt-3">
+          <figcaption class="font-mono text-xs text-teal-800/80 mt-2">
             — Claude Fable 5, on the reference implementation
           </figcaption>
         </figure>
       </div>
     </div>
 
-    <!-- ═══ Hero visual: the chain ═══ -->
+    <!-- ═══ Hero visual: the chain, live ═══ -->
     <div class="max-w-5xl mx-auto px-6 pb-6">
-      <div class="grid md:grid-cols-2 gap-6">
-        <div class="border border-gray-200 rounded-md overflow-hidden">
-          <div class="flex justify-between items-baseline px-4 py-2.5 border-b border-gray-200 font-mono text-xs tracking-widest">
-            <span class="font-semibold uppercase text-gray-700">TSON Data</span>
-            <span class="text-gray-400">pins its schema by hash</span>
-          </div>
-          <pre class="bg-gray-50 p-4 text-sm leading-7 overflow-x-auto"><code set:html={heroData} /></pre>
-        </div>
-        <div class="border border-gray-200 rounded-md overflow-hidden">
-          <div class="flex justify-between items-baseline px-4 py-2.5 border-b border-gray-200 font-mono text-xs tracking-widest">
-            <span class="font-semibold uppercase text-teal-700">TSON Schema</span>
-            <span class="text-gray-400">pins its meta-schema</span>
-          </div>
-          <pre class="bg-gray-50 p-4 text-sm leading-7 overflow-x-auto"><code set:html={heroSchema} /></pre>
-        </div>
-      </div>
-      <p class="text-sm text-gray-500 pt-4 max-w-3xl">
-        TSON Data and Schemas documents share the same lexer, same tooling, same verification. Schemas are maps with a compact grammar that's easy to read and write. In this Schema, <code class="font-mono text-gray-900">person</code> is a record with two fields; <code class="font-mono text-gray-900">employee</code> combines person with department and level; the <code class="font-mono text-gray-900">level</code> field is an enum with a default; and all the fields are required by default.
+      <Validator />
+      <p class="text-sm text-gray-500 pt-5 max-w-3xl">
+        TSON Data and Schemas documents share the same lexer, same tooling, same verification. Schemas are maps with a compact grammar that's easy to read and write. In this Schema, <code class="font-mono text-gray-900">employee</code> is a record whose every field is typed by a core atom — a <code class="font-mono text-gray-900">uuid</code>, an <code class="font-mono text-gray-900">email</code>, a <code class="font-mono text-gray-900">date</code>, an <code class="font-mono text-gray-900">age</code> bounded to a byte; <code class="font-mono text-gray-900">tags</code> is the one optional field, and all the rest are required by default. Both panes are editable, and everything you see runs in your browser.
       </p>
     </div>
 
+    <!-- ═══ Current status ═══ -->
+    <div class="max-w-5xl mx-auto px-6 pt-8">
+      <div class="bg-gray-900 text-gray-200 rounded-xl px-8 py-10 md:px-10">
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-3">Current status</h2>
+        <p class="text-sm text-gray-400 max-w-3xl">
+          TSON is a <strong class="text-gray-200">working draft</strong>. The
+          specification is published under the 2026 revision series and remains subject to change
+          until it freezes as version 1. Two implementations are underway: <a href="https://github.com/litterat/ltr8-io-tson-java" class="text-teal-400 underline">a Java implementation</a>,
+          the reference, is already functioning; <a href="https://github.com/litterat/ltr8-io-tson-typescript" class="text-teal-400 underline">a TypeScript port</a> is
+          experimental, and is what validates the document above in your browser. The meta-kernel, meta-schema, and core type library are already published
+          with resolved fixtures, so parsers and resolvers will have reference answers to test
+          against. If the design interests you, this is the stage where feedback shapes it.
+        </p>
+      </div>
+    </div>
+
     <!-- ═══ Try it: the CLI ═══ -->
-    <div class="max-w-5xl mx-auto px-6 pt-10">
+    <div class="max-w-5xl mx-auto px-6 pt-14">
       <div class="bg-teal-900 text-teal-50 rounded-xl px-8 py-10 md:px-10">
-        <h2 class="text-sm font-semibold uppercase tracking-widest text-teal-300/80 mb-3">Try it</h2>
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-teal-300/80 mb-3">Implementations</h2>
         <p class="font-mono font-semibold text-xl md:text-2xl leading-snug max-w-2xl mb-6">
-          Skip the reading. <span class="text-teal-300">Run it.</span>
+          Run it in <span class="text-teal-300">your terminal.</span>
         </p>
         <p class="text-sm text-teal-100/70 max-w-3xl mb-6">
-          There is a working implementation: <a href="https://github.com/litterat/ltr8-io-tson-java" class="text-teal-300 underline">tson-java</a>.
+          The reference implementation is <a href="https://github.com/litterat/ltr8-io-tson-java" class="text-teal-300 underline">tson-java</a>.
           The command-line tool's init-example command writes you an example schema and a data document pair. You can use the validate command
           to see how the data gets validated against the schema. Break the data (e.g. quote the age, delete a field)
-          and it reports every problem at once, each with a path and a reason.
+          and it reports every problem at once, each with a path and a reason. The validator above is <a href="https://github.com/litterat/ltr8-io-tson-typescript" class="text-teal-300 underline">tson-typescript</a>,
+          an experimental port that runs the same pipeline in the browser.
         </p>
         <div class="border border-teal-700/60 rounded-md overflow-hidden max-w-3xl">
           <pre class="bg-gray-950 p-4 text-sm leading-7 overflow-x-auto teal-pane"><code set:html={trySession} /></pre>
@@ -474,20 +457,6 @@ const routes = [
         <p class="mt-4 text-sm text-gray-400 max-w-2xl">
           TSON is a strict superset of JSON, with its four atomic types (null, boolean, number and string), plus <span class="text-teal-400">UUIDs</span>, <span class="text-teal-400">dates</span>, <span class="text-teal-400">binary data</span>, and <span class="text-teal-400">arbitrary-precision numbers</span> as first-class
           values, parsed straight from quoted or unquoted text, no schema required.
-        </p>
-      </div>
-    </div>
-
-    <!-- ═══ Current status ═══ -->
-    <div class="max-w-5xl mx-auto px-6 pt-8">
-      <div class="bg-teal-100 rounded-md p-6 md:p-8">
-        <h2 class="text-sm font-semibold uppercase tracking-widest text-teal-800/70 mb-3">Current status</h2>
-        <p class="text-sm text-teal-900/80 max-w-3xl">
-          TSON is a <strong class="text-teal-950">working draft</strong>. The
-          specification is published under the 2026 revision series and remains subject to change
-          until it freezes as version 1. Implementations are underway: the first, <a href="https://github.com/litterat/ltr8-io-tson-java" class="text-teal-800 underline hover:text-teal-950">a Java implementation</a>, is already functioning. The meta-kernel, meta-schema, and core type library are already published
-          with resolved fixtures, so parsers and resolvers will have reference answers to test
-          against. If the design interests you, this is the stage where feedback shapes it.
         </p>
       </div>
     </div>

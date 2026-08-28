@@ -1,0 +1,761 @@
+---
+/**
+ * The live validator: a TSON schema resolved, linked and compiled in the visitor's browser, and a
+ * document validated against it. Every fault in one pass — the claim the rest of the page makes in
+ * prose, made here by the validator itself.
+ *
+ * Ported from `examples/web-demo` in the TypeScript implementation
+ * (github.com/litterat/ltr8-io-tson-typescript), which is where the scenarios and the diagnostics
+ * rendering are maintained. Nothing is fetched: `@ltr8/tson/stdlib` carries meta-kernel, meta.tn
+ * and core.tn as embedded text, so the whole ladder resolves client-side.
+ */
+---
+
+<div id="tson-demo">
+  <div class="scenarios">
+    <span class="label">Try it here!</span>
+    <span id="td-scenarios" class="chips"></span>
+  </div>
+
+  <!-- The pair, editable: data left, schema right — the hero visual this replaces. -->
+  <div class="panes main-panes">
+    <div class="pane">
+      <div class="pane-head">
+        <span class="pane-title">TSON Data</span>
+        <span class="pane-note">
+          read against
+          <input id="td-root" class="root-input" aria-label="schema entry the root value reads against" />
+        </span>
+      </div>
+      <div class="editor">
+        <div class="gutter" id="td-gutter" aria-hidden="true"></div>
+        <textarea id="td-data" spellcheck="false" aria-label="TSON document"></textarea>
+      </div>
+    </div>
+
+    <!-- The schema shares its pane with the diagnostics: two tabs, schema first. A fault switches
+         to the diagnostics itself, so the payoff never waits on a click. -->
+    <div class="pane">
+      <div class="pane-head tabbed">
+        <span class="tabstrip" role="tablist" aria-label="schema or diagnostics">
+          <button type="button" class="tab" id="td-tab-schema" role="tab" aria-selected="true"
+            aria-controls="td-panel-schema">TSON Schema</button>
+          <button type="button" class="tab" id="td-tab-diags" role="tab" aria-selected="false"
+            aria-controls="td-panel-diags">Diagnostics <span class="badge" id="td-badge">0</span></button>
+        </span>
+        <span class="pane-note" id="td-note">compiled in your browser</span>
+      </div>
+      <div class="editor no-gutter" id="td-panel-schema" role="tabpanel" aria-labelledby="td-tab-schema">
+        <textarea id="td-schema" spellcheck="false" aria-label="TSON schema"></textarea>
+      </div>
+      <div class="diag-panel" id="td-panel-diags" role="tabpanel" aria-labelledby="td-tab-diags" hidden>
+        <div class="verdict ok" id="td-verdict"><span class="dot"></span><span>…</span></div>
+        <ul class="diags" id="td-diags"></ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<style is:global>
+  /* Scoped under #tson-demo: the diagnostics list is built as HTML strings at runtime, which
+     Astro's scoped styles never reach (they tag markup at build time). */
+  #tson-demo {
+    --td-editor-size: 13px;
+    --td-editor-leading: 22px;
+  }
+
+  #tson-demo .scenarios {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0 0 0.75rem;
+  }
+  #tson-demo .chips { display: contents; }
+  #tson-demo .scenarios .label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    /* the same red the gutter marks a faulting line with */
+    color: var(--color-red-700);
+    margin-right: 0.25rem;
+  }
+  /* The chips carry their own verdict: green is the document that conforms, yellow the ones that
+     do not. Selecting one saturates its own hue rather than going uniformly dark, so the row keeps
+     saying which is which. */
+  #tson-demo .chip {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 9999px;
+    padding: 0.3rem 0.75rem;
+    background: var(--color-yellow-100);
+    color: var(--color-yellow-900);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  #tson-demo .chip:hover { border-color: var(--color-yellow-400); }
+  #tson-demo .chip[aria-pressed='true'] {
+    background: var(--color-amber-400);
+    color: var(--color-gray-900);
+  }
+  #tson-demo .chip.ok { background: var(--color-green-100); color: var(--color-green-900); }
+  #tson-demo .chip.ok:hover { border-color: var(--color-green-400); }
+  #tson-demo .chip.ok[aria-pressed='true'] { background: var(--color-green-600); color: #fff; }
+  @media (prefers-reduced-motion: reduce) {
+    #tson-demo .chip { transition: none; }
+  }
+
+  #tson-demo .panes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  @media (max-width: 60rem) {
+    #tson-demo .panes { grid-template-columns: 1fr; }
+  }
+  #tson-demo .pane {
+    border: 1px solid var(--color-gray-200);
+    border-radius: 0.375rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  /* Centred, not baseline-aligned: the right pane's head holds tab buttons rather than plain text,
+     and on a baseline its note sat 9px above the left pane's. Both notes now share a line. */
+  #tson-demo .pane-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--color-gray-200);
+    background: var(--color-gray-50);
+    min-height: 2.625rem;
+  }
+  #tson-demo .pane-title {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-gray-800);
+  }
+  #tson-demo .pane-note { font-size: 0.75rem; color: var(--color-gray-500); }
+
+  /* Both editors are one height, sized to the schema — the taller of the two — so the pair reads
+     as a matched set the way the static hero panes it replaces did. */
+  #tson-demo .main-panes .pane { height: 27.5rem; }
+  #tson-demo .pane-title.schema { color: var(--color-teal-700); }
+
+  #tson-demo .editor {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    background: #fff;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  #tson-demo .editor.no-gutter { grid-template-columns: 1fr; }
+  #tson-demo .gutter {
+    padding: 0.75rem 0.55rem 0.75rem 0.75rem;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: var(--td-editor-size);
+    line-height: var(--td-editor-leading);
+    color: var(--color-gray-300);
+    background: var(--color-gray-50);
+    border-right: 1px solid var(--color-gray-200);
+    user-select: none;
+    white-space: pre;
+    tab-size: 2;
+  }
+  #tson-demo .gutter .bad { color: var(--color-red-700); font-weight: 700; }
+  #tson-demo .editor textarea {
+    font-family: var(--font-mono);
+    font-size: var(--td-editor-size);
+    line-height: var(--td-editor-leading);
+    padding: 0.75rem 0.9rem;
+    border: 0;
+    resize: vertical;
+    outline: none;
+    color: var(--color-gray-900);
+    background: transparent;
+    height: 100%;
+    tab-size: 2;
+    white-space: pre;
+    overflow: auto;
+  }
+  #tson-demo .editor textarea:focus { background: var(--color-teal-50); }
+
+  #tson-demo .verdict {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.7rem 0.9rem;
+    border-bottom: 1px solid var(--color-gray-200);
+    font-size: 0.875rem;
+  }
+  #tson-demo .dot { width: 0.5rem; height: 0.5rem; border-radius: 9999px; flex: none; }
+  #tson-demo .verdict.ok { background: var(--color-teal-50); color: var(--color-teal-950); }
+  #tson-demo .verdict.ok .dot { background: var(--color-teal-600); }
+  #tson-demo .verdict.bad { background: var(--color-red-100); color: var(--color-gray-900); }
+  #tson-demo .verdict.bad .dot { background: var(--color-red-700); }
+  #tson-demo .verdict.warn { background: var(--color-amber-50); color: var(--color-amber-900); }
+  #tson-demo .verdict.warn .dot { background: var(--color-amber-700); }
+  #tson-demo .verdict .count { font-family: var(--font-mono); font-weight: 700; }
+  #tson-demo .verdict .timing {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-gray-500);
+  }
+
+  #tson-demo .diags {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+  }
+  #tson-demo .diags li { border-bottom: 1px solid var(--color-gray-100); }
+  #tson-demo .diags button {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 0;
+    padding: 0.7rem 0.9rem;
+    cursor: pointer;
+    font: inherit;
+    display: block;
+  }
+  #tson-demo .diags button:hover { background: var(--color-gray-50); }
+  #tson-demo .diag-top {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.2rem;
+  }
+  #tson-demo .code {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    border-radius: 9999px;
+    padding: 0.1rem 0.5rem;
+    background: var(--color-red-100);
+    color: var(--color-red-700);
+    white-space: nowrap;
+  }
+  #tson-demo .code.gap { background: var(--color-amber-50); color: var(--color-amber-900); }
+  #tson-demo .at { font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-gray-500); }
+  #tson-demo .msg { font-size: 0.875rem; color: var(--color-gray-800); }
+  #tson-demo .detail {
+    margin-top: 0.35rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-gray-600);
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  #tson-demo .detail .k { color: var(--color-gray-400); }
+  #tson-demo .empty {
+    padding: 2rem 0.9rem;
+    text-align: center;
+    color: var(--color-gray-500);
+    font-size: 0.875rem;
+  }
+
+  /* The diagnostics band: full width under both panes, and it scrolls rather than running the
+     section off the page when a scenario plants ten faults. */
+  /* ── the schema/diagnostics tab strip ─────────────────────────────────── */
+  #tson-demo .pane-head.tabbed { padding: 0 0.9rem 0 0; }
+  #tson-demo .tabstrip { display: flex; align-self: stretch; }
+  #tson-demo .tab {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-gray-500);
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    padding: 0.6rem 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  #tson-demo .tab:hover { color: var(--color-gray-800); }
+  #tson-demo .tab[aria-selected='true'] {
+    color: var(--color-teal-700);
+    border-bottom-color: var(--color-teal-600);
+    background: #fff;
+  }
+  #tson-demo .badge {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1;
+    border-radius: 9999px;
+    padding: 0.15rem 0.4rem;
+    background: var(--color-gray-200);
+    color: var(--color-gray-600);
+  }
+  #tson-demo .badge.bad { background: var(--color-red-100); color: var(--color-red-700); }
+  #tson-demo .badge.warn { background: var(--color-amber-50); color: var(--color-amber-900); }
+  #tson-demo .badge.ok { background: var(--color-teal-100); color: var(--color-teal-800); }
+
+  #tson-demo .diag-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    background: #fff;
+  }
+  #tson-demo .diag-panel[hidden] { display: none; }
+  #tson-demo .diag-panel .diags { flex: 1; min-height: 0; }
+
+  #tson-demo .root-input {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    width: 7.5rem;
+    margin-left: 0.4rem;
+    border: 1px solid var(--color-gray-300);
+    border-radius: 0.25rem;
+    padding: 0.05rem 0.35rem;
+    color: var(--color-gray-800);
+  }
+  #tson-demo .root-input:focus { outline: 2px solid var(--color-teal-300); outline-offset: -1px; }
+</style>
+
+<script>
+  import { validate } from '@ltr8/tson';
+  import { standardLibrary } from '@ltr8/tson/stdlib';
+  import type { CompiledSchema, Diagnostic } from '@ltr8/tson';
+
+  const SCHEMA = `!!id:"https://example.com/people.tn"
+!!meta:"https://tson.io/2026/33/m/meta.tn"
+!!import:"https://tson.io/2026/33/m/core.tn"
+@doc:"The demo schema: an employee record."
+{
+  @doc:"A person on the payroll."
+  employee => {
+    id:        uuid
+    name:      non_empty_text
+    age:       uint8
+    email:     email
+    started:   date
+    active:    boolean
+    tags:      [non_empty_text]?
+  }
+}
+`;
+
+  interface Scenario {
+    id: string;
+    label: string;
+    root: string;
+    data: string;
+    /** The document is expected to conform — colours the chip green rather than yellow. */
+    ok?: boolean;
+  }
+
+  const SCENARIOS: Scenario[] = [
+    {
+      id: 'valid',
+      label: 'valid',
+      root: 'employee',
+      ok: true,
+      data: `!employee {
+  id:      "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+  name:    "Ada Lovelace"
+  age:     36
+  email:   "ada@example.com"
+  started: 2026-01-15
+  active:  true
+  tags:    ["founder" "mathematician"]
+}
+`,
+    },
+    {
+      id: 'planted',
+      label: 'ten planted errors',
+      root: 'employee',
+      data: `!employee {
+  id:        "not-a-uuid"
+  name:      ""
+  age:       300
+  email:     "ada@@example.com"
+  started:   2026-13-45
+  active:    yes
+  tags:      { first: "founder" }
+  nickname:  "Countess"
+  salary:    100000
+  id:        "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+}
+`,
+    },
+    {
+      // One mistyped field name, two diagnostics: the field nobody declared, and the required one
+      // it was meant to be. A tolerant reader would have dropped the value silently.
+      id: 'typo',
+      label: 'one typo',
+      root: 'employee',
+      data: `!employee {
+  id:      "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+  name:    "Ada Lovelace"
+  age:     36
+  emai:    "ada@example.com"
+  started: 2026-01-15
+  active:  true
+}
+`,
+    },
+    {
+      id: 'missing',
+      label: 'missing fields',
+      root: 'employee',
+      data: `!employee {
+  name: "Grace Hopper"
+  age:  45
+}
+`,
+    },
+    {
+      id: 'syntax',
+      label: 'malformed syntax',
+      root: 'employee',
+      data: `!employee {
+  id:   "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+  name: "Unclosed record
+  age:  36
+`,
+    },
+    {
+      id: 'schemaless',
+      label: 'no schema (Class 1)',
+      root: '',
+      data: `{
+  reading:  42
+  when:     !datetime "2026-08-28T05:14:00Z"
+  where:    !ipv4 "10.0.0.1"
+  who:      !nonesuch "unknown to the built-in vocabulary"
+  nested:   { a: [1 2 3]  b: { c: _ } }
+}
+`,
+    },
+  ];
+
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
+  const encoder = new TextEncoder();
+
+  const dataEl = $<HTMLTextAreaElement>('td-data');
+  const schemaEl = $<HTMLTextAreaElement>('td-schema');
+  const rootEl = $<HTMLInputElement>('td-root');
+  const gutterEl = $<HTMLElement>('td-gutter');
+  const diagsEl = $<HTMLElement>('td-diags');
+  const verdictEl = $<HTMLElement>('td-verdict');
+  const chipsEl = $<HTMLElement>('td-scenarios');
+  const tabSchema = $<HTMLButtonElement>('td-tab-schema');
+  const tabDiags = $<HTMLButtonElement>('td-tab-diags');
+  const panelSchema = $<HTMLElement>('td-panel-schema');
+  const panelDiags = $<HTMLElement>('td-panel-diags');
+  const badgeEl = $<HTMLElement>('td-badge');
+  const noteEl = $<HTMLElement>('td-note');
+
+  /** Set once the reader picks a tab by hand, so a later fault never yanks the pane out from under
+   *  them. Cleared when they load a scenario, which is a fresh start. */
+  let tabPinned = false;
+
+  function showTab(which: 'schema' | 'diags') {
+    if (!tabSchema || !tabDiags || !panelSchema || !panelDiags || !noteEl) return;
+    const diags = which === 'diags';
+    tabSchema.setAttribute('aria-selected', String(!diags));
+    tabDiags.setAttribute('aria-selected', String(diags));
+    panelSchema.hidden = diags;
+    panelDiags.hidden = !diags;
+    noteEl.textContent = diags ? 'click one to jump to it' : 'compiled in your browser';
+  }
+
+  /**
+   * `resolveSchema` registers a schema under its own `!!id`, so re-resolving the same text needs a
+   * fresh registry rather than the same one twice. Cached by text, so an edit to the *document*
+   * never recompiles the schema — which is why the first keystroke costs ~50 ms and the rest ~1 ms.
+   */
+  let compiled: CompiledSchema | null = null;
+  let compiledFor: string | null = null;
+
+  function compileSchema(text: string): { compiled: CompiledSchema | null; error: Error | null } {
+    if (compiledFor === text) return { compiled, error: null };
+    try {
+      const fresh = standardLibrary();
+      compiled = fresh.compile(fresh.resolveSchema(text));
+      compiledFor = text;
+      return { compiled, error: null };
+    } catch (error) {
+      compiled = null;
+      compiledFor = null;
+      return { compiled: null, error: error as Error };
+    }
+  }
+
+  /** A library gap is not a verdict on the document, so it is styled and worded differently. */
+  const isGap = (code: string) => code === 'NOT_IMPLEMENTED';
+
+  /**
+   * The entries this schema declares itself, as opposed to the ~48 it gets from `!!import`ing
+   * core.tn — the useful half of "no entry named X" is what you could have written instead.
+   * `origins` records ids without their scheme, so both sides are normalised before comparing.
+   *
+   * Resolver-materialised entries are dropped: desugaring `tags: [non_empty_text]?` lifts a
+   * synthetic `array_non_empty_text_70c48588`, and §8.2 makes those names implementation-chosen
+   * and non-normative — offering one as something you could have typed would be a lie. The
+   * meta-kernel marks them with a `@synthetic` key annotation, which is what this reads.
+   */
+  function localEntryNames(linked: CompiledSchema['linked']): string[] {
+    const strip = (u: string) => u.replace(/^[a-z]+:\/\//i, '').replace(/\?.*$/, '');
+    const home = strip(linked.id);
+    const isSynthetic = (name: string) =>
+      (linked.keyAnnotations.get(name) ?? []).some((a) => a.name === 'synthetic');
+    return [...linked.entries.keys()].filter(
+      (n) => strip(linked.origins.get(n) ?? '') === home && !isSynthetic(n),
+    );
+  }
+
+  /** One synthetic entry in the diagnostics list, for the problems the library reports by throwing. */
+  function renderSingleProblem(code: string, message: string) {
+    if (!diagsEl) return;
+    diagsEl.innerHTML =
+      `<li><button type="button"><span class="diag-top"><span class="code gap">${escapeHtml(code)}</span></span>` +
+      `<span class="msg">${escapeHtml(message)}</span></button></li>`;
+  }
+
+  const positionLabel = (d: Diagnostic) =>
+    d.dataPosition ? `${d.dataPosition.line}:${d.dataPosition.column}` : '—';
+
+  function renderGutter(text: string, lines: number[]) {
+    const bad = new Set(lines);
+    // A document ending in a newline has a trailing empty line that editors do not number.
+    const lineCount = text.split('\n').length;
+    const count = text.endsWith('\n') ? lineCount - 1 : lineCount;
+    const rows: string[] = [];
+    for (let n = 1; n <= count; n++) {
+      rows.push(bad.has(n) ? `<span class="bad">${n}</span>` : String(n));
+    }
+    return rows.join('\n');
+  }
+
+  const escapeHtml = (s: unknown) =>
+    String(s).replace(
+      /[&<>"']/g,
+      (c) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
+    );
+
+  /** A byte offset into the UTF-8 encoding of `text`, as an index into the JS string. */
+  function utf16IndexOfByteOffset(text: string, byteOffset: number) {
+    let bytes = 0;
+    for (let i = 0; i < text.length; ) {
+      if (bytes >= byteOffset) return i;
+      const cp = text.codePointAt(i)!;
+      bytes += cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+      i += cp >= 0x10000 ? 2 : 1;
+    }
+    return text.length;
+  }
+
+  function renderDiagnostics(diagnostics: readonly Diagnostic[]) {
+    if (!diagsEl || !dataEl) return;
+    if (diagnostics.length === 0) {
+      diagsEl.innerHTML = '<li class="empty">Nothing to report — the document conforms.</li>';
+      return;
+    }
+    diagsEl.innerHTML = diagnostics
+      .map((d, i) => {
+        const detail: string[] = [];
+        if (d.path) detail.push(`<span><span class="k">at</span> ${escapeHtml(d.path)}</span>`);
+        if (d.expected)
+          detail.push(`<span><span class="k">expected</span> ${escapeHtml(d.expected)}</span>`);
+        if (d.actual)
+          detail.push(`<span><span class="k">found</span> ${escapeHtml(d.actual)}</span>`);
+        return `<li><button type="button" data-i="${i}">
+        <span class="diag-top">
+          <span class="code${isGap(d.code) ? ' gap' : ''}">${escapeHtml(d.code)}</span>
+          <span class="at">${positionLabel(d)}</span>
+        </span>
+        <span class="msg">${escapeHtml(d.message)}</span>
+        ${detail.length ? `<span class="detail">${detail.join('')}</span>` : ''}
+      </button></li>`;
+      })
+      .join('');
+
+    // Clicking a diagnostic puts the caret on the offending byte. `offset` is a UTF-8 byte offset
+    // and a textarea selection is in UTF-16 units, so it is converted rather than used directly.
+    for (const button of diagsEl.querySelectorAll('button')) {
+      button.addEventListener('click', () => {
+        const d = diagnostics[Number((button as HTMLButtonElement).dataset.i)];
+        if (!d?.dataPosition) return;
+        const index = utf16IndexOfByteOffset(dataEl.value, d.dataPosition.offset);
+        dataEl.focus();
+        dataEl.setSelectionRange(index, Math.min(index + 1, dataEl.value.length));
+      });
+    }
+  }
+
+  function setBadge(kind: string, count: number) {
+    if (!badgeEl) return;
+    badgeEl.textContent = String(count);
+    badgeEl.className = `badge ${kind === 'bad' ? 'bad' : kind === 'warn' ? 'warn' : 'ok'}`;
+  }
+
+  function setVerdict(kind: string, label: string, count: number, timing: string) {
+    if (!verdictEl) return;
+    verdictEl.className = `verdict ${kind}`;
+    verdictEl.innerHTML =
+      `<span class="dot"></span><span><span class="count">${count}</span> ${escapeHtml(label)}</span>` +
+      (timing ? `<span class="timing">${timing}</span>` : '');
+  }
+
+  function run() {
+    if (!dataEl || !schemaEl || !rootEl || !gutterEl || !diagsEl) return;
+    const dataText = dataEl.value;
+    const root = rootEl.value.trim();
+    const bytes = encoder.encode(dataText);
+
+    const started = performance.now();
+    let diagnostics: readonly Diagnostic[];
+
+    if (root === '') {
+      // Class 1: base syntax and the built-in type vocabulary, no schema in scope.
+      diagnostics = validate(bytes).diagnostics;
+    } else {
+      const { compiled: schema, error } = compileSchema(schemaEl.value);
+      if (error || !schema) {
+        setVerdict('warn', 'the schema itself did not compile', 1, '');
+        diagsEl.innerHTML =
+          `<li><button type="button"><span class="diag-top"><span class="code gap">SCHEMA_ERROR</span></span>` +
+          `<span class="msg">${escapeHtml(error?.message ?? 'unknown')}</span></button></li>`;
+        gutterEl.textContent = renderGutter(dataText, []);
+        setBadge('warn', 1);
+        // Never steal the tab here: a schema that will not compile is a schema being edited, and
+        // switching away would hide the text under the cursor. The badge carries the signal.
+        if (noteEl && panelDiags?.hidden) noteEl.textContent = 'schema error — see Diagnostics';
+        return;
+      }
+      // A root naming no entry makes the compiler *throw* rather than report, which would kill
+      // this handler and leave the panel showing the previous document's verdict. Checked here so
+      // it reads as the ordinary problem it is.
+      if (!schema.linked.entries.has(root)) {
+        const local = localEntryNames(schema.linked);
+        setVerdict('warn', 'no such entry in this schema', 1, '');
+        renderSingleProblem(
+          'UNKNOWN_ROOT',
+          `no entry named '${root}' — this schema declares ${local.length ? local.join(', ') : 'nothing'}`,
+        );
+        gutterEl.textContent = renderGutter(dataText, []);
+        setBadge('warn', 1);
+        if (!tabPinned) showTab('diags');
+        return;
+      }
+      diagnostics = validate(bytes, { schema, root }).diagnostics;
+    }
+    const elapsed = performance.now() - started;
+
+    const [verdict, label] =
+      diagnostics.length === 0
+        ? ['ok', 'diagnostics — the document conforms']
+        : diagnostics.every((d) => isGap(d.code))
+          ? ['warn', 'library gaps — nothing was checked']
+          : [
+              'bad',
+              diagnostics.length === 1 ? 'diagnostic, in one pass' : 'diagnostics, in one pass',
+            ];
+
+    setVerdict(verdict, label, diagnostics.length, `${elapsed.toFixed(1)} ms`);
+    renderDiagnostics(diagnostics);
+    setBadge(verdict, diagnostics.length);
+    // Faults pull the pane over to them; a clean document never pulls it back, so the reader keeps
+    // the green verdict they just earned rather than being bounced to the schema.
+    if (diagnostics.length > 0 && !tabPinned) showTab('diags');
+    gutterEl.innerHTML = renderGutter(
+      dataText,
+      diagnostics.map((d) => d.dataPosition?.line).filter((n): n is number => Boolean(n)),
+    );
+  }
+
+  /**
+   * Anything the library reports by throwing rather than collecting reaches the panel instead of
+   * an uncaught listener, which would leave the last document's verdict on screen as if it still
+   * applied. Nothing here should throw; this is so that a gap never looks like a pass.
+   */
+  function safeRun() {
+    try {
+      run();
+    } catch (e) {
+      setVerdict('warn', 'the validator itself failed', 1, '');
+      renderSingleProblem('INTERNAL_ERROR', (e as Error).message);
+      setBadge('warn', 1);
+      if (!tabPinned) showTab('diags');
+    }
+  }
+
+  function loadScenario(scenario: Scenario) {
+    if (!dataEl || !rootEl) return;
+    dataEl.value = scenario.data;
+    rootEl.value = scenario.root;
+    for (const chip of document.querySelectorAll('#tson-demo .chip')) {
+      chip.setAttribute('aria-pressed', String((chip as HTMLElement).dataset.id === scenario.id));
+    }
+    // A scenario is a fresh start, so it takes the tab back: the schema on a clean document, and
+    // run() will pull it to the diagnostics if there is anything to show.
+    tabPinned = false;
+    showTab('schema');
+    safeRun();
+  }
+
+  if (dataEl && schemaEl && rootEl && chipsEl) {
+    schemaEl.value = SCHEMA;
+
+    for (const scenario of SCENARIOS) {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = scenario.ok ? 'chip ok' : 'chip';
+      chip.dataset.id = scenario.id;
+      chip.textContent = scenario.label;
+      chip.setAttribute('aria-pressed', 'false');
+      chip.addEventListener('click', () => loadScenario(scenario));
+      chipsEl.append(chip);
+    }
+
+    let timer: ReturnType<typeof setTimeout>;
+    const debounced = () => {
+      clearTimeout(timer);
+      timer = setTimeout(safeRun, 120);
+    };
+    dataEl.addEventListener('input', debounced);
+    rootEl.addEventListener('input', debounced);
+    // Editing the schema pins the tab: the reader is looking at the text they are typing, and a
+    // fault in the *data* must not swap the pane out mid-keystroke.
+    schemaEl.addEventListener('input', () => {
+      tabPinned = true;
+      debounced();
+    });
+
+    tabSchema?.addEventListener('click', () => {
+      tabPinned = true;
+      showTab('schema');
+    });
+    tabDiags?.addEventListener('click', () => {
+      tabPinned = true;
+      showTab('diags');
+    });
+
+    // Opens on the valid document: this is the hero visual, so the first thing above the fold
+    // should be idiomatic TSON, as the static panes it replaces were. The chips invite the break.
+    loadScenario(SCENARIOS[0]);
+  }
+</script>
