@@ -264,6 +264,23 @@
     flex-wrap: wrap;
   }
   #tson-demo .detail .k { color: var(--color-gray-400); }
+  #tson-demo .diags button.fix {
+    display: inline-block;
+    width: auto;
+    margin: 0 0.9rem 0.7rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    border-radius: 9999px;
+    padding: 0.3rem 0.7rem;
+    background: var(--color-teal-700);
+    color: #fff;
+    border: 0;
+    cursor: pointer;
+  }
+  #tson-demo .diags button.fix:hover { background: var(--color-teal-800); }
+  /* Digests and long tokens break rather than widening the pane. */
+  #tson-demo .detail span { overflow-wrap: anywhere; }
   #tson-demo .empty {
     padding: 2rem 0.9rem;
     text-align: center;
@@ -333,14 +350,14 @@
 </style>
 
 <script>
-  import { validate } from '@ltr8/tson';
-  import { standardLibrary } from '@ltr8/tson/stdlib';
-  import type { CompiledSchema, Diagnostic } from '@ltr8/tson';
+  import { classifyDocument, parse, validate } from '@ltr8/tson';
+  import { CORE_TN, META_TN, standardLibrary } from '@ltr8/tson/stdlib';
+  import { declaredSha256, sha256Hex, withSha256Pin } from '@ltr8/tson/identity';
+  import type { CompiledSchema, Diagnostic, Document } from '@ltr8/tson';
 
-  const SCHEMA = `!!id:"https://example.com/people.tn"
-!!meta:"https://tson.io/2026/33/m/meta.tn"
-!!import:"https://tson.io/2026/33/m/core.tn"
-@doc:"The demo schema: an employee record."
+  const SCHEMA_ID = 'https://example.com/people.tn';
+
+  const SCHEMA_BODY = `@doc:"The demo schema: an employee record."
 {
   @doc:"A person on the payroll."
   employee => {
@@ -362,6 +379,8 @@
     data: string;
     /** The document is expected to conform — colours the chip green rather than yellow. */
     ok?: boolean;
+    /** Also restores the shipped schema, making this chip a full reset to a conforming pair. */
+    resetsSchema?: boolean;
   }
 
   const SCENARIOS: Scenario[] = [
@@ -370,7 +389,9 @@
       label: 'valid',
       root: 'employee',
       ok: true,
-      data: `!employee {
+      resetsSchema: true,
+      data: `!!schema:"https://example.com/people.tn?sha256=__PIN__"
+!employee {
   id:      "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
   name:    "Ada Lovelace"
   age:     36
@@ -385,7 +406,8 @@
       id: 'planted',
       label: 'ten planted errors',
       root: 'employee',
-      data: `!employee {
+      data: `!!schema:"https://example.com/people.tn?sha256=__PIN__"
+!employee {
   id:        "not-a-uuid"
   name:      ""
   age:       300
@@ -405,7 +427,8 @@
       id: 'typo',
       label: 'one typo',
       root: 'employee',
-      data: `!employee {
+      data: `!!schema:"https://example.com/people.tn?sha256=__PIN__"
+!employee {
   id:      "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
   name:    "Ada Lovelace"
   age:     36
@@ -419,7 +442,8 @@
       id: 'missing',
       label: 'missing fields',
       root: 'employee',
-      data: `!employee {
+      data: `!!schema:"https://example.com/people.tn?sha256=__PIN__"
+!employee {
   name: "Grace Hopper"
   age:  45
 }
@@ -429,7 +453,8 @@
       id: 'syntax',
       label: 'malformed syntax',
       root: 'employee',
-      data: `!employee {
+      data: `!!schema:"https://example.com/people.tn?sha256=__PIN__"
+!employee {
   id:   "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
   name: "Unclosed record
   age:  36
@@ -453,6 +478,21 @@
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
   const encoder = new TextEncoder();
 
+  /**
+   * The schema, headed by the full pinned chain. `!!meta` and `!!import` take their references
+   * from the stdlib documents themselves rather than from hardcoded hex, so they are exactly the
+   * identities the registry is keyed by and cannot drift from the schemas actually shipped.
+   *
+   * `selfPin` goes on `!!id`, and stamping it does not change the digest it states: §7.3 hashes
+   * from the second line on, precisely so a document can name its own content.
+   */
+  function buildSchema(selfPin: string | null): string {
+    const metaId = classifyDocument(encoder.encode(META_TN)).id ?? '';
+    const coreId = classifyDocument(encoder.encode(CORE_TN)).id ?? '';
+    const id = selfPin ? `${SCHEMA_ID}?sha256=${selfPin}` : SCHEMA_ID;
+    return `!!id:"${id}"\n!!meta:"${metaId}"\n!!import:"${coreId}"\n${SCHEMA_BODY}`;
+  }
+
   const dataEl = $<HTMLTextAreaElement>('td-data');
   const schemaEl = $<HTMLTextAreaElement>('td-schema');
   const rootEl = $<HTMLInputElement>('td-root');
@@ -471,16 +511,65 @@
    *  them. Cleared when they load a scenario, which is a fresh start. */
   let tabPinned = false;
 
+  /** The schema pane's note. The digest itself lives on the `!!id` line, not out here. */
+  let schemaBroken = false;
+
+  function renderNote() {
+    if (!noteEl || !panelDiags) return;
+    if (!panelDiags.hidden) {
+      noteEl.textContent = 'click one to jump to it';
+      return;
+    }
+    noteEl.textContent = schemaBroken
+      ? 'schema error — see Diagnostics'
+      : 'compiled in your browser';
+  }
+
   function showTab(which: 'schema' | 'diags') {
-    if (!tabSchema || !tabDiags || !panelSchema || !panelDiags || !noteEl) return;
+    if (!tabSchema || !tabDiags || !panelSchema || !panelDiags) return;
     const diags = which === 'diags';
     tabSchema.setAttribute('aria-selected', String(!diags));
     tabDiags.setAttribute('aria-selected', String(diags));
     panelSchema.hidden = diags;
     panelDiags.hidden = !diags;
-    noteEl.textContent = diags ? 'click one to jump to it' : 'compiled in your browser';
+    renderNote();
   }
 
+  /**
+   * The schema's own content hash, recomputed on every edit — the pin the `!!id` of a published
+   * schema carries (§2.2.1), computed here rather than quoted.
+   *
+   * §7.3 hashes from the *second* line on, which is why editing the `!!id` line leaves this
+   * unchanged while editing anything below it does not: a document's identity cannot be part of
+   * what that identity pins. `sha256Hex` throws when the first line has no terminator, since then
+   * there is no well-defined boundary to start at.
+   */
+  let hashSeq = 0;
+  let hashedText: string | null = null;
+  let hashedHex: string | null = null;
+
+  async function schemaDigest(text: string): Promise<string | null> {
+    if (hashedText === text) return hashedHex;
+    const seq = ++hashSeq;
+    let hex: string | null = null;
+    try {
+      hex = await sha256Hex(encoder.encode(text));
+    } catch {
+      hex = null; // first line carries no terminator, so §7.3 has no boundary to start at
+    }
+    if (seq !== hashSeq) return hashedHex; // a later edit has already superseded this one
+    hashedText = text;
+    hashedHex = hex;
+    return hex;
+  }
+
+  /**
+   * §2.2.1's verification half: a consumer holding a pinned reference MUST check the content
+   * against the pin before use. `verifyContentHash` is the library's own version and is what
+   * `preload` calls after a fetch — this is the same comparison with the digest already in hand,
+   * because nothing here is fetched: the demo hands the schema over directly, so the demo is
+   * standing in for the fetch that would otherwise trigger it.
+   */
   /**
    * `resolveSchema` registers a schema under its own `!!id`, so re-resolving the same text needs a
    * fresh registry rather than the same one twice. Cached by text, so an edit to the *document*
@@ -524,6 +613,72 @@
     return [...linked.entries.keys()].filter(
       (n) => strip(linked.origins.get(n) ?? '') === home && !isSynthetic(n),
     );
+  }
+
+  /** The two references that pin this schema, kept so the re-pin action rewrites exactly them. */
+  let selfRef: string | null = null;
+  let pinnedRef: string | null = null;
+  let pinDiagCount = 0;
+
+  const short = (hex: string) => `${hex.slice(0, 8)}…${hex.slice(-8)}`;
+
+  /**
+   * Stamps the schema's current digest onto both references that name it: the schema's own `!!id`
+   * and the document's `!!schema`. §2.2.1's pinning half, via the library's `withSha256Pin`, the
+   * exact inverse of the `declaredSha256` read that found the mismatch. Re-pinning the `!!id` is
+   * safe mid-flight because §7.3 excludes that line from the hash, so the digest it states stays
+   * the digest of what follows. Deliberately an action: a consumer re-pins after reviewing a new
+   * version of a schema, and doing it automatically would forge the thing the pin exists to prove.
+   */
+  function repin() {
+    if (!dataEl || !schemaEl || !hashedHex) return;
+    if (selfRef) schemaEl.value = schemaEl.value.replace(selfRef, withSha256Pin(selfRef, hashedHex));
+    if (pinnedRef) dataEl.value = dataEl.value.replace(pinnedRef, withSha256Pin(pinnedRef, hashedHex));
+    void safeRun();
+  }
+
+  /** One reference's pin against the digest, or null when it agrees, declares nothing, or is absent. */
+  function pinProblem(ref: string | null, digest: string, what: string): Diagnostic | null {
+    if (!ref) return null;
+    let declared: string | undefined;
+    try {
+      declared = declaredSha256(ref);
+    } catch (e) {
+      // A pin that is not full-length lowercase hex is never silently retained.
+      return { code: 'SCHEMA_ERROR', message: (e as Error).message };
+    }
+    if (!declared || declared === digest) return null;
+    return {
+      code: 'SCHEMA_ERROR',
+      message:
+        `${what} pins sha256 ${short(declared)}, but the schema's content hashes to ` +
+        `${short(digest)} — a consumer MUST NOT use content that does not match its pin (§2.2.1)`,
+    };
+  }
+
+  /**
+   * §2.2.1's verification half, over both ends of the reference: the identity the schema claims for
+   * itself, and the identity the document requires of it. `verifyContentHash` is the library's own
+   * version and is what `preload` calls after a fetch — this is the same comparison with the digest
+   * already in hand, because nothing here is fetched: the demo hands the schema over directly, so
+   * it stands in for the fetch that would otherwise trigger the check.
+   */
+  function checkPins(doc: Document | null, schemaText: string, digest: string | null): Diagnostic[] {
+    pinnedRef = doc?.schema ?? null;
+    selfRef = null;
+    if (!digest) return [];
+    try {
+      selfRef = classifyDocument(encoder.encode(schemaText)).id ?? null;
+    } catch {
+      // An unparseable header is already reported by the compile step.
+    }
+    // Only the *consumer* side is reported. A schema's own `!!id` is pinned at publication, not
+    // while it is being written — this repository's own draft `.tn` files spell the digest
+    // `xxhash` for exactly that reason — and `resolveSchema` does not verify a schema against its
+    // own `!!id` either, so flagging it on every keystroke would be this page inventing a check
+    // the implementation does not make. `repin` still updates it, so it is correct once pinned.
+    const problem = pinProblem(pinnedRef, digest, 'the document\u2019s !!schema');
+    return problem ? [problem] : [];
   }
 
   /** One synthetic entry in the diagnostics list, for the problems the library reports by throwing. */
@@ -593,6 +748,16 @@
       })
       .join('');
 
+    // The pin mismatch is the one problem this page can fix for you, so its entry carries the fix.
+    if (pinDiagCount > 0) {
+      const fix = document.createElement('button');
+      fix.type = 'button';
+      fix.className = 'fix';
+      fix.textContent = 're-pin to the current schema';
+      fix.addEventListener('click', repin);
+      diagsEl.querySelector('li')?.append(fix);
+    }
+
     // Clicking a diagnostic puts the caret on the offending byte. `offset` is a UTF-8 byte offset
     // and a textarea selection is in UTF-16 units, so it is converted rather than used directly.
     for (const button of diagsEl.querySelectorAll('button')) {
@@ -620,11 +785,23 @@
       (timing ? `<span class="timing">${timing}</span>` : '');
   }
 
-  function run() {
+  async function run() {
     if (!dataEl || !schemaEl || !rootEl || !gutterEl || !diagsEl) return;
     const dataText = dataEl.value;
     const root = rootEl.value.trim();
     const bytes = encoder.encode(dataText);
+
+    schemaBroken = false;
+    const digest = await schemaDigest(schemaEl.value);
+
+    // The `!!schema` reference as the document writes it, pin and all. A document that will not
+    // parse has worse problems than its pin, so a failure here just skips the check.
+    let doc: Document | null = null;
+    try {
+      doc = parse(bytes).document;
+    } catch {
+      doc = null;
+    }
 
     const started = performance.now();
     let diagnostics: readonly Diagnostic[];
@@ -643,7 +820,8 @@
         setBadge('warn', 1);
         // Never steal the tab here: a schema that will not compile is a schema being edited, and
         // switching away would hide the text under the cursor. The badge carries the signal.
-        if (noteEl && panelDiags?.hidden) noteEl.textContent = 'schema error — see Diagnostics';
+        schemaBroken = true;
+        renderNote();
         return;
       }
       // A root naming no entry makes the compiler *throw* rather than report, which would kill
@@ -662,6 +840,9 @@
         return;
       }
       diagnostics = validate(bytes, { schema, root }).diagnostics;
+      const pins = checkPins(doc, schemaEl.value, digest);
+      pinDiagCount = pins.length;
+      if (pins.length) diagnostics = [...pins, ...diagnostics];
     }
     const elapsed = performance.now() - started;
 
@@ -692,9 +873,9 @@
    * an uncaught listener, which would leave the last document's verdict on screen as if it still
    * applied. Nothing here should throw; this is so that a gap never looks like a pass.
    */
-  function safeRun() {
+  async function safeRun() {
     try {
-      run();
+      await run();
     } catch (e) {
       setVerdict('warn', 'the validator itself failed', 1, '');
       renderSingleProblem('INTERNAL_ERROR', (e as Error).message);
@@ -703,9 +884,24 @@
     }
   }
 
-  function loadScenario(scenario: Scenario) {
-    if (!dataEl || !rootEl) return;
-    dataEl.value = scenario.data;
+  async function loadScenario(scenario: Scenario) {
+    if (!dataEl || !rootEl || !schemaEl) return;
+
+    // The `valid` chip is the way back: it restores the shipped schema too, so a pair broken from
+    // either side becomes a conforming pair again in one click.
+    if (scenario.resetsSchema) {
+      try {
+        schemaEl.value = buildSchema(await sha256Hex(encoder.encode(buildSchema(null))));
+      } catch {
+        schemaEl.value = buildSchema(null);
+      }
+    }
+
+    // Stamp the document's `!!schema` against the schema actually in scope now. Scenarios keep the
+    // placeholder rather than a baked-in digest, so loading one after a re-pin cannot drag the
+    // original digest back in — an example is written against the schema you are holding.
+    const digest = await schemaDigest(schemaEl.value);
+    dataEl.value = digest ? scenario.data.replace('__PIN__', digest) : scenario.data;
     rootEl.value = scenario.root;
     for (const chip of document.querySelectorAll('#tson-demo .chip')) {
       chip.setAttribute('aria-pressed', String((chip as HTMLElement).dataset.id === scenario.id));
@@ -714,11 +910,22 @@
     // run() will pull it to the diagnostics if there is anything to show.
     tabPinned = false;
     showTab('schema');
-    safeRun();
+    void safeRun();
   }
 
-  if (dataEl && schemaEl && rootEl && chipsEl) {
-    schemaEl.value = SCHEMA;
+  async function init() {
+    if (!dataEl || !schemaEl || !rootEl || !chipsEl) return;
+
+    // The whole chain starts out correctly pinned: the schema's `!!meta` and `!!import` carry the
+    // stdlib's own identities, its `!!id` carries its own digest, and every document's `!!schema`
+    // carries the same. Computed once from the schema as shipped and never restamped — the pin
+    // belongs to the document, and rewriting it to track an edit would forge what it proves.
+    try {
+      const digest = await sha256Hex(encoder.encode(buildSchema(null)));
+      schemaEl.value = buildSchema(digest);
+    } catch {
+      schemaEl.value = buildSchema(null); // no hash boundary; leave both ends unpinned
+    }
 
     for (const scenario of SCENARIOS) {
       const chip = document.createElement('button');
@@ -727,14 +934,14 @@
       chip.dataset.id = scenario.id;
       chip.textContent = scenario.label;
       chip.setAttribute('aria-pressed', 'false');
-      chip.addEventListener('click', () => loadScenario(scenario));
+      chip.addEventListener('click', () => void loadScenario(scenario));
       chipsEl.append(chip);
     }
 
     let timer: ReturnType<typeof setTimeout>;
     const debounced = () => {
       clearTimeout(timer);
-      timer = setTimeout(safeRun, 120);
+      timer = setTimeout(() => void safeRun(), 120);
     };
     dataEl.addEventListener('input', debounced);
     rootEl.addEventListener('input', debounced);
@@ -756,6 +963,8 @@
 
     // Opens on the valid document: this is the hero visual, so the first thing above the fold
     // should be idiomatic TSON, as the static panes it replaces were. The chips invite the break.
-    loadScenario(SCENARIOS[0]);
+    await loadScenario(SCENARIOS[0]);
   }
+
+  void init();
 </script>
