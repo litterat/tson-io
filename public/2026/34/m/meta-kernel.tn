@@ -1,0 +1,445 @@
+!!id:"https://tson.io/2026/34/m/meta-kernel.tn?sha256=13de02b2f0ee17bee0337252d069d332a33cd63a8f25732fca6bfc142685357e"
+!!meta:"https://tson.io/2026/34/m/meta-kernel.tn"
+@doc:"""
+  TSON meta-kernel — self-referencing bootstrap layer (2026 Revision 34 draft).
+
+  The root of the schema ladder, written in the Part 2 schema grammar:
+  a braced schema map of `name => definition` declarations, one entry
+  per type, resolving to the kernel's own `schema` type
+  (`{type_name => type_definition}`).
+
+  The `!!meta` directive names this file itself — the one deliberate
+  circularity in the series, closed by pre-loading rather than by
+  resolution: implementations ship the kernel's resolved structure,
+  and this document describes it.
+
+  Hash pins here are real digests over the bytes of this copy,
+  computed bottom-up (kernel body, then each dependent's pins and
+  digest) so the chain verifies as shipped. Hash *values* are not
+  normative — only the pin's shape is ([TSON-DATA] §2.2.1).
+  """
+{
+  @doc:"Base kinds. `top` is the structural root; every constructor transitively IS-A `atom`, `product`, `sum` or `data`, each of which IS-A `top`. Construction transfers kind, not IS-A, so instances and fresh records sit under the kinds without supertypes. The first three describe the shape of a data value; `data` describes something that is not one."
+  top       => {}
+  atom      => top & {}
+  product   => top & {
+    access_pattern: product_access_type
+    size_type:      product_size_type
+  }
+  sum       => top & {}
+
+  @doc:"""
+    Non-data base kind. The body of an entry that describes something
+    other than a data value — vocabulary a meta-schema introduces
+    beyond the kernel's own, whose instances ride along in a schema
+    map without being types. No data value ever has such an entry as
+    its type, so `data` composes with `top` directly rather than with
+    a kind that would oblige it to describe a value's shape.
+
+    An entry whose kind is DATA is declared by its schema but is not a
+    type: naming one where a type is expected is a resolver error.
+    """
+  data      => top & {}
+
+  @doc:"""
+    Aliasing body — the entry `target` names. `target` is a type_ref
+    rather than a bare name so that a partial application
+    ([TSON-SCHEMA] §5.10, `uuid_pair => <B> pair<uuid, B>`) can state
+    the arguments it already binds: an alias to an application has an
+    argument list, and a name-typed slot has nowhere to put one.
+
+    That is what lets every open entry be written as a constructor
+    application, `<params> !C core-value`, this one included — so
+    substitution is the same walk over a body at every shape and no
+    template needs its arguments recorded beside its body.
+
+    A use site is flattened past a REFERENCE entry ([TSON-SCHEMA] §8.3)
+    but this slot is not: the chain must stay walkable, and an alias
+    records where it points. The walk stops at an argument-bearing
+    target, which is an application rather than a further hop.
+    """
+  reference => top & {
+    target: type_ref
+  }
+
+  @doc:"""
+    Unit atom constructor. An atom with no constraint vocabulary — the
+    atom equivalent of the empty record `{}` for products. Its instances
+    (`value`, `identifier`, `void`, all in the kernel) are
+    opaque atoms distinguished by name and prose-level parsing contract,
+    not by schema shape.
+    """
+  unit => ~atom & {}
+
+  @doc:"""
+    Escape hatch primitive. Instance of the unit atom constructor. The
+    result of base type resolution ([TSON-DATA] §4) applied to a source token, with
+    no further interpretation by the TSON type system. value-typed
+    fields receive whatever [TSON-DATA] §4 produces — null, boolean, integer, float,
+    or string — and the host runtime is responsible for type-checking
+    values at use site against the field's semantic role. value carries
+    no constraint vocabulary and is not narrowable.
+
+    Used for record_field.value (the type of fixed/default values, which
+    must be the field's declared type — a dependency the schema language
+    does not express directly) and for constraint vocabulary fields in
+    meta whose constrained atom is not defined in meta-kernel or meta
+    (float_type.min, decimal_type.min, etc.).
+    """
+  value => !unit {}
+
+  @doc:"""
+    Identifier primitive. Instance of the unit atom constructor, and the
+    type of every naming position in the series — type names, field
+    names, parameter names (through the three roles below) and enum
+    members (through enum_set). A rule stated here reaches all of them.
+
+    An identifier is a name, not a lexeme: it is the decoded text of a
+    token, after unquoting, escape processing and normalisation, and it
+    is constrained however it was spelled. Its profile is stated beside
+    the unquoted-token profile of [TSON-DATA] §7.1:
+
+      Start    = XID_Start
+      Continue = XID_Continue + "-"
+
+    and the text MUST be in NFC. The profile is the token profile minus
+    the extensions the number grammar requires — Nd, "-", "+" and "."
+    at Start exist so a *number* can be an unquoted token, and reach
+    names only because names and values share one lexical class — so an
+    identifier never begins with a digit or a sign, which subsumes the
+    rule that numbers are not declarable names. "+" is dropped from
+    Continue as an exponent-only character, and "." is reserved as a
+    future identifier separator. Everything else follows from XID
+    membership: whitespace, control characters, format characters,
+    emoji and unassigned code points are none of them XID_Continue.
+
+    Every part of this profile lies inside the unquoted-token profile,
+    so every identifier is a well-formed unquoted token and none ever
+    needs quoting — which is what lets the type-ref and annotation
+    positions, admitting no quoted form, cost nothing.
+
+    Core declares no sibling of it (no core-level type targets it
+    directly), unlike `void`, whose core sibling exists because
+    annotations in core need it.
+    """
+  identifier => !unit {}
+
+  @doc:"""
+    Void primitive. Instance of the unit atom constructor whose
+    parsing contract admits only the absent sentinel `_`. The host
+    value is absent. void is the target type for bare annotations
+    (`@T` with no value); the resolver fills the implicit `_` and
+    validates against this contract. See Part 2 §6.
+
+    Core declares its own sibling under the same name — the same
+    construction and contract, a distinct type entity — so that data
+    documents governed by core-importing schemas can target it.
+    """
+  void => !unit {}
+
+  @doc:"Internal scalar types for constraint fields."
+  boolean => !enum [true false]
+
+  @doc:"""
+    Fixed-width integer representation: a bit width paired with its
+    two's-complement signedness. Factored as a record so the pairing
+    is structural — `bits` never appears without `signed`.
+    """
+  integer_size => {
+    bits:    integer
+    signed:  boolean
+  }
+
+  @doc:"""
+    Integer constraint vocabulary. Atom constructor whose instance,
+    `integer`, is the kernel's arbitrary-precision integer. Field
+    types reference `integer` directly; the mutual reference closes
+    via the kernel's standard local-name lookup. The constructor reaches
+    meta directly (the kernel is meta's governing namespace) and reaches
+    meta-governed schemas through meta's kernel import — one hop in each
+    case. The `integer` instance reaches meta via that same import; core
+    defines its own.
+
+    Bounds: each side is a field group ([TSON-SCHEMA] §5.11) — the
+    inclusive `min` or the exclusive `exclusive_min`; likewise `max`
+    or `exclusive_max` — so at most one bound per side holds by
+    shape. Bound fields are `integer` — an integer's bounds are
+    integers — unlike the `value`-typed bounds of the meta numeric
+    tiers, whose values share the constrained atom's family. That the
+    lower bound not exceed the upper (across whichever forms are
+    present) is a schema-load coherence check.
+
+    Fixed width: `size` gives a fixed representation width; when
+    absent the integer is unbounded arbitrary precision (the base
+    `integer`). Width and signedness derive the representable range —
+    signed n-bit is [-2^(n-1), 2^(n-1)-1], unsigned n-bit is
+    [0, 2^n-1] — so `size` and the bound groups are equivalent ways
+    to state a bound; the fixed-width family (int8..uint256) uses
+    `size`, and range-only types (positive_integer and the like) use
+    bounds. The two compose: bounds and `multiple_of` narrow within
+    the width-derived range, and a bound outside that range is a
+    resolver error. Signedness is two's complement, the universal
+    signed encoding (mandated since C23); on the wire an integer is
+    still decimal text — `size` names the target representation a
+    consumer decodes into, not the source form. Resolver output
+    stores `size` as written and does not expand it to bounds.
+    """
+  integer_type => ~atom & {
+    size:  integer_size?
+    ( min: integer | exclusive_min: integer )?
+    ( max: integer | exclusive_max: integer )?
+    multiple_of:  integer?
+  }
+
+  integer => !integer_type {}
+
+  @doc:"""
+    Text constraint vocabulary. Atom constructor whose instance,
+    `text`, is the kernel's Unicode code point sequence type.
+    """
+  text_type => ~atom & {
+    min_length:  integer?
+    max_length:  integer?
+    length:      integer?
+    pattern:     regex?
+  }
+
+  text => !text_type {}
+
+  @doc:"Mixin record contributing the `spec` field to specification-bound atoms."
+  atom_specification => { spec: uri }
+
+  @doc:"""
+    URI constraint vocabulary. Composes with the text_type
+    constructor to inherit its record shape (length and pattern fields)
+    plus the atom_specification mixin's spec field plus uri-specific
+    fields. The composition draws shape directly from the constructor
+    rather than going through the text instance.
+    """
+  uri_type => ~text_type & atom_specification & {
+    spec:    = "https://www.rfc-editor.org/rfc/rfc3986"
+    scheme:  text?
+  }
+
+  uri => !uri_type {}
+
+  @doc:"Regex constraint vocabulary. Same shape pattern as uri_type, pinned to I-Regexp."
+  regex_type => ~text_type & atom_specification & {
+    spec: = "https://www.rfc-editor.org/rfc/rfc9485"
+  }
+
+  regex => !regex_type {}
+
+  @doc:"Identifier roles — distinct naming positions referencing the identifier primitive."
+  type_name  => identifier
+  field_name => identifier
+  param_name => identifier
+
+  @doc:"""
+    Structured type reference ([TSON-SCHEMA] §8.1). `name` is the
+    referenced type — or, within a template body, a parameter of
+    either kind, read against the enclosing definition's
+    `parameters` list — and `arguments` carries positional
+    arguments as type_argument records.
+
+    `name` is the only REQUIRED field, so the positional form
+    ([TSON-SCHEMA] §5.6, general over schema-backed data) applies
+    at every type_ref-typed position: a bare name token fills
+    `name` directly, and a braced record is the explicit form,
+    canonical only when `arguments` is present.
+
+    Every application materialises an entry ([TSON-SCHEMA] §8.2):
+    a sugar form lifts to a synthetic entry, closed or open per the
+    lift rule ([TSON-SCHEMA] §5.3), and a fully-bound application
+    of a template materialises an instantiation entry — the applied
+    form recorded in its `source`, the substituted binding record
+    its body, headed by the applied constructor. A use site holds a
+    bare reference to its entry, so `arguments` appears only where
+    an application is still open — inside template bodies, in an
+    alias's `reference.target`, and in `source` provenance — and
+    means "an application", nothing else. Entry names are internal —
+    implementation-chosen and non-normative, since identity is
+    structural ([TSON-SCHEMA] §8.2). An entry with an empty
+    `parameters` list contains no parameter references at any depth
+    ([TSON-SCHEMA] §5.10).
+    """
+  type_ref => {
+    name:       type_name
+    arguments:  [type_argument]?
+  }
+
+  @doc:"""
+    One positional argument of a type application — a labelled
+    choice between a reference and a concrete value. `name` holds
+    every reference: a type, an entry, or (in template bodies) a
+    parameter of either kind — parameters ride the reference
+    channel because a token there is always a reference, never a
+    literal. `value` holds concrete literals only, so the
+    reference/literal split is structural and value-typed tokens
+    (enum members) are never ambiguous with parameter names. The
+    split carries the application's open/closed signal:
+    substitution replaces a parameter-naming member with the bound
+    argument as parameters close ([TSON-SCHEMA] §8.1). The group
+    is REQUIRED: exactly one member is present.
+    Deliberately no positional form — a bare token cannot
+    self-classify as reference or literal, so the braced record is
+    load-bearing.
+    """
+  type_argument => {
+    ( name: type_ref | value: value )
+  }
+
+  @doc:"Internal enumerations."
+  product_access_type => !enum [INDEX NAMED]
+  product_size_type   => !enum [FIXED VARIABLE]
+  field_state         => !enum [REQUIRED REQUIRED_DEFAULT REQUIRED_FIXED
+                                       OPTIONAL OPTIONAL_FIXED]
+  element_state       => !enum [REQUIRED OPTIONAL]
+  type_kind           => !enum [ATOM PRODUCT SUM REFERENCE DATA]
+
+  @doc:"Annotation type markers. `alias` and `synthetic` are resolver-attached and derived: discarded and recomputed on ingest ([TSON-SCHEMA] §6, §8.1). `synthetic` marks a resolver-materialised synthetic entry at its schema-map key ([TSON-SCHEMA] §8.2)."
+  annotation    => @annotation void
+  documentation => @annotation text
+  doc           => @annotation documentation
+  alias         => @annotation text
+  synthetic     => @annotation void
+
+  @doc:"""
+    Supporting records. `value` carries a concrete fixed or default
+    value, read against the field's declared type — for a
+    type_ref-typed slot, a reference in the bare positional form.
+
+    Within a template body it also carries a parameter, and needs no
+    label to do so: a held body is not read against this vocabulary
+    until materialisation has substituted its parameters away, so a
+    token there is a parameter exactly when its text resolves into
+    the enclosing entry's `parameters` ([TSON-SCHEMA] §5.10's
+    shadowing rule). A closed entry has no parameters for one to
+    resolve into, so the same slot is unambiguous at both ends.
+
+    [TSON-SCHEMA] §5.7's fixation is what the single channel costs
+    and where it is paid: a parametric `= P` is REQUIRED with the
+    parameter in `value`, and becomes REQUIRED_FIXED when
+    substitution makes the value concrete.
+    """
+  record_field => {
+    name:   field_name
+    type:   type_ref
+    state:  field_state ~ REQUIRED
+    value:  value?
+  }
+
+  tuple_element => {
+    element_type: type_ref
+    state:        element_state ~ REQUIRED
+  }
+
+  @doc:"""
+    Field group — a set of mutually exclusive fields of a record
+    ([TSON-SCHEMA] §5.11). `members` names at least two fields
+    declared in the enclosing record's `fields` list; member fields
+    are uniformly OPTIONAL there, with presence governed by the
+    group's state: REQUIRED admits exactly one member present,
+    OPTIONAL at most one. The flattened fields-plus-groups encoding
+    is canonical; implementations compile membership into a
+    per-record lookup at schema-load time.
+    """
+  field_group => {
+    members:  [field_name]
+    state:    element_state ~ REQUIRED
+  }
+
+  @doc:"""
+    Constructors — ~ marks type factories. The container
+    constructors carry no parameters: a type slot (array's
+    element_type, map's key_type and value_type) is an ordinary
+    REQUIRED field typed type_ref, filled by the construction or by
+    a sugar form's desugaring like any other required field, and a
+    closed application carries the bound reference as the field's
+    value (!array { element_type: person }), its binding record
+    being ordinary data of this vocabulary. Inside a held template
+    body ([TSON-SCHEMA] §5.10) any slot — type, scalar, or
+    collection — may hold a parameter token, substituted away
+    before the body is read against this vocabulary. `map.state`
+    governs the entry value, as `array.state` governs the element;
+    a map key can never be absent.
+    """
+  record => ~product & {
+    access_pattern:  product_access_type = NAMED
+    size_type:       product_size_type = FIXED
+    fields:          [record_field]
+    groups:          [field_group]?
+    supertypes:      [type_name]?
+  }
+
+  array => ~product & {
+    access_pattern:  product_access_type = INDEX
+    size_type:       product_size_type = VARIABLE
+    element_type:    type_ref
+    state:           element_state ~ REQUIRED
+    unordered:       boolean ~ false
+    unique_items:    boolean ~ false
+    min_items:       integer?
+    max_items:       integer?
+  }
+
+  set => ~array ^ {
+    state:        = REQUIRED
+    unordered:    = true
+    unique_items: = true
+  }
+
+  map => ~product & {
+    access_pattern:  product_access_type = NAMED
+    size_type:       product_size_type = VARIABLE
+    key_type:        type_ref
+    value_type:      type_ref
+    state:           element_state ~ REQUIRED
+    min_items:       integer?
+    max_items:       integer?
+  }
+
+  tuple => ~product & {
+    access_pattern:  product_access_type = INDEX
+    size_type:       product_size_type = FIXED
+    elements:        [tuple_element]
+  }
+
+  @doc:"""
+    A named entry rather than an inline form, because `!` constructor
+    applications remain prohibited at field positions
+    ([TSON-SCHEMA] §5.2) and `set` has no sugar of its own.
+    """
+  enum_set => !set { element_type: identifier  min_items: 1 }
+
+  enum => ~atom & {
+    members: enum_set
+  }
+
+  choice => ~sum & {
+    variants: [type_ref]
+  }
+
+  @doc:"""
+    Resolver output. `disjoint` is a resolver-derived index over
+    choice definitions, parallel to `subtypes`: true or false by
+    discrimination-class distinctness ([TSON-SCHEMA] §5.4), recorded
+    on every entry whose body is a `!choice` and absent on every
+    other. Declarations never set it; on ingest it MUST be discarded
+    and recomputed. It carries
+    the encoding-independent fact each encoding's discrimination rules
+    consume ([TSON-SCHEMA] §5.4, §7.2).
+    """
+  type_definition => {
+    source:       type_ref?
+    kind:         type_kind
+    parameters:   [param_name]?
+    constructor:  boolean ~ false
+    supertypes:   [type_name]?
+    subtypes:     [type_name]?
+    disjoint:     boolean?
+    body:         top
+  }
+
+  schema => {type_name => type_definition}
+}
