@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@astrojs/markdown-remark": "7.2.0",
-    "@ltr8/tson": "file:vendor/ltr8-tson-0.33.0.tgz",
+    "@ltr8/tson": "file:vendor/ltr8-tson-0.34.0.tgz",
     "@tailwindcss/typography": "^0.5.20",
     "@tailwindcss/vite": "^4.3.1",
     "astro": "^7.0.2",

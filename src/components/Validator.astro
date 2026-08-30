@@ -512,7 +512,7 @@
     window_utc: time
     @deprecated:"superseded by endpoint"
     legacy_url: uri?
-    @since:"2026-33"
+    @since:"2026-34"
     mac_addr:   mac?
   }
 
@@ -527,6 +527,7 @@
     instruments:   [instrument; 1..]
     catalog:       index_of<non_empty_text>
     contacts:      {non_empty_text => email}
+    readings:      {non_empty_text => number?}
     partners:      partner_set?
     sparse_crew:   [non_empty_text?; 3]
     highlight:     pair<designator, non_empty_text>?
@@ -539,7 +540,7 @@
 
   const PEOPLE: SchemaSpec = { id: 'https://example.com/people.tn', body: PEOPLE_BODY };
   const OBSERVATORY: SchemaSpec = {
-    id: 'https://tson.io/2026/33/examples/observatory.tn',
+    id: 'https://tson.io/2026/34/examples/observatory.tn',
     body: OBSERVATORY_BODY,
   };
 
@@ -658,7 +659,7 @@
       root: 'observatory',
       ok: true,
       schema: OBSERVATORY,
-      data: `!!schema:"https://tson.io/2026/33/examples/observatory.tn?sha256=__PIN__"
+      data: `!!schema:"https://tson.io/2026/34/examples/observatory.tn?sha256=__PIN__"
 
 !observatory {
   id:          "MKA-001"
@@ -735,6 +736,11 @@
     "operations" => "ops@example.org"
   }
 
+  readings: {
+    "seeing_arcsec" => 0.42
+    "humidity_pct"  => _
+  }
+
   partners: ["IRAM" "ALMA" "NRAO"]
 
   sparse_crew: ["A. Cannon" _ "V. Rubin"]
@@ -743,7 +749,7 @@
 
   telemetry: {
     stream_id:  "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
-    endpoint:   "https://tson.io/2026/33/examples/observatory.tn"
+    endpoint:   "https://tson.io/2026/34/examples/observatory.tn"
     host:       "192.0.2.41"
     heartbeat:  "PT30S"
     checksum:   "3q2+7w=="
