@@ -81,6 +81,7 @@ Routes:
 | `{revision}/*-changelog.md` | `changelog` | "Reports" → "Change Log" |
 | `{revision}/reports/*.md` | `reports` | "Reports", split by kind |
 | `{revision}/m/*.tn`, `{revision}/fixtures/*.tn` | — (static, see below) | "Schema Source Files", each source with its fixture in parentheses |
+| `{revision}/skills/{name}/SKILL.md` + its `references/`, `scripts/` | — (static, see below) | "Skills", each with its bundle download |
 
 **Change logs** are matched by the `-changelog.md` filename suffix, and the `spec` glob excludes
 that suffix — so a change log must be named `…-changelog.md` or it will load as a spec document
@@ -108,13 +109,15 @@ reads as "development file, pre-v1 spec". When the draft freezes as version 1, t
 artifacts take `.tn1`.
 
 **Starting a new revision** (e.g. 33 -> 34):
-1. Copy the previous revision's `*.md`, `m/`, and `fixtures/` into `src/content/2026/34/`.
-   Do **not** copy `reports/` or the previous revision's `*-changelog.md` — both belong to the
-   revision they were written against.
+1. Copy the previous revision's `*.md`, `m/`, `fixtures/`, and `skills/` into
+   `src/content/2026/34/`. Do **not** copy `reports/` or the previous revision's
+   `*-changelog.md` — both belong to the revision they were written against.
 2. In the copies, rewrite `2026/33` -> `2026/34` (the self-referencing
    `!!id`/`!!meta`/`!!import`/`!!schema` URLs and the spec's own cross-references), and the
    `## 2026 Revision 33` headings. Drop the previous revision's "what changed" sentence from the
-   **Status:** paragraph — it describes the old revision, not the new one.
+   **Status:** paragraph — it describes the old revision, not the new one. The skills carry the
+   same URLs and a "2026 Revision 33" line of their own, and bundle copies of `m/*.tn` that must
+   be re-copied from the new revision.
 3. Bump `CURRENT_REVISION` in `src/lib/spec.ts` to `'34'`, and add `REVISION_NOTES` entries: one
    for the new revision, and a closing summary for the one it supersedes.
 4. Update the target in `public/_redirects` to `/2026/34`.
@@ -122,8 +125,9 @@ artifacts take `.tn1`.
 6. `npx astro build`, and check `/2026/revisions` lists both, `/llms.txt` names only the new
    revision, and the retained revision's pages carry the banner.
 
-`public/_headers` needs **no** change: the `/2026/:revision/m/*` rule covers every revision. It
-uses one Cloudflare placeholder plus one splat, which is the maximum a single rule allows.
+`public/_headers` needs **no** change: the `/2026/:revision/m/*` and `/2026/:revision/skills/*`
+rules cover every revision. Each uses one Cloudflare placeholder plus one splat, which is the
+maximum a single rule allows.
 
 The `.tn` files' hash pins are placeholders, not computed digests: from revision 33 they spell
 the digest as the literal token `xxhash` (`?sha256=xxhash`, and `…_xxhash` in synthetic entry
@@ -143,6 +147,41 @@ source and the build both look correct:
 mkdir -p public/2026/33/m
 cp src/content/2026/33/m/*.tn src/content/2026/33/fixtures/*.tn public/2026/33/m/
 ```
+
+**Skills** work the same way, with a packaging step in the middle. The source is the unpacked
+directory `src/content/2026/{revision}/skills/{name}/`; the published artifact is the zip at
+`public/2026/{revision}/skills/{name}.skill`. Never edit the `.skill` — rebuild it. The `-x`
+matters, since a stray `.DS_Store` otherwise ships inside the bundle:
+
+```
+mkdir -p public/2026/34/skills
+cd src/content/2026/34/skills
+for d in */; do
+  d=${d%/}
+  rm -f ../../../../../public/2026/34/skills/$d.skill
+  zip -qrX ../../../../../public/2026/34/skills/$d.skill $d -x '*.DS_Store'
+done
+```
+
+**Both `SKILL.md` bodies must stay under 5k tokens** — roughly 20,000 characters, and treat that
+as a ceiling rather than a target, since character-count over four *under*-estimates tokens for
+markdown tables. `SKILL.md` loads in full every time the skill triggers, so it pays for itself on
+every invocation; a `references/` file costs nothing until it is read. When a section grows past
+its worth, move it to `references/` and leave a pointer naming the file — lookup tables consulted
+at one moment (facet lists, conversion mappings, the full pitfalls table) belong there, while the
+rules and judgement a task needs from the start belong in `SKILL.md`. Check with:
+
+```
+python3 -c "
+import re,sys; s=open(sys.argv[1]).read(); b=s[re.match(r'---\n.*?\n---\n',s,re.S).end():]
+print(f'{len(b)} chars ~{len(b)//4} tokens')" src/content/2026/34/skills/tson-schema/SKILL.md
+```
+
+A `.skill` is a zip whose single top-level directory is the skill, so the archive must be built
+from the `skills/` directory itself — zipping from anywhere else buries `SKILL.md` under the
+wrong prefix and the bundle will not install. Which revisions publish skills is derived from
+these directories by `skillsFor()` in `src/lib/spec.ts`, so the listing and `/llms.txt` pick a
+new one up with no edit; a revision without a `skills/` directory simply renders no section.
 
 Run `npx astro build` before committing spec or schema changes — it's the only check that
 catches a broken content-collection frontmatter field or a stale cross-reference between the

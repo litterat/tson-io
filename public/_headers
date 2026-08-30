@@ -7,6 +7,13 @@
 /2026/:revision/m/*
   Content-Type: text/plain; charset=utf-8
 
+# Skill bundles for every revision. A .skill file is a zip; served as one so a
+# browser downloads it rather than guessing. Same placeholder-plus-splat shape
+# as the m/* rule above, so it covers every revision without a per-revision entry.
+/2026/:revision/skills/*
+  Content-Type: application/zip
+  Content-Disposition: attachment
+
 /raw/*
   Content-Type: text/markdown; charset=utf-8
   Cache-Control: public, max-age=3600

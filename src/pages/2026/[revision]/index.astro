@@ -11,6 +11,7 @@ import {
   isCurrentRevision,
   revisionOf,
   revisionPath,
+  skillsFor,
 } from '../../../lib/spec';
 
 export async function getStaticPaths() {
@@ -46,6 +47,10 @@ const { revision } = Astro.params;
 const { entries, changelogs, reports } = Astro.props;
 
 const current = isCurrentRevision(revision);
+
+// Skills are optional per revision — the section renders only where they exist,
+// so the revisions that predate them show nothing rather than a dead link.
+const skills = skillsFor(revision);
 
 // Change reports propose specific edits; analysis reports study and report.
 // The listing runs the proposals first, so a reader looking for "what is being
@@ -103,6 +108,29 @@ const specDocs = [
         ))}
       </ul>
     </section>
+
+    {skills.length > 0 && (
+      <section class="mb-12">
+        <h2 id="skills" class="text-xl font-semibold mb-3 pb-2 border-b border-gray-200 scroll-mt-6">Skills</h2>
+        <p class="text-sm text-gray-600 mb-4 max-w-2xl">
+          Agent skills that teach an AI assistant to read and write TSON against this revision.
+          Each bundles this revision's own schema sources, so a skill and the spec it describes
+          never drift apart. Unzip a bundle into <code class="font-mono bg-gray-100 px-1 rounded">~/.claude/skills/</code>
+          for Claude Code, or upload it in claude.ai under Settings › Features.
+        </p>
+        <ul class="space-y-2 text-sm">
+          {skills.map(skill => (
+            <li>
+              <a href={`/2026/${revision}/skills/${skill.name}.skill`}
+                 class="font-mono text-gray-700 hover:text-gray-900 hover:underline">
+                {skill.name}.skill
+              </a>
+              <p class="text-gray-500 mt-1 max-w-2xl">{skill.summary}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
 
     <section class="mb-12">
       <h2 id="schema-source-files" class="text-xl font-semibold mb-3 pb-2 border-b border-gray-200 scroll-mt-6">Schema Source Files</h2>

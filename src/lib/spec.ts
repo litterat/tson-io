@@ -92,6 +92,57 @@ export function slugOf(id: string): string {
 }
 
 /**
+ * Skill bundles belonging to a revision, derived from the source directories at
+ * `src/content/2026/{revision}/skills/{name}/SKILL.md` — so which revisions ship
+ * skills is derived, like which revisions exist, and nothing here needs editing
+ * when the next one opens.
+ *
+ * The source is what you edit; the published artifact is the zip served from
+ * `public/2026/{revision}/skills/{name}.skill`, rebuilt with the step in
+ * AGENTS.md. A skill is revision-scoped because it bundles that revision's own
+ * `m/*.tn` files and cites its `/2026/{revision}/` URLs throughout.
+ */
+const SKILL_SOURCES = import.meta.glob('../content/2026/*/skills/*/SKILL.md', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+}) as Record<string, string>;
+
+export interface SkillFile {
+  /** The skill's own `name:`, which is also its directory and bundle name. */
+  name: string;
+  /** The "what it does" half of the frontmatter description — its first sentence. */
+  summary: string;
+}
+
+/** Reads one field out of a SKILL.md's YAML frontmatter. */
+function skillField(source: string, field: string): string {
+  const frontmatter = source.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '';
+  return frontmatter.match(new RegExp(`^${field}:\\s*(.+)$`, 'm'))?.[1]?.trim() ?? '';
+}
+
+/**
+ * The skills a revision publishes, alphabetical. A skill's `description` states
+ * what it does and when to use it; the listing wants only the first, so this
+ * takes the sentence before the "Use this skill when…" half.
+ */
+export function skillsFor(revision: string): SkillFile[] {
+  const prefix = `../content/2026/${revision}/skills/`;
+  return Object.entries(SKILL_SOURCES)
+    .filter(([path]) => path.startsWith(prefix))
+    .map(([, source]) => {
+      const description = skillField(source, 'description');
+      const [summary] = description.split(/\.\s+/, 1);
+      return {
+        name: skillField(source, 'name'),
+        summary: summary ? `${summary}.` : description,
+      };
+    })
+    .filter(skill => skill.name !== '')
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
  * The normative schema sources published under `/{series}/{revision}/m/`, each
  * paired with its non-normative resolved-output fixture. Both are served from
  * that same directory, and the listing shows them together so a source and its

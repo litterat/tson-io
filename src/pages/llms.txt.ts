@@ -11,7 +11,7 @@
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { resolveBase, specLine } from '../lib/llmsTxt';
-import { CURRENT_REVISION, isCurrentRevision, revisionOf } from '../lib/spec';
+import { CURRENT_REVISION, isCurrentRevision, revisionOf, skillsFor } from '../lib/spec';
 import about from '../lib/llms-about.txt?raw';
 import otherTsons from '../lib/llms-other-tsons.txt?raw';
 
@@ -31,6 +31,8 @@ export const GET: APIRoute = async ({ site }) => {
     .sort((a, b) => (a.data.part ?? 0) - (b.data.part ?? 0));
   const otherSpecs = specEntries.filter(e => e.data.part === undefined);
 
+  const skills = skillsFor(CURRENT_REVISION);
+
   const lines = [
     '# tson.io',
     '',
@@ -49,6 +51,19 @@ export const GET: APIRoute = async ({ site }) => {
     `- [meta.tn](${base}/2026/${CURRENT_REVISION}/m/meta.tn): Annotation types and schema-level directives`,
     `- [core.tn](${base}/2026/${CURRENT_REVISION}/m/core.tn): Core type library for data interchange`,
     '',
+    ...(skills.length > 0
+      ? [
+          '## Skills',
+          '',
+          'Agent skills for reading and writing TSON, each bundling this revision\'s schema sources. Unzip into `~/.claude/skills/` for Claude Code, or upload in claude.ai under Settings > Features.',
+          '',
+          ...skills.map(
+            skill =>
+              `- [${skill.name}.skill](${base}/2026/${CURRENT_REVISION}/skills/${skill.name}.skill): ${skill.summary}`,
+          ),
+          '',
+        ]
+      : []),
     otherTsons.trim(),
     '',
     '## Optional',
