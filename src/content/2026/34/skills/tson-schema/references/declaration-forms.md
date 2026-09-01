@@ -157,7 +157,7 @@ Labelled-sum idiom: a record whose entire body is one REQUIRED group, e.g. `even
 
 ## 10. Annotations in schemas
 
-Annotations are types resolved **one hop** against the governing target — for a schema document, its `!!meta` target. Under `meta.tn`: `doc documentation alias` (through the kernel import) and `ordered bounded exact numeric disjoint deprecated since todo lang`. Local declarations and `!!import`s do not contribute to the schema document's own annotation namespace; custom annotations for schema documents require an extended meta-schema.
+Annotations are types resolved **one hop** against the governing target — for a schema document, its `!!meta` target. Under `meta.tn`: `doc documentation alias` (through the kernel import) and `ordered bounded exact numeric disjoint deprecated since todo lang`. Local declarations and `!!import`s do not contribute to the schema document's own annotation namespace; custom annotations for schema documents require an extended meta-schema (`extension-meta-schemas.md`).
 
 For data documents governed by the schema, annotations resolve against the schema's namespace (locals + imports). Declare them:
 

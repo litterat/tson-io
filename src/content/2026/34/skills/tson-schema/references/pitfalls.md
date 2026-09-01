@@ -24,7 +24,9 @@ Every mistake this skill has seen, with the fix. Read this before handing over a
 | `box` (template) used bare; `<T> { v: text }` | missing args; unused parameter | `box<text>`; drop `<T>` |
 | `<N> !integer ^ { min: N }` | parameterised atom refinement is not a form | `<N> !integer_type { min: N }` |
 | `item => { inner: item }` | no finite value | `inner: item?` |
-| `~array & { … }` in a user schema | constructors only in meta-schemas | refine or apply instead |
+| `~array & { … }` in a user schema | constructors only in meta-schemas | refine or apply instead (or write a meta-schema — `extension-meta-schemas.md`) |
+| `op => box<order> & { … }`, `op => alias_to_box_order & { … }` | a template application (or an alias to one) is a binding record with no fields to compose | give the application a body of its own first (`boxed => box<order> & { … }` with the fields you add), or compose with the head it derives from |
+| `x => { s: some_operation }` where `some_operation` is a `~data` instance | a DATA entry is declared and applied, never named as a type | name the payload's types; see `extension-meta-schemas.md` |
 | `@expires:"…"` used in data without a declaration | annotations are types | declare `expires => @annotation text` |
 | `?sha256=` written from memory | fabricated pin | compute it or omit it |
 | `; comment`, `# comment`, `// comment` in a schema | no comment syntax (`;` is the size separator; `#` `/` are lexer errors) | `@doc:"…"` before the declaration or field |

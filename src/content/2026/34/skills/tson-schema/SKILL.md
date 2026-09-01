@@ -19,7 +19,7 @@ Read `references/core.tn` when you need to know which named types exist to build
    !!meta:"https://tson.io/2026/34/m/meta.tn"
    !!import:"https://tson.io/2026/34/m/core.tn"
    ```
-   `!!id` is optional in the grammar but required to publish; `!!meta` appears exactly once; `!!import` repeats. Almost every schema imports core: without it `text`, `integer`, `uuid` and friends are **not in scope** (the kernel's types arrive only as `!` constructor targets, never as field types). Schema documents never carry `!!schema`.
+   `!!id` is optional in the grammar but required to publish; `!!meta` appears exactly once; `!!import` repeats. Almost every schema imports core: without it `text`, `integer`, `uuid` and friends are **not in scope** (in a user schema the kernel's types arrive only as `!` constructor targets, never as field types; a meta-schema is the exception — `references/extension-meta-schemas.md`). Schema documents never carry `!!schema`.
 2. **Annotations on the schema**, if any, go between the header and the opening brace: `@doc:"…"`.
 3. **Declarations** — pick the form from the table below for each type. Declare a named type for every constrained atom and every bare record; the only things allowed inline at a field position are named references and the container sugar (`[T]`, `[T, U]`, `(A | B)`, `{K => V}`, `name<args>`).
 4. **Self-check** against the pitfalls below and the full table in `references/pitfalls.md`, then write a small data document (tson-data skill) that instantiates the root type to confirm the shape reads as intended.
@@ -46,7 +46,7 @@ Everything right of `=>` is a type definition. Decide by what you are making:
 | any value | `unknown` (core) or `value` | `payload: unknown` | — |
 | a value from another schema | `!extern { schema: "…" types: [a b]? }` | `attachment => !extern { schema: "https://…/claim.tn" }` | sum |
 
-`name { … }` with no operator is a parse error — write `^` or `&`. A `~` before the body declares a *constructor* and is legal only in a meta-schema (a document whose `!!meta` is the kernel); user schemas never write it.
+`name { … }` with no operator is a parse error — write `^` or `&`. A `~` before the body declares a *constructor* and is legal only in a meta-schema (a document whose `!!meta` is the kernel); user schemas never write it. To declare a vocabulary of your own — an HTTP operation, a method, anything a schema should be able to write after `!` — see `references/extension-meta-schemas.md`.
 
 ## Records and field states
 
@@ -151,7 +151,7 @@ Rules: every use supplies all arguments (`container<text>`; bare `container` is 
 
 ## Annotations
 
-An annotation is a *type* in the namespace of the document's governing target, resolved one hop. Inside a schema document that means the **meta-schema's** namespace: `@doc`, `@deprecated:"…"`, `@since:"…"`, `@todo:"…"`, `@lang:"…"`, `@ordered:TOTAL`, `@bounded:true`, `@exact:true`, `@numeric`, `@disjoint` are available under `meta.tn`. A user schema cannot use its own declared types as annotations on itself.
+An annotation is a *type* in the namespace of the document's governing target, resolved one hop. Inside a schema document that means the **meta-schema's** namespace: `@doc`, `@deprecated:"…"`, `@since:"…"`, `@todo:"…"`, `@lang:"…"`, `@ordered:TOTAL`, `@bounded:true`, `@exact:true`, `@numeric`, `@disjoint` are available under `meta.tn`. A user schema cannot use its own declared types as annotations on itself; an annotation for schema documents is declared in an extension meta-schema (`references/extension-meta-schemas.md`).
 
 For **data documents**, annotations resolve against the user schema's namespace (locals + imports). Core supplies `doc`, `documentation`, `annotation`, `alias`. To let data documents write `@expires:"2026-12-31"` or a bare `@internal`, declare them in the schema:
 
@@ -244,6 +244,7 @@ The eight most common. The full table — every mistake this skill has seen, wit
 - `references/templates.md` — parameters, held bodies, substitution, materialisation, recursion and productivity rules.
 - `references/data-under-schema.md` — the text-encoding rules for data governed by a schema (Part 2 §7), the absent-sentinel table, extern.
 - `references/converting.md` — construct-by-construct mappings from JSON Schema, OpenAPI, TypeScript and Protobuf.
+- `references/extension-meta-schemas.md` — writing a meta-schema of your own: `~` constructors, base kinds, the `data` kind and what may not name it, `type_ref` slots, annotations for governed schemas, the mixin pattern for shared vocabulary.
 - `references/pitfalls.md` — every mistake this skill has seen, with the fix. Read before delivering.
 - `references/grammar.md` — the schema ABNF, disambiguation summary, adjacency table, error categories, name-hygiene at the schema layer.
 - `references/core.tn`, `references/meta.tn`, `references/meta-kernel.tn` — the bundled library documents, Revision 34, with real hash pins. Also the best examples of idiomatic schema style.

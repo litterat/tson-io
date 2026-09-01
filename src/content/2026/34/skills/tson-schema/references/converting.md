@@ -1,4 +1,4 @@
-# Converting from JSON Schema, TypeScript, Protobuf
+# Converting from JSON Schema, OpenAPI, TypeScript, Protobuf
 
 Construct-by-construct mappings, for when the task starts from an existing schema or type
 definition rather than from a domain.
@@ -20,6 +20,11 @@ definition rather than from a domain.
 | `$ref` | a named declaration |
 | TypeScript `Pick`/`Omit` | `^` (fix/narrow) / `-` removal |
 | generics `Box<T>`, `Result<T, E>` | templates |
+| OpenAPI `components/schemas` | ordinary declarations, in a schema the description imports |
+| OpenAPI `paths` / operations | not expressible in a user schema: an operation is not a type. Write (or use) an extension meta-schema declaring `operation => ~data & { … }` with `type_ref` slots, and a description schema governed by it — `extension-meta-schemas.md` |
+| `operationId`, `description`, `deprecated` | the entry's name; `@doc:"…"` before the entry; `@deprecated:"…"` from `meta.tn` |
+| `requestBody` / `responses.<status>.content.schema` | `type_ref` slots on the operation, naming declared types; a status is a value slot (`status_code => !integer ^ { min: 100  max: 599 }`) or a fixed field on the error type (`sku_not_found => problem & { status: = 404 … }`) |
+| `parameters` (path/query/header) | a record of `name`, location enum, `type: type_ref`, `required` — scalars only, and nothing enforces that |
 | Protobuf `repeated`, `map<K,V>`, `oneof`, `optional` | `[T]`, `{K => V}`, field group, `?`; `int32/uint64/bytes` → `int32`/`uint64`/`base64` |
 
 Do not fake a feature the source has and TSON lacks (open records, regex-keyed properties, conditional schemas, parameter bounds) — say so and choose the nearest honest shape.
