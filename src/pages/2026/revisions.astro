@@ -51,13 +51,13 @@ const revisions = [...new Set(specEntries.map(e => revisionOf(e.id)))]
     </nav>
 
     <h1 class="text-3xl font-bold mb-2">{SERIES} Revision Series</h1>
-    <p class="text-gray-600 mb-4 max-w-2xl">
+    <p class="text-gray-600 mb-4 max-w-3xl">
       The specification is a {SERIES} working draft. Each revision is published under its own
       path and kept there permanently, so a hash-pinned reference into a revision never breaks
       when the next one opens. Revision {CURRENT_REVISION} is the working draft; earlier
       revisions are retained as-published.
     </p>
-    <p class="text-sm text-gray-500 mb-12 max-w-2xl">
+    <p class="text-sm text-gray-500 mb-12 max-w-3xl">
       When the draft is finalised it will be published as <strong>TSON version 1</strong> and
       frozen; until then the series is subject to change without compatibility guarantees.
     </p>
@@ -80,7 +80,7 @@ const revisions = [...new Set(specEntries.map(e => revisionOf(e.id)))]
             </span>
           </div>
 
-          {note && <p class="text-sm text-gray-600 mt-3 max-w-2xl">{note}</p>}
+          {note && <p class="text-sm text-gray-600 mt-3 max-w-3xl">{note}</p>}
 
           <ul class="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
             {documents.map(entry => (

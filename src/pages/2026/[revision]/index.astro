@@ -77,7 +77,7 @@ const specDocs = [
     <RevisionNotice revision={revision} currentHref={revisionPath(CURRENT_REVISION)} />
 
     <h1 class="text-3xl font-bold mb-2">Specification</h1>
-    <p class="text-gray-600 mb-12 max-w-2xl">
+    <p class="text-gray-600 mb-12 max-w-3xl">
       The TSON specification, split into two parts, plus the companion documents
       developed alongside it. Spot an error, or have a comment on the specification? Open an
       issue on{' '}
@@ -102,7 +102,7 @@ const specDocs = [
               <a href={`/raw/2026/${entry.id}.md`} class="hover:text-gray-900 font-mono">view raw ↗</a>
             </div>
             {entry.data.description && (
-              <p class="text-sm text-gray-500 mt-1">{entry.data.description}</p>
+              <p class="text-sm text-gray-500 mt-1 max-w-3xl">{entry.data.description}</p>
             )}
           </li>
         ))}
@@ -112,7 +112,7 @@ const specDocs = [
     {skills.length > 0 && (
       <section class="mb-12">
         <h2 id="skills" class="text-xl font-semibold mb-3 pb-2 border-b border-gray-200 scroll-mt-6">Skills</h2>
-        <p class="text-sm text-gray-600 mb-4 max-w-2xl">
+        <p class="text-sm text-gray-600 mb-4 max-w-3xl">
           Agent skills that teach an AI assistant to read and write TSON against this revision.
           Each bundles this revision's own schema sources, so a skill and the spec it describes
           never drift apart. Unzip a bundle into <code class="font-mono bg-gray-100 px-1 rounded">~/.claude/skills/</code>
@@ -125,7 +125,7 @@ const specDocs = [
                  class="font-mono text-gray-700 hover:text-gray-900 hover:underline">
                 {skill.name}.skill
               </a>
-              <p class="text-gray-500 mt-1 max-w-2xl">{skill.summary}</p>
+              <p class="text-gray-500 mt-1 max-w-3xl">{skill.summary}</p>
             </li>
           ))}
         </ul>
@@ -134,7 +134,7 @@ const specDocs = [
 
     <section class="mb-12">
       <h2 id="schema-source-files" class="text-xl font-semibold mb-3 pb-2 border-b border-gray-200 scroll-mt-6">Schema Source Files</h2>
-      <p class="text-sm text-gray-600 mb-4">
+      <p class="text-sm text-gray-600 mb-4 max-w-3xl">
         The normative TSON schema source files in <code class="font-mono bg-gray-100 px-1 rounded">.tn</code>
         format, each followed in parentheses by its non-normative resolved-output fixture. To check
         an implementation: parse the source, run the resolver, canonicalise, and compare against
@@ -159,7 +159,7 @@ const specDocs = [
     {(reports.length > 0 || changelogs.length > 0) && (
       <section>
         <h2 id="reports" class="text-xl font-semibold mb-3 pb-2 border-b border-gray-200 scroll-mt-6">Reports</h2>
-        <p class="text-sm text-gray-600 mb-6 max-w-2xl">
+        <p class="text-sm text-gray-600 mb-6 max-w-3xl">
           The working documents belonging to this revision: the change log of what was accepted
           into it, and the non-normative reports written against it, which record findings and
           design directions under consideration rather than committed specification.
@@ -178,10 +178,10 @@ const specDocs = [
                     <a href={`/raw/${SERIES}/${entry.id}.md`} class="hover:text-gray-900 font-mono">view raw ↗</a>
                   </div>
                   {entry.status && (
-                    <p class="text-sm text-gray-500 mt-1 max-w-2xl">{entry.status}</p>
+                    <p class="text-sm text-gray-500 mt-1 max-w-3xl">{entry.status}</p>
                   )}
                   {entry.inputs.length > 0 && (
-                    <ul class="mt-2 text-sm text-gray-500 list-disc pl-5 space-y-0.5 max-w-2xl">
+                    <ul class="mt-2 text-sm text-gray-500 list-disc pl-5 space-y-0.5 max-w-3xl">
                       {entry.inputs.map(input => <li>{input}</li>)}
                     </ul>
                   )}
@@ -206,7 +206,7 @@ const specDocs = [
                     <a href={`/raw/${SERIES}/${report.id}.md`} class="hover:text-gray-900 font-mono">view raw ↗</a>
                   </div>
                   {report.description && (
-                    <p class="text-sm text-gray-500 mt-1 max-w-2xl">{report.description}</p>
+                    <p class="text-sm text-gray-500 mt-1 max-w-3xl">{report.description}</p>
                   )}
                 </li>
               ))}
@@ -228,7 +228,7 @@ const specDocs = [
                     <a href={`/raw/${SERIES}/${report.id}.md`} class="hover:text-gray-900 font-mono">view raw ↗</a>
                   </div>
                   {report.description && (
-                    <p class="text-sm text-gray-500 mt-1 max-w-2xl">{report.description}</p>
+                    <p class="text-sm text-gray-500 mt-1 max-w-3xl">{report.description}</p>
                   )}
                 </li>
               ))}
@@ -238,7 +238,7 @@ const specDocs = [
       </section>
     )}
 
-    <p class="text-sm text-gray-500 mt-12 max-w-2xl border border-gray-200 rounded-md px-4 py-3">
+    <p class="text-sm text-gray-500 mt-12 max-w-3xl border border-gray-200 rounded-md px-4 py-3">
       Implementations of TSON (parsers, encoders, libraries) may be licensed however you choose;
       the specification's license applies to the written text, not to code that implements it.
     </p>
