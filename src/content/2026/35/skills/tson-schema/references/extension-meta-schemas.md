@@ -82,7 +82,7 @@ Rules that bite:
 
 ## The `data` kind
 
-`data & { … }` makes a constructor whose instances are `kind: DATA` — entries that ride in a schema map
+`data & { … }` makes a constructor whose instances are DATA-kinded by derivation — entries that ride in a schema map
 without being types. That is what an operation, a method, a route are: declared, documented, looked up by
 name, never the type of any value. §4.1 names *"an HTTP operation binding request and response types by name"*
 as the motivating case.

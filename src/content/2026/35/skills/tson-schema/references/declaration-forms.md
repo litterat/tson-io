@@ -20,7 +20,7 @@ Part 2 §4–§5 and §6, condensed. The SKILL.md decision table picks the form;
 
 ## 1. Canonical form
 
-Every declaration resolves to a `type_definition` whose body is `!C { bindings }` — a constructor applied to a record of its own fields. Sugar desugars:
+Every closed declaration resolves to a `type_definition` whose body is `!C { bindings }` — a constructor applied to a record of its own fields. (An *open* one — a template — has a `!template { parameters  template }` body instead; see `templates.md`.) A `type_definition` carries `source`, `supertypes`, `subtypes` and `body`, and nothing else: a kind is derived from the body, not recorded. Sugar desugars:
 
 | Source | Canonical |
 |---|---|
@@ -95,7 +95,7 @@ Category errors in data mirror this: `!integer_type 42` and `!age { min: 0 }` ar
 
 ## 5. Refinement `^`
 
-`T ^ { … }` — copy `T`, tighten, keep IS-A. Only existing fields may appear; adding one is an error. The source, after following its reference chain, must be an entry with a `!record` body — a fresh/refined/composed record, an open record template, or (in a meta-schema) a constructor. For an *atom* refinement the source is an atom-kinded entry that is not itself applicable. Not refinable: a top-level constructor application or sugar body (`{text => integer}`), a template instantiation, an alias to either, a choice. No removal clause on a refinement head.
+`T ^ { … }` — copy `T`, tighten, keep IS-A. Only existing fields may appear; adding one is an error. The source, after following its reference chain, must be an entry with a `!record` body — a fresh/refined/composed record, an open record template, or (in a meta-schema) a constructor. For an *atom* refinement the source must be an atom-family **instance** — an entry whose body *is* an atom application (`integer` carrying `!integer_type {}`), not the constructor whose body is the vocabulary record describing one (`integer_type` carrying `!record { … }`). The test is on the body and nothing else: both are ATOM-kinded, and neither has supertypes. Not refinable: a top-level constructor application or sugar body (`{text => integer}`), a template instantiation, an alias to either, a choice. No removal clause on a refinement head.
 
 State transitions:
 
@@ -134,7 +134,7 @@ A refinement taking an OPTIONAL field to `= _` is the IS-A-preserving way to for
 
 ## 8. Choice types and disjointness
 
-`(A | B | …)`, two or more named variants, each a distinct type; no variant may resolve to `void`. Every choice records a derived `disjoint` fact by **discrimination class**:
+`(A | B | …)`, two or more named variants, each a distinct type; no variant may resolve to `void`. Every choice records a derived `disjoint` fact — a `disjoint` field in the `!choice` body, discarded and recomputed on ingest — by **discrimination class**:
 
 | Class | Types |
 |---|---|

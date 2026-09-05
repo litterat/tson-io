@@ -78,7 +78,6 @@ A schema document *resolves* to a value: a map from type names to `type_definiti
 
 ```
 person => !type_definition {
-  kind: PRODUCT
   body: !record { fields: [
     !record_field { name: name  type: text }
     !record_field { name: born  type: date }
@@ -163,11 +162,11 @@ Groups are also why TSON ships only one *closed* sum primitive (the open one, `s
 
 ### 2.7 Templates, sugar, and synthetic entries
 
-The container sugar is grammar over parameterless constructors: `[T; 1..100]`, `{K => V ; 1..}`, `[T?]`, `{K => V?}`, and their kin desugar to `!array` and `!map` binding records by a fixed table — the two containers carry the same `state` facet, so absence is opt-in for a map value exactly as for an array element — a type slot is an ordinary REQUIRED `type_ref`-typed field filled like any other required field, and the value-level residue is the family's own coherence rule (`min_items ≤ max_items` and its kin) — checked at schema load for literal bounds and again at materialisation for parameter-bound ones, since an open bound has no value to relate ([TSON-SCHEMA] §5.3, §8.2). Abstraction lives in **templates**: parameters route into slots at application sites inside template bodies, and the container constructors themselves stay parameterless. Resolved output *does* carry open entries — a template appears as a `type_definition` with a non-empty `parameters` list and its held body as the body — but every entry a data document's type can reach is closed, so a consumer of closed entries never meets one ([TSON-SCHEMA] §1.3, §5.10, §8.1).
+The container sugar is grammar over parameterless constructors: `[T; 1..100]`, `{K => V ; 1..}`, `[T?]`, `{K => V?}`, and their kin desugar to `!array` and `!map` binding records by a fixed table — the two containers carry the same `state` facet, so absence is opt-in for a map value exactly as for an array element — a type slot is an ordinary REQUIRED `type_ref`-typed field filled like any other required field, and the value-level residue is the family's own coherence rule (`min_items ≤ max_items` and its kin) — checked at schema load for literal bounds and again at materialisation for parameter-bound ones, since an open bound has no value to relate ([TSON-SCHEMA] §5.3, §8.2). Abstraction lives in **templates**: parameters route into slots at application sites inside template bodies, and the container constructors themselves stay parameterless. Resolved output *does* carry open entries — a template appears as a `type_definition` whose body is a `!template { parameters: […]  template: "…" }`, the held application as text — but every entry a data document's type can reach is closed, so a consumer of closed entries never meets one ([TSON-SCHEMA] §1.3, §5.10, §8.1).
 
 Every application materialises an entry. A sugar form at a use site lifts to a **synthetic entry** — closed for a concrete form, open (a held application) for a parameter-bearing one — and a fully-bound template application materialises an **instantiation entry**; a use site holds a bare reference to its entry, so a consumer walks names, never a second structural interpreter, and recursion has the entry it needs to tie the knot ([TSON-SCHEMA] §5.3, §8.2). Identity is structural for the *minted* half — closed synthetics by body, open ones up to parameter renaming, instantiations by their canonical `source`, with an argument's reference chain followed so that a rename is transparent — so spelling variance never forks an entry and the two channels dedupe against each other's products; names are internal and carry no information. A *declared* entry's identity is its name, however alike two bodies are (§8.1 below).
 
-The theoretical basis is the **spectrum of completeness** developed in the proto-schema research series (Part 5, *Templates* — tson.io/research/proto-schema/part-5-templates/): data and schemas are one continuum distinguished by how many blanks remain, and a template is a definition awaiting completion. The design makes the spectrum mechanical, and Revision 34 made it uniform: an open definition's body is the constructor application **as written, held unread** until its parameters are substituted away — `<T, N> !array { element_type: T  min_items: N  max_items: N }` is stored as exactly that text, and closing it means replacing the parameter tokens and reading the result, once, against `array`'s vocabulary ([TSON-SCHEMA] §5.10). The alternative — quoting an open body slot by slot into a typed vocabulary with a labelled channel per slot kind — has to grow a spelling for every kind of slot a parameter can reach, and a collection slot has no natural one, which is how a design can end up unable to write `result => <T> ( T | error )`, the most ordinary generic of all. Holding needs no vocabulary and has no such boundary: a parameter in a value slot, a type slot, or a variant list is a token like any other, substitution is one walk at any depth, and the only cost is shadowing's usual one (a literal spelled like a live parameter is unreachable — rename the parameter). What the typed quotation bought — that body identity not depend on a spelling choice — holding gets by requirement instead: the open form has one spelling, however many phases produce it. The completeness coordinate is then simply *which tokens still name parameters*; nothing else changes shape as a definition closes — which is also why an open entry can be carried in output as an ordinary `type_definition`: a parameter reference is an `identifier` where a type name is, and what makes the entry open is how it is read, not what it is. Two questions are answered *no* for v1, deliberately: parameters carry no bounds, and every reference binds fully — there is no type-family reading of a bare template name. A third was settled by removing a rule: a parameter with no kind-determining use is a *type* parameter, since a value parameter is one that stands in a scalar slot, and `loop => <T> loop<T>` is refused for applying itself forever rather than for its parameter.
+The theoretical basis is the **spectrum of completeness** developed in the proto-schema research series (Part 5, *Templates* — tson.io/research/proto-schema/part-5-templates/): data and schemas are one continuum distinguished by how many blanks remain, and a template is a definition awaiting completion. The design makes the spectrum mechanical, and Revision 34 made it uniform: an open definition's body is the constructor application **as written, held unread** until its parameters are substituted away — `<T, N> !array { element_type: T  min_items: N  max_items: N }` is stored as exactly that text, and closing it means replacing the parameter tokens and reading the result, once, against `array`'s vocabulary ([TSON-SCHEMA] §5.10). The alternative — quoting an open body slot by slot into a typed vocabulary with a labelled channel per slot kind — has to grow a spelling for every kind of slot a parameter can reach, and a collection slot has no natural one, which is how a design can end up unable to write `result => <T> ( T | error )`, the most ordinary generic of all. Holding needs no vocabulary and has no such boundary: a parameter in a value slot, a type slot, or a variant list is a token like any other, substitution is one walk at any depth, and the only cost is shadowing's usual one (a literal spelled like a live parameter is unreachable — rename the parameter). What the typed quotation bought — that body identity not depend on a spelling choice — holding gets by requirement instead: the open form has one spelling, however many phases produce it. The completeness coordinate is then simply *which tokens still name parameters*; nothing else changes shape as a definition closes. In output an open body is carried as **text** inside the kernel's `template` constructor, because that is what "held" means: a parameter stands wherever a token stands — `min_items: N` as readily as `element_type: T` — so a body holding one is not a value of any constructor's record shape until it closes, and an earlier draft of this revision that wrote it as one validated §5.10's own `vector` example as two errors and read `extern_of`'s `S` as a relative URI. What is compared is always the parsed form, never the text, so whitespace is free and "one spelling" stays a rule about structure. The same cleanup removed two fields a document could lie about: an entry's *kind* is now derived from its body and supertypes by a four-branch rule every resolver agrees on, and a choice's `disjoint` lives in the `!choice` body beside the variant list it is derived over, where a closed record makes "on every choice and nothing else" structural rather than prose. Two questions are answered *no* for v1, deliberately: parameters carry no bounds, and every reference binds fully — there is no type-family reading of a bare template name. A third was settled by removing a rule: a parameter with no kind-determining use is a *type* parameter, since a value parameter is one that stands in a scalar slot, and `loop => <T> loop<T>` is refused for applying itself forever rather than for its parameter.
 
 ### 2.8 Not a JSON superset, and the rules that went with the claim
 
@@ -372,27 +371,19 @@ Resolution derives a schema value, serialized as resolver output — a data docu
 !!schema:"https://tson.io/2026/35/m/meta.tn"
 !schema {
   priority => !type_definition {
-    kind: ATOM
     source: integer_type
     supertypes: [integer]
     body: !integer_type { min: 1  max: 5 }
   }
   status => !type_definition {
-    kind: ATOM
     source: enum
     body: !enum { members: [OPEN ACTIVE DONE] }
   }
   flagged => !type_definition {
-    kind: PRODUCT
     source: record
-    parameters: [T N]
-    body: !record { fields: [
-      !record_field { name: entry     type: T }
-      !record_field { name: priority  type: priority  state: REQUIRED_DEFAULT  value: N }
-    ] }
+    body: !template { parameters: [T N]  template: "!record { fields: [ !record_field { name: entry  type: T }  !record_field { name: priority  type: priority  state: REQUIRED_DEFAULT  value: N } ] }" }
   }
   task => !type_definition {
-    kind: PRODUCT
     body: !record { fields: [
       !record_field { name: id        type: uuid }
       !record_field { name: title     type: non_empty_text }
@@ -406,7 +397,6 @@ Resolution derives a schema value, serialized as resolver output — a data docu
     ] }
   }
   flagged_status_4c1 => !type_definition {
-    kind: PRODUCT
     source: { name: flagged  arguments: [ { name: status }  { value: 2 } ] }
     body: !record { fields: [
       !record_field { name: entry     type: status }
@@ -414,12 +404,10 @@ Resolution derives a schema value, serialized as resolver output — a data docu
     ] }
   }
   @synthetic array_text_xxhash => !type_definition {
-    kind: PRODUCT
     source: array
     body: !array { element_type: text }
   }
   @synthetic array_flagged_status_xxhash => !type_definition {
-    kind: PRODUCT
     source: array
     body: !array { element_type: flagged_status_4c1 }
   }
@@ -434,7 +422,7 @@ Reading the output:
 - `status` shows **construction**: the `enum` constructor's ATOM kind is inherited, `source: enum` is recorded, and `supertypes` stays empty — construction transfers kind, not IS-A. The positional sugar `!enum [OPEN ACTIVE DONE]` has desugared to the explicit binding `{ members: [...] }`.
 - `task` shows the **field-state machinery**: each `record_field` carries its state (the default REQUIRED omitted) and the eagerly-resolved default values, so consumers read defaults from the output without re-parsing modifier tokens.
 - `tags` shows a **synthetic entry**: the sugar `[text]` lifts to `array_text_xxhash` — a closed entry sourcing the constructor it builds (`source: array`), marked `@synthetic` at its key so tooling can fold it back into nested display — and the field holds a bare reference to it. Any other `[text]` anywhere in the schema lands on the same entry: identity is structural equality of the resolved body, one entry per distinct concrete form ([TSON-SCHEMA] §8.2).
-- `flagged` and `flagged_status_4c1` show the **template machinery** end to end. The open template is an ordinary `type_definition` whose `parameters` list is non-empty and whose body is the held application `!record { … }` in wire form — unread against `record`'s vocabulary until its parameters go — in which `T` and `N` are ordinary tokens standing where a type and a value will stand, the default `~ N` sitting in the plain `value` slot at REQUIRED_DEFAULT ([TSON-SCHEMA] §5.7, §5.10, §8.1). A parameter reference type-checks structurally (`type_ref.name` is an `identifier`, and `T` is one), which is what lets the kernel's `schema` type the entry without a second value shape; what makes it open is how it is read — compared as wire form, never as bound values. The instantiation is the closed form: substitution swaps `type: T` for `type: status` and `value: N` for `value: 2`, the body is then read against `record`'s vocabulary, and the canonical application recorded in `source` makes the entry self-describing — its body is recomputable by substitution; identity is structural equality of `source`, so another implementation may name the same entry differently and still agree. `history`'s field then references a second synthetic — the array *around* the instantiation — showing the two families composing: the instantiation carries no `@synthetic` marker (its application-shaped `source` already distinguishes it), the synthetic does. For an instance-form template closing over a constructor with value slots, see [TSON-SCHEMA] §8.2's `vector` example.
+- `flagged` and `flagged_status_4c1` show the **template machinery** end to end. The open template is a `type_definition` whose body is a `!template`: the parameter names, and the held application `!record { … }` as text — unread against `record`'s vocabulary until its parameters go — in which `T` and `N` are ordinary tokens standing where a type and a value will stand, the default `~ N` sitting in the plain `value` slot at REQUIRED_DEFAULT ([TSON-SCHEMA] §5.7, §5.10, §8.1). Its `source` is `record`, the constructor the held body applies, and no parameter appears outside the held text; what makes it open is the body's constructor, and what is compared is the parsed form. The instantiation is the closed form: substitution swaps `type: T` for `type: status` and `value: N` for `value: 2`, the body is then read against `record`'s vocabulary, and the canonical application recorded in `source` makes the entry self-describing — its body is recomputable by substitution; identity is structural equality of `source`, so another implementation may name the same entry differently and still agree. `history`'s field then references a second synthetic — the array *around* the instantiation — showing the two families composing: the instantiation carries no `@synthetic` marker (its application-shaped `source` already distinguishes it), the synthetic does. For an instance-form template closing over a constructor with value slots, see [TSON-SCHEMA] §8.2's `vector` example.
 
 
 ## 8. Resolver Output for Consumers

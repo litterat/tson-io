@@ -152,7 +152,7 @@ Core: `boolean => !enum [true false]`.
 
 | Constructor | Fields | Notes |
 |---|---|---|
-| `choice` (kernel) | `variants: [type_ref]` | sugar `(A \| B)`; two or more; no `void` variant; `disjoint` derived |
+| `choice` (kernel) | `variants: [type_ref]`, `disjoint: boolean?` | sugar `(A \| B)`; two or more; no `void` variant. The resolver derives `disjoint` and writes it in the choice body; it is discarded and recomputed on ingest |
 | `scoped` (meta) | `scope: set<scope_kind>`, `schemas: {uri => [type_name; 1..]?; 1..}?` | open sum: the value names its own type, the instance names where that name resolves. `scope_kind => !enum [LOCAL EXTERN]` |
 
 Core instances of `scoped`:

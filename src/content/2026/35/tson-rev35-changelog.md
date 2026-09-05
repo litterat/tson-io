@@ -1,10 +1,11 @@
 ---
 title: "TSON 2026 Revision 35 — Change Log"
 against: "TSON 2026 Revision 34 (Working Draft)"
-status: "Adjudicated 2026-09-04 — companion artifacts received at Revision 35 with the hash chain recomputed; Part 1, Part 2 and the developer guide to be updated per §3 and §7; two artifact doc edits and one re-pin outstanding (§6)"
+status: "Adjudicated 2026-09-04; second pass 2026-09-05 (§8). Part 1, Part 2, the developer guide and the six companion artifacts are updated; the hash chain is re-stamped and Part 2 §13.2 carries the final pins."
 inputs:
   - "SPEC-FEEDBACK.md (36 entries, against Revision 34)"
   - "Revised companion artifacts at /2026/35/ identities: meta-kernel.tn, meta.tn, core.tn and resolved fixtures (implementing #4, #7, #23, #24, #25, #26, #28, #29, #31, #32, #36)"
+  - "SPEC-FEEDBACK.md, renumbered against Revision 35 (8 entries: #1–#4 carried, #5–#8 new), with the artifacts revised a second time (§8)"
 ---
 
 # TSON 2026 Revision 35 — Change Log
@@ -82,10 +83,11 @@ and Revision 35 adopts them as its baseline. Summarising the normative effect:
   `encoding` is a selector that never narrows and is never refinable; another alphabet is
   another instance. (Part 1 §5.3; Part 2 §5.5, §5.7, §9; meta, core, fixtures.)
 - **#4 — open entries in resolved output.** The fixtures answer the question the register
-  asked: an open entry *is* carried as a `type_definition`, with a non-empty `parameters`
-  list and a `body` that is the held application in wire form, compared as wire form and
-  never as bound values. Revision 34's "no `type_definition` could carry it" is therefore
-  the sentence that moves. (Part 2 §1.3, §5.10, §8.1; fixtures.)
+  asked: an open entry *is* carried as a `type_definition`, its `body` the held application
+  — as the second pass settled it (§8, #5), a `!template { parameters  template }` holding
+  the application as text, compared as the parsed form and never as bound values. Revision
+  34's "no `type_definition` could carry it" is therefore the sentence that moves. (Part 2
+  §1.3, §5.10, §8.1; fixtures.)
 
 The artifacts also carry housekeeping the register did not raise, adopted here on the same
 footing:
@@ -388,8 +390,10 @@ Changes a Revision 34 implementer must act on:
     written. A declaration's identity is its name; a minted entry's is its canonical content,
     arguments compared after following references — `box<user_id>` over `user_id => uuid`
     mints `box<uuid>`'s entry.
-13. **Open entries appear in resolved output** as `type_definition` values with a non-empty
-    `parameters` list and a held wire-form body.
+13. **Open entries appear in resolved output** as `type_definition` values whose body is a
+    `!template { parameters: […]  template: "…" }` — the held application as text, compared
+    as the parsed form. `type_definition` has no `kind`, `parameters` or `disjoint` field: a
+    kind is derived, and `disjoint` lives in the `!choice` body (§8).
 14. **`members`** on `integer_type` and `decimal_type`; an enum is still identifiers only.
 15. **`@discriminator` and `@rest`** are checked annotations; a restated field's annotations
     are the restatement's followed by the inherited ones, never fewer.
@@ -407,15 +411,16 @@ Changes a Revision 34 implementer must act on:
 ## 5. Open questions carried by this change log
 
 Adjudicated 2026-09-04. The following remain deliberately open. They live in this change log
-only — the specification text carries no open questions.
+only — the specification text carries no open questions. The register has since renumbered
+against Revision 35; the arrow gives each entry's number there (§8).
 
 | Ref | Question | Status |
 |---|---|---|
-| #4 | Should template parameters be typed with the kind of slot they stand in, so that the model rather than a sentence separates a parameter reference from a type name? | Open — named as the direction; not taken. |
-| #16 | A third artifact kind — the deployment descriptor: data, not a schema; named at the call site, never discovered; never resolvable by identity; a `.well-known` projection for discovery. | Open — §8.2 says only what the policy is *not* (a property of a schema). |
-| #17 | Should the series define a `TSON-Schema` HTTP field (RFC 9651 sf-string; conflict with `!!schema` by canonical identity is an error; sender's claim, not receiver's instruction; registered per RFC 9110 §16.3, not `X-`)? | Open — carried; the four points recorded for whichever revision takes it. |
-| #19 | A namespace as a value — the kernel's 2×2 (keys names/data × values data/declarations) has an empty cell; `schema` would be one instance; `&`, `^`, `-` acquire obvious meanings; `data` may then have nothing left to do. | Open — carried deliberately; a design question, not an addition. |
-| #25 | The field-based discriminator shape (`@discriminator` on a base record's field, subtypes fixing the value, untagged dispatch on `subtypes`) against the choice-based shape shipped; and annotation cardinality as the means of per-name replacement. | Open — the choice-based shape is normative; the alternative recorded as considered. |
+| #4 (→ —) | Should template parameters be typed with the kind of slot they stand in, so that the model rather than a sentence separates a parameter reference from a type name? | Open — named as the direction; not taken. |
+| #16 (→ #1) | A third artifact kind — the deployment descriptor: data, not a schema; named at the call site, never discovered; never resolvable by identity; a `.well-known` projection for discovery. | Open — §8.2 says only what the policy is *not* (a property of a schema). |
+| #17 (→ #2) | Should the series define a `TSON-Schema` HTTP field (RFC 9651 sf-string; conflict with `!!schema` by canonical identity is an error; sender's claim, not receiver's instruction; registered per RFC 9110 §16.3, not `X-`)? | Open — carried; the four points recorded for whichever revision takes it. |
+| #19 (→ #3) | A namespace as a value — the kernel's 2×2 (keys names/data × values data/declarations) has an empty cell; `schema` would be one instance; `&`, `^`, `-` acquire obvious meanings; `data` may then have nothing left to do. | Open — carried deliberately; a design question, not an addition. |
+| #25 (→ —) | The field-based discriminator shape (`@discriminator` on a base record's field, subtypes fixing the value, untagged dispatch on `subtypes`) against the choice-based shape shipped; and annotation cardinality as the means of per-name replacement. | Open — the choice-based shape is normative; the alternative recorded as considered. |
 
 Decisions taken 2026-09-04: #2 keep the query form and reserve the fragment; #3 and #5
 declined (the kernel declaration; the parameter scope), each with its clarifying sentence
@@ -431,15 +436,16 @@ tabled.
    identities with the hash chain recomputed bottom-up over the shipped bytes (kernel body →
    kernel `!!id` digest → meta pins → meta digest → core pin → core digest). Hash *values*
    remain non-normative; only the pin's shape is.
-2. **Outstanding: the `set<T>` template docs.** meta.tn and core.tn both describe the
-   template as one that "carries no `~`, so §4.2's value-route-only rule does not reach its
-   parameter". Both clauses are stale against #35 and #36 in the same files: there is no `~`
-   and no value-route-only rule. Reword to say only that `set_type` stays parameterless and
-   the element type arrives by application.
-3. **Outstanding: a typo** in meta-kernel.tn's `data` doc ("other than a atom").
-4. **Consequent re-pin.** Both edits touch source bytes, so the chain is recomputed
-   bottom-up again and the resolved fixtures' abbreviated docs re-checked; no structural
-   field moves.
+2. **Done: the `set<T>` template docs.** meta.tn and core.tn had described the template as
+   one that "carries no `~`, so §4.2's value-route-only rule does not reach its parameter" —
+   stale against #35 and #36 in the same files. Both now say only that the template composes
+   with nothing, is not IS-A `top`, and that `set_type` stays parameterless.
+3. **Done: the typo** in meta-kernel.tn's `data` doc ("other than a atom").
+4. **Done: the second artifact revision (§8)** — the `template` constructor, `type_kind`
+   removed, `type_definition` reduced to `source`/`supertypes`/`subtypes`/`body`, `disjoint`
+   on `choice`; both fixtures write open entries as `!template` values — and the re-pin,
+   bottom-up: kernel `28e4497b…`, meta `bf967ed0…`, core `3953b2a6…`. Part 2 §13.2 carries
+   them.
 
 ---
 
@@ -464,3 +470,58 @@ carry nothing" and records the declined kernel-declared lift targets; §8.3 adds
 refusal-in-the-same-report convention and the limits policy; §9.2 gains the note that the
 policies are the deployment's and not a schema's; identities are bumped to `/2026/35/`. The Revision 33 guide candidates (#4, #7, #13 of that register) remain
 outstanding.
+
+
+---
+
+## 8. Second pass — the register renumbered against Revision 35 (2026-09-05)
+
+Before publication the implementation renumbered SPEC-FEEDBACK.md against the Revision 35
+working text: #1–#4 are the four entries this log carried or declined, and #5–#8 were opened
+against Revision 35 itself — three of them one defect seen from three sides, in the entry an
+open declaration resolves to, and the fourth the same shape one field over. All four arrived
+built: the companion artifacts were revised a second time and re-stamped. This section
+adjudicates them and records the Part 2 and guide edits made for them. **Part 1 is untouched
+by this pass**: none of the eight entries reaches it.
+
+| # | Was | Entry (abridged) | Disposition |
+|---|---|---|---|
+| 1 | #16 | §8.2's policy has no artifact; the deployment descriptor | **Open (carried)** — as §5; reduced to its artifact half, with the second constraint (no `!!import` of a descriptor, no document able to name one) recorded for whichever revision takes it. |
+| 2 | #17 | No out-of-band way to name a governing schema; `TSON-Schema` | **Open (carried)** — as §5; the register notes the premise sharpened (an encoding of the model with no channel is now structural, not a compatibility question). |
+| 3 | #19 | A namespace as a value | **Open (carried)** — as §5, and held over a second cycle by the register's own account. |
+| 4 | #27 | §7.5's set order and comparison MUST | **Declined** — as §2; §7.5 unchanged. The register records its divergence (set-typed fields compared as ordered lists) and that the field count rose to four. |
+| 5 | new | An open entry's `body` is not a `top`, and §8.1 says it is | **Accept** — the kernel declares `template => top & { parameters: [param_name]  template: text }`, and an open entry's body is `!template { parameters: […]  template: "…" }`: the held application as **text**, which is what "held" means, so `type_definition.body` is a `top` with no exception, `type_definition.parameters` is deleted, and openness is one structural question. The comparison is of the **parsed form**, never the text (identity of an open synthetic; ingest; conformance), so "one spelling" stays a rule about structure and whitespace is free. A source declaration applying `template` directly is a resolver error. [settled — implemented] |
+| 6 | new | `type_definition.kind` is not resolver output | **Accept** — `kind` and the kernel's `type_kind` are removed. A kind is derived by the four-branch rule §8.1 now states — `!template` body → TEMPLATE; `reference` head → REFERENCE; IS-A `top` → the base kind in its own supertypes, else PRODUCT; else the head's kind — measured at 264 entries, 0 mismatches. §5.5's atom-refinement predicate becomes the one test it always was: the source's body *is* an atom application, not the record describing one. [settled — implemented] |
+| 7 | new | `source` has three incompatible definitions for an open entry | **Accept (b), and point 3 the first way** — a parameter reference appears only inside a held body; every other `type_ref` in an open entry, `source` included, names a type; an open entry's `source` is the constructor its held body applies (`record`, `array`, `map`, `set_type`, `scoped`, `reference`), uniformly, and a partial application states its arguments in its own `reference.target` inside the held text. (a)'s "recorded in the entry's `source`" and (c)'s `source` in the parameter-resolving list are struck. [settled — implemented] |
+| 8 | new | `disjoint` is a fact about a variant list, recorded where nothing has one | **Accept** — `choice => sum & { variants: [type_ref]  disjoint: boolean? }`; the resolver writes the fact in the `!choice` body. "Absent on every other definition" and the `scoped` carve-out stop being rules: §7.2's closed record refuses the field anywhere else. Still discarded and recomputed on ingest. [settled — implemented] |
+
+**Part 2 edits for #5–#8.** §1.3 — the consumer tier reads the `!template` body. §3.3.1 and
+§5.5 — the atom-refinement predicate is on the body. §4.1 — "A kind is derived, never
+recorded"; `template` beside `reference` and `data` as a direct composition with `top`;
+REFERENCE conferred by the alias form. §5.2, §5.4, §5.5, §5.10, §8.2, §10.1 — every `kind: X`
+literal in prose and examples becomes "X-kinded by derivation" or is deleted. §5.4 —
+`disjoint` in the choice body, structural. §5.10 — substitution rewrites the held body only;
+"One spelling" compares the parsed form; "Open bodies in output" rewritten around `!template`,
+with the parameter-reference invariant and `source` as the constructor head; the partial
+application's arguments inside the held text; "Closed entries are parameter-free" made
+structural. §8.1 — the field list is `source`/`supertypes`/`subtypes`/`body` with the four
+non-fields named; new "Open entries" and "Kind is derived" paragraphs; "Reading parameter
+references" confined to the parsed held body with `source` struck; the provenance paragraph
+gives an open entry's `source`; the `disjoint` paragraph rewritten for the choice body; ingest
+re-resolves the held text as source, never compares it as text, and derives kind; the body
+patterns table's template and choice rows; §8.2's entry shape and the `vector_pixel_af3`
+example; open-synthetic identity over the renamed parsed form. §9 — the kernel row. §13.2 —
+the three pins re-stamped.
+
+**Guide edits.** §2.7 states the text-held body, the parsed-form comparison, and the two
+removed fields; §7's resolved output drops every `kind:` line and writes `flagged` as a
+`!template` value; the `flagged` bullet describes `source: record` and the invariant.
+
+**What is not verified**, carried from the register as a note rather than a question: no
+implementation has an ingest path, so "a held body re-resolves as source" and "an ingesting
+consumer can recompute kind" are asserted against entries the same resolver produced.
+
+Counts after this pass: 35 accepted of the 40 entries adjudicated across both passes, 3
+declined, 3 carried open (#1–#3 of the renumbered register), plus the open remainders of the
+original #4 and #25.
+
