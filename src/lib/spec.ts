@@ -23,7 +23,14 @@ export const CURRENT_REVISION = '35';
 export const REVISION_NOTES: Record<string, string> = {
   // Plain text — rendered as-is, so no markdown.
   '35':
-    'In progress.',
+    'In progress. Adjudicates the 36-entry implementation feedback register against ' +
+    'revision 34. Drops the JSON-superset claim and the rules that existed only for it: ' +
+    'null leaves the notation, a field name is an identifier at every layer, and a comma ' +
+    'may follow a value. The constructor marker goes, applicability becoming IS-A top; ' +
+    'scoped replaces extern and unknown; one bytes type replaces the four spelled ' +
+    'alphabets; duration splits into elapsed time and calendar period; and equality is ' +
+    'stated over value spaces. Name hygiene and resource limits become reportable ' +
+    'properties of a processor, with defaults.',
   '34':
     'Adjudicates the 17-entry implementation feedback register against revision 33. ' +
     'Names and enum members become identifiers, open template bodies are held rather ' +
