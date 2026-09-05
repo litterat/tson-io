@@ -7,7 +7,8 @@ Part 2 §7, condensed. This is what changes in a data document once `!!schema:"�
 - Header form binds the whole document; before a record field value, map entry value, or array element it binds that value alone, then reverts.
 - The referent is a schema *document*, never resolver output.
 - It names a **namespace**, not a root type. The value names its own type: `!task { … }`. An unannotated root is legal but vocabulary-only; a validator asked to validate the document must report it as a validation error — nothing was checked.
-- A nested `!!schema` at a position typed by the outer schema is a resolver error unless that position's type is `extern`, `value`, `unknown`, or a container of those (`[extern]`, `{text => value}`). Schemaless outer documents permit nested directives anywhere.
+- A nested `!!schema` at a position typed by the outer schema is a resolver error unless that position's type resolves to a `scoped` instance whose `scope` holds `EXTERN` — `extern`, `dynamic`, `extern_of<…>`, `extern_type<…>`, or a container of those (`[extern]`). Revision 35 made this a **derived fact** rather than a list: there is no permissive-type table to memorise, and `value` is no longer on it.
+- **A schemaless outer document opens no schema scope**: a nested `!!schema` in a document with no `!!schema` of its own is a validation error (Revision 35 replaced the old permission with its converse).
 
 ## Type annotations
 
@@ -20,9 +21,9 @@ Part 2 §7, condensed. This is what changes in a data document once `!!schema:"�
 
 ## Atom positions
 
-Base type resolution is off at typed positions. `true`, `false`, `null`, `42` mean whatever the position's type says; `twelve` at an `integer` field is a parse (resolver) error, `300` at `age` is a validation error.
+Base type resolution **does not apply under a schema at all** (Revision 35) — not merely at typed positions. `true`, `false` and `42` mean whatever the position's type says; `twelve` at an `integer` field is a resolver error, `300` at `age` is a validation error. The root names its type or the document is invalid; there is no "legal but vocabulary-only" root.
 
-`null` is accepted only at a `void`-typed position (any type whose flattened body is `void`), as a spelling of `_`, and round-trips to `_`. Elsewhere `null` must satisfy the declared type — under core there is no null-typed atom, so it will not.
+**There is no `null`.** Revision 35 removed it from the notation, and with it the old concession that spelled `_` as `null` at a `void` position: `void` admits `_` alone. A bare `null` is the string `null`, so it satisfies a `text`-typed position and nothing else.
 
 Enums: the token's decoded text must equal a member name; `boolean` members `true`/`false` become host booleans.
 
@@ -30,7 +31,7 @@ Constraint values typed `value` in the meta layer (`decimal_type.min`, etc.) are
 
 ## Sets
 
-`[ … ]` syntax; set-ness is declared (`!set { element_type: T }`, enum members). A repeated element is a validation error at the repeated occurrence (equality by the element type's contract). Order is unspecified; comparison tools sort. `_` elements are rejected (`set` fixes `state = REQUIRED`).
+`[ … ]` syntax; set-ness is declared (`set<T>`, enum members). A repeated element is a validation error at the repeated occurrence. **Equality is over the element type's value space, not its lexical space** (Revision 35): two spellings of one value are one element, so `bytes` compares octets whatever the alphabet and `datetime` the instant whatever the offset. Order is unspecified; comparison tools sort. `_` elements are rejected. A `set<T>` is non-empty by default (`set_type.min_items` defaults to 1).
 
 ## The absent sentinel `_`
 
@@ -56,14 +57,29 @@ Map keys are decoded by the declared key type, so keys equal under that type are
 
 Write `!variant value`. Omit the tag only when the choice is disjoint (every variant a different discrimination class); otherwise a missing tag is a validation error. A tag is never wrong.
 
-## extern
+## Scoped positions: `declared`, `extern`, `dynamic`
+
+Revision 35 replaced `extern` and `unknown` with one constructor, `scoped`, whose `scope` names which
+namespaces a value's own type may be resolved in. Core declares the three admitting subsets and two
+templates:
+
+| Core type | `scope` | The value's type comes from |
+|---|---|---|
+| `declared` | `[LOCAL]` | the governing schema (a `!type-ref`, resolved in the governing namespace) |
+| `extern` | `[EXTERN]` | any foreign schema (a nested `!!schema` plus a `!type-ref`) |
+| `dynamic` | `[LOCAL EXTERN]` | either — the successor to what earlier revisions called `unknown` |
+| `extern_of<S>` | `[EXTERN]`, one schema | the one schema `S` names |
+| `extern_type<S, T>` | `[EXTERN]`, one type | the type `T` in the schema `S` |
+
+`dynamic` is not `any`: the value is validated in full against the type it names. **A value naming no type
+at a scoped position is a validation error**, at every one of these cells.
 
 ```
 attachments => [claim_or_report]
-claim_or_report => !extern { schema: "https://tson.io/2026/insurance/claim.tn" }
+claim_or_report => extern_of<"https://tson.io/2026/insurance/claim.tn">
 ```
 
-At an extern position the data must open the foreign scope and name the type:
+At a scoped position with `EXTERN` the data opens the foreign scope and names the type:
 
 ```
 attachments: [
@@ -72,9 +88,14 @@ attachments: [
 ]
 ```
 
-The directive binds to the one element it prefixes; put each directive-carrying element on its own line. The `!type` is mandatory there. `types: [a b]` on the extern restricts which foreign types are admitted. `unknown` (core) is the alternative when the parent has no contract at all on the data.
+The directive binds to the one element it prefixes; put each directive-carrying element on its own line,
+and the `!type` is mandatory there. `extern_of` and `extern_type` are ordinary partial applications, so a
+field writes them inline and declares nothing; `S` stands in a `uri`-typed key and `T` inside `[type_name]`,
+both value parameters, so each application reaches one schema (and one type). An application's identity is
+the argument **as written**, so a pinned and an unpinned `S` are two applications. For several schemas or
+several types, use the instance form (`!scoped { scope: [EXTERN]  schemas: { … } }`) or a named declaration.
 
 ## Error categories at this layer
 
-- Resolver errors: unresolved type or annotation names, schema load/compile failures (bad facets, invalid defaults, refuted `@disjoint`, incoherent bounds, unproductive recursion, collisions in the import closure, import cycles, hash mismatches), a nested `!!schema` at a non-permissive position, a built-in annotation on a container.
-- Validation errors: closed-record violations, constraint violations, missing required fields, `_` at required-family positions, untagged non-disjoint choice values, duplicate set members or typed-equal map keys, wrong-form empty braces, missing `!type` at an extern position, a contradicting fixed value.
+- Resolver errors: unresolved type or annotation names, schema load/compile failures (bad facets, invalid defaults, refuted `@disjoint`, incoherent bounds, unproductive recursion, collisions in the import closure, import cycles, hash mismatches), a nested `!!schema` at a position that does not resolve to an `EXTERN`-scoped type, a nested `!!schema` in a schemaless document, a built-in annotation on a container, a failed `@discriminator` or `@rest` check.
+- Validation errors: closed-record violations, constraint violations, missing required fields, `_` at required-family positions, untagged non-disjoint choice values, duplicate set members or typed-equal map keys, wrong-form empty braces, a value naming no type at a scoped position, a contradicting fixed value.

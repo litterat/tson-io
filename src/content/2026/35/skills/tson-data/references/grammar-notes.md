@@ -1,6 +1,6 @@
 # Grammar notes for data documents
 
-Condensed from TSON Part 1 §2, §3, §6, §7, §8 (2026 Revision 35). Read the section you need; the SKILL.md rules cover the common path.
+Condensed from TSON Part 1 §2, §3, §6, §7, §8, §9 (2026 Revision 35). Read the section you need; the SKILL.md rules cover the common path.
 
 ## Contents
 
@@ -15,9 +15,10 @@ Condensed from TSON Part 1 §2, §3, §6, §7, §8 (2026 Revision 35). Read the 
 9. Annotation value scope
 10. Identity rules: field names, map keys, NFC
 11. Error categories and canonical phrasing
-12. JSON compatibility — the two exceptions
+12. JSON — what is shared, and where the two part
 13. Content addressing and `!!id`
 14. Encoding, BOM, media type, file extension
+15. Resource limits (Part 1 §9.1)
 
 ---
 
@@ -70,15 +71,15 @@ Identifier  Start    = XID_Start
             Continue = XID_Continue ∪ { - }
 ```
 
-The **token profile** decides what the lexer accepts as one unquoted token — values and names alike. The **identifier profile** constrains the *decoded text* of a name at naming positions: annotation names, type-annotation names, and every name in a schema document. Identifiers never begin with a digit, a sign, or a dot; `+` and `.` are not allowed inside them (`.` is reserved as a future separator). Every identifier is a valid unquoted token, so `!name` and `@name` positions admit no quoted form and lose nothing.
+The **token profile** decides what the lexer accepts as one unquoted token — values and names alike. The **identifier profile** constrains the *decoded text* of a name at every naming position: **field names**, annotation names, type-annotation names, and every name in a schema document. Identifiers never begin with a digit, a sign or a dot; `+` and `.` are not allowed inside them (`.` is reserved as a future separator). Every identifier is a valid unquoted token, so `!name` and `@name` positions admit no quoted form and lose nothing.
 
-Underscore is `XID_Continue` but not `XID_Start`: `my_type` is fine, `_id` is not a token. `{ "_id": 1 }` is a record with a field `_id`; `{ _: 1 }` is a parse error.
+Underscore is `XID_Continue` but not `XID_Start`: `my_type` is fine, `_id` is neither a token nor an identifier. So `{ _id: 1 }`, `{ "_id": 1 }` and `{ _: 1 }` are all parse errors — quoting a name relieves the lexical accidents of the unquoted form, never the identifier grammar. Write `{ "_id" => 1 }`.
 
 Format characters (`Cf`) and controls are never in a token: the bidi controls U+061C, U+202A–U+202E, U+2066–U+2069, soft hyphen, word joiner are lexer errors outside quotes. ZWNJ/ZWJ (U+200C/D) are admitted by the token profile but an identifier accepts them only where UTS #39 says they have a shaping effect (Persian `کتاب‌ها` yes; `ad<ZWNJ>min` no).
 
 Non-ASCII letters and digits are ordinary token characters: `名前: 値` needs no quotes.
 
-Field names at the data layer are *lexical* — `{ "first name": 1 }` is a legal record with a name that is not an identifier. Under a schema a field name must match a declared field, and declared names are identifiers, so the constraint arrives by construction.
+**A field name is an identifier at every layer** (Revision 35), schemaless or governed. The production admits two spellings — unquoted, or single-line quoted; the multi-line form is not admitted in name position — and they are two spellings of one set of names. The decoded text is NFC-normalised and then matched in full against the identifier grammar, exactly as an annotation name's is; a token in name position whose decoded text is not an identifier is a **parse error**. So `{ "first name": 1 }`, `{ _id: 1 }` and `{ 42x: 2 }` fail, and the remedy is the one the format already has: a record's fields are the named members of a shape, which is what makes them declarable, and *a key that is not a name belongs in a map* — `{ "Content-Type" => "text/plain" }`. Under a schema a field name matches a declared one, and declared names are identifiers by the schema grammar, so nothing further is asked of a governed document.
 
 ## 3. Whitespace, line terminators, bidi marks
 
@@ -92,12 +93,14 @@ Single-line quoted token: `"` … `"`. May contain any character from U+0020 upw
 
 | Escape | Result |
 |---|---|
-| `\"` `\\` `\/` | `"` `\` `/` |
+| `\"` `\\` | `"` `\` |
 | `\b` `\f` `\n` `\r` `\t` | control characters |
 | `\s` | U+0020 space (TSON extension, not JSON) |
-| `\uXXXX` | code point; supplementary characters via a surrogate pair |
+| `\uXXXX` / `\u{X…}` | one to six hex digits in the brace form; the value denoted MUST be a Unicode scalar value |
 
-A high surrogate escape must be followed immediately by a low one and vice versa; a lone surrogate is a lexer error. Unknown escapes (`\x41`, `\0`, `\e`) are lexer errors.
+**A solidus needs no escape and has none**: `\/` is an invalid escape (Revision 35).
+
+**There are no surrogate pairs.** An escape names a character or it names nothing, so a surrogate code point (U+D800–U+DFFF) in either spelling is a lexer error and `\uD83D\uDE00` is *two* errors rather than one emoji — a TSON string is a well-formed sequence of scalar values by construction. `\u0041` and `\u{41}` are two spellings of one character; `\u{1F600}` names a supplementary character directly, as does `\u{E0100}` for a variation selector an ASCII-safe generator could otherwise only embed. The `{` after `u` decides the spelling at the first character, so the two forms never conflict; a brace form with no digits, more than six, or an unclosed brace is a lexer error. Unknown escapes (`\x41`, `\0`, `\e`) are lexer errors.
 
 ## 5. Multi-line strings
 
@@ -162,28 +165,45 @@ Annotation values are data values — never type definitions.
 
 - **Field names** in one record must be unique (resolver error otherwise). Identity is the NFC-normalised decoded text: `name` and `"name"` collide; `"café"` decomposed and precomposed collide. Case-sensitive.
 - **Map keys** must be unique. Textual identity is the minimum (`Alice` = `"Alice"`); a processor that decodes values also relates `0xFF` and `255`, `1_000` and `1000`. Annotations and type annotations on a key do not participate in identity (`!text a` = `a`). Under a schema the declared key type can make more keys equal (`1` and `1.0` under an integer-keyed map).
-- Unquoted tokens must already be NFC in the source (lexer error otherwise). Quoted tokens keep their exact content; at identifier positions the resolver NFC-normalises them before comparing.
+- Unquoted tokens must already be NFC in the source (lexer error otherwise). Quoted tokens keep their exact content; at naming positions the resolver NFC-normalises them before comparing.
+- **Equality is over value spaces, not lexical spaces** (Revision 35). A type denotes a value space; an encoding defines a lexical space and one canonical form per value. Two spellings of one value are one value for map keys, sets, refinement, disjointness and content addressing — so `!bytes` compares octets whatever the alphabet, and `!datetime`/`!time` compare the instant whatever the offset (`+00:00`, `-00:00` and `Z` are one).
 
 ## 11. Error categories and canonical phrasing
 
 Four categories, one severity (there are no warnings):
 
-- **Lexer error** — bad bytes/encoding, unterminated strings, bad escapes, unpaired surrogates, unrecognised characters, non-NFC unquoted tokens.
-- **Parse error** — structure: unclosed brackets, adjacency violations, missing separators, trailing commas, `!!` without adjacent `:`, unknown or misplaced directive, a non-identifier after `!` or `@`, reserved special tokens in data.
+- **Lexer error** — bad bytes/encoding, unterminated strings, bad escapes, a character escape denoting no scalar value, unrecognised characters, non-NFC unquoted tokens.
+- **Parse error** — structure: unclosed brackets, adjacency violations, missing separators, a comma that follows nothing or follows a comma, `!!` without adjacent `:`, unknown or misplaced directive, a token at a field-name, annotation-name or type-annotation-name position whose decoded text is not an identifier, reserved special tokens in data.
 - **Resolver error** — `_` as a map key, duplicate field names or map keys, a built-in annotation on a container, a token an atom's contract rejects.
 - **Validation error** — numeric range violations, CIDR prefix/host-bit violations, and (under a schema) every declared constraint.
 
-Name-hygiene refusals (confusable names, restricted scripts) are a fifth, distinguishable outcome — a processor *refuses* the document under a stated policy and Unicode data version; the document is not thereby invalid.
+**Refusals are a fifth outcome, not a verdict.** A name-hygiene refusal (confusable names, restricted scripts) or a resource-limit refusal is reported in the same report as the four categories, told apart by the rule that refused, and is not a claim that the document is invalid — a conforming processor may legitimately not refuse at all. A processor makes available, with any report carrying a refusal, its identifier policy, token policy, limits policy and the UCD version it judged under, and SHOULD make them reachable with no document in hand.
 
 Every diagnostic carries line, column, and byte offset.
 
-## 12. JSON compatibility — the two exceptions
+## 12. JSON — what is shared, and where the two part
 
-TSON is a superset of JSON except that inside string literals:
-1. NEL (U+0085), LS (U+2028), PS (U+2029) must be escaped (``, ` `, ` `) rather than written raw.
-2. Unpaired surrogate escapes (`"\uD800"` alone) are lexer errors.
+**TSON is not a JSON superset.** Revision 35 deleted the claim and the rules that existed only for it. A JSON
+document is not a TSON document, and a JSON document is read through a **JSON reader** — a second encoding of
+the same model, which maps JSON `null` to *absence* and JSON numbers to `number`.
 
-Otherwise: JSON objects are records, arrays are arrays, strings are quoted tokens, numbers resolve as integers or floats (and map to the exact `number` type under a schema), `true`/`false`/`null` are boolean and null. JSON `null` is `null`, **not** `_`. A leading BOM is accepted. There are no comments and no references/anchors/merge keys, by design.
+Four differences, each of which makes some JSON documents illegal as TSON:
+
+1. **No `null` keyword.** A bare `null` is the four-character *string* (§4.4 of Part 1). Converting JSON, map
+   every `null` to `_`; leaving it produces a valid document that says something else.
+2. **Field names are identifiers.** `{"first name": …}`, `{"_id": …}`, `{"Content-Type": …}` are parse errors
+   as records. Those objects are maps.
+3. **`\/` is not an escape.**
+4. **No surrogate pairs.** `\uD83D\uDE00` is two lexer errors; write `\u{1F600}`.
+
+And, as before, NEL (U+0085), LS (U+2028) and PS (U+2029) must be escaped inside a single-line token rather
+than written raw — they are line terminators here, which is the only reason they are excluded.
+
+What the two share — `"`-delimited strings, `[ ]` arrays, `{ name: value }` records, the
+`\n \r \t \\ \" escapes, base type resolution as a mechanism, and the rule that an unadorned numeric token
+names the exact type `number` — is shared because each was a good idea on its own, and none of it rests on a
+compatibility claim. A leading BOM is accepted. There are no comments and no anchors/references/merge keys,
+by design.
 
 ## 13. Content addressing and `!!id`
 
@@ -199,6 +219,36 @@ UTF-8 recommended (required for content-addressed documents); UTF-16/32 permitte
 
 Media type `application/tson` (optionally `; version=1`). Extension `.tn` for the 2026 revision series; `.tn1` is reserved for the frozen version 1 and must not be used before it. Document kind is decided by the header, not the extension.
 
-## Denial-of-service limits worth knowing
+## Resource limits (Part 1 §9.1)
 
-Implementations should cap nesting depth, token length, document size, numeric literal length (a 4096-digit default is suggested; applies to `!number`/`!rational` too), and decoded binary size. A generator emitting very large literals should expect a configured limit.
+Revision 35 turned the DoS advice into one **limits policy**. Every limit has a default; a processor MUST
+enforce each at its default or a configured value; the limit MUST be configurable or its enforced value
+documented; and exceeding one MUST be reported as a clear refusal naming the limit and the threshold, never as
+an out-of-memory or stack overflow. A refusal is not a verdict (§11 above) and is reported beside the
+identifier and token policies, and SHOULD be reachable with no document in hand so a generator can emit a
+document that fits.
+
+Defaults are set at the tightest limit in common use, so that a document fitting the default fits every
+processor above it:
+
+| Limit | Default |
+|---|---|
+| nesting depth | 64 |
+| token length, decoded (code points) | 1,048,576 |
+| decoded text length per value (code points) | 1,048,576 |
+| numeric literal length (digits) | 4,096 |
+| decoded binary size per value (octets) | 16,777,216 |
+| document size (bytes) | 16,777,216 |
+| elements in one array or set | 1,048,576 |
+| entries in one map | 1,048,576 |
+| fields in one record | 65,536 |
+| annotations on one value | 64 |
+| total values in a document | 16,777,216 |
+| foreign schemas loaded by one document | 16 |
+
+The nesting-depth limit is checked as containers open in the token stream, before any reader descends —
+counted where the resource is counted, not where it is spent. The aggregate limit (total values) is a separate
+mechanism from the per-container ones. A deployment raises these; the defaults are what "a conforming
+document" means with nothing else said. Schema-side limits — import closure, entries in one schema map,
+reference and supertype chain length, template materialisation depth, all defaulting to 64 except the schema
+map's 65,536 — are in Part 2 §11.5.

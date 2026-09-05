@@ -13,7 +13,7 @@ Part 2 §4–§5 and §6, condensed. The SKILL.md decision table picks the form;
 7. Subtraction `-`
 8. Choice types and disjointness
 9. Field groups
-10. Annotations in schemas
+10. Annotations in schemas — including the checked ones (`@discriminator`, `@rest`)
 11. Namespaces — what a name means where
 
 ---
@@ -33,11 +33,11 @@ Every declaration resolves to a `type_definition` whose body is `!C { bindings }
 | `(A \| B)` | `!choice { variants: [A B] }` |
 | `{K => V}` | `!map { key_type: K  value_type: V }` |
 | `!enum [a b]` | `!enum { members: [a b] }` |
-| `!binary BASE64` | `!binary { encoding: BASE64 }` |
+| `!bytes_type HEX` | `!bytes_type { encoding: HEX }` |
 | `!integer ^ { min: 0 }` | `!integer_type { min: 0 }`, `supertypes: [integer]` |
 | `!int8 ^ { min: 0 }` | `!integer_type { size: { bits: 8  signed: true }  min: 0 }` — inherited facets survive |
 
-**Positional form.** When a constructor has exactly one REQUIRED field (no default, no fixed), the value after `!C` fills it directly: `!enum [true false]`, `!binary BASE64`, `!array text`. With zero or two-plus required fields, use braces.
+**Positional form.** When a constructor has exactly one REQUIRED field (no default, no fixed), the value after `!C` fills it directly: `!enum [true false]`, `!array text`. Note `bytes_type.encoding` carries a default (`~ BASE64`), so it is *not* a positional slot — write `!bytes_type { encoding: HEX }`. With zero or two-plus required fields, use braces.
 
 **Bodies are closed.** Every member of a construction or refinement body must be a field the constructor declares; an unknown member is a resolver error. This is why `!integer ^ { minimum: 1 }` is refused rather than silently ignored.
 
@@ -58,7 +58,7 @@ Five states, six spellings:
 
 Resolver errors: `~ _`; `= _` on a REQUIRED field; `T? ~ v`.
 
-**Which fields may carry a value:** only fields whose declared type (after alias flattening) is an atom-family instance or an enum. Value modifiers are single scalar tokens or `_`; no arrays/records/maps. Values are parsed by the field's type at schema load (eager) — a default that fails its own type is a load error.
+**Which fields may carry a value:** only fields whose declared type, after following its reference chain, is an atom-family instance or an enum. Value modifiers are single scalar tokens or `_`; no arrays/records/maps. Values are parsed by the field's type at schema load (eager) — a default that fails its own type is a load error.
 
 **Elided type-refs:** in a `^` or `&` body a tightening entry may omit the type — `port: = 9090` — inheriting it from the source. In a fresh `{ … }` every field needs a type.
 
@@ -78,7 +78,7 @@ Every inline sugar form **lifts** to a resolver-created synthetic entry (structu
 
 ## 4. Constructor application vs atom refinement
 
-- `!C value` — **application**. `C` must be a constructor (resolved through the meta-schema's *structure namespace*: `enum`, `binary`, `array`, `map`, `set`, `tuple`, `choice`, `extern`, `integer_type`, `text_type`, …). Transfers kind only; no IS-A. Founding a new family with an atom constructor is legal but rarely what you want.
+- `!C value` — **application**. `C` must be a constructor — an entry that IS-A `top`, resolved through the meta-schema's *structure namespace*: `enum`, `bytes_type`, `array`, `map`, `set_type`, `tuple`, `choice`, `scoped`, `integer_type`, `text_type`, …. Transfers kind only; no IS-A. Founding a new family with an atom constructor is legal but rarely what you want.
 - `!I ^ { values }` — **atom refinement**. `I` must be a non-constructor *instance* from the type-name namespace (`integer`, `text`, `int8`, `date`, a user-declared refined atom). Establishes IS-A `I`; facets merge over `I`'s. The body is data (`size: { bits: 8  signed: true }` binds a nested value); a bare value, a second `!`, an annotation, or a map in body position is a parse error.
 
 Kind determination: the constructor's base kind (`atom`, `product`, `sum`, `data`) reached through its supertypes; none → PRODUCT; two → error. `!C {}` inherits it.
@@ -87,7 +87,7 @@ Category errors in data mirror this: `!integer_type 42` and `!age { min: 0 }` ar
 
 ## 5. Refinement `^`
 
-`T ^ { … }` — copy `T`, tighten, keep IS-A. Only existing fields may appear; adding one is an error. The source, after alias flattening, must have a `!record` body — a fresh/refined/composed record, an open record template, or (in a `~` declaration, meta-schemas only) a constructor. Not refinable: a top-level constructor application or sugar body (`{text => integer}`), a template instantiation, an alias to either, a choice. No removal clause on a refinement head.
+`T ^ { … }` — copy `T`, tighten, keep IS-A. Only existing fields may appear; adding one is an error. The source, after following its reference chain, must be an entry with a `!record` body — a fresh/refined/composed record, an open record template, or (in a meta-schema) a constructor. For an *atom* refinement the source is an atom-kinded entry that is not itself applicable. Not refinable: a top-level constructor application or sugar body (`{text => integer}`), a template instantiation, an alias to either, a choice. No removal clause on a refinement head.
 
 State transitions:
 
@@ -116,7 +116,7 @@ A refinement taking an OPTIONAL field to `= _` is the IS-A-preserving way to for
 
 ## 6. Composition `&`
 
-`A & B & { body }` — the trailing body is optional. Parents must contribute **disjoint** field names (a field reaching the result through two paths — even from one origin — is an error). Body entries matching an inherited field are tightenings (§5 rules, elided types allowed); others are new fields, appended after all inherited fields. Field order: parents left to right, each in declared order, tightened fields in place. Parents may carry arguments (`vip => <T> customer & box<T> & { … }`) — the open parameters must be re-declared. Operands are named references only; no inline forms before `&`. Constructor-ness is *not* inherited — only a leading `~` makes a constructor.
+`A & B & { body }` — the trailing body is optional. Parents must contribute **disjoint** field names (a field reaching the result through two paths — even from one origin — is an error). Body entries matching an inherited field are tightenings (§5 rules, elided types allowed); others are new fields, appended after all inherited fields. Field order: parents left to right, each in declared order, tightened fields in place. Parents may carry arguments (`vip => <T> customer & box<T> & { … }`) — the open parameters must be re-declared. Operands are named references only; no inline forms before `&`. Constructor-ness is *not* something a body inherits: since Revision 35 an entry is a constructor exactly when it IS-A `top`, and only a schema whose own `!!meta` names the meta-kernel may declare one.
 
 ## 7. Subtraction `-`
 
@@ -136,7 +136,7 @@ A refinement taking an OPTIONAL field to `= _` is the IS-A-preserving way to for
 | brace | records, maps |
 | bracket | arrays, tuples |
 
-An enum's class is its members' shared class. `rational`, `complex`, `value`, `identifier`, nested choices, `extern`, unresolved references have **no** class and make the choice non-disjoint. Disjoint iff every variant has a class and none repeats. Value-set separation (disjoint ranges, patterns, enum members) does **not** count.
+An enum's class is its members' shared class. `rational`, `complex`, `value`, `identifier`, nested choices, `scoped` instances (`extern`, `dynamic`, `declared`), unresolved references have **no** class and make the choice non-disjoint. Disjoint iff every variant has a class and none repeats. Value-set separation (disjoint ranges, patterns, enum members) does **not** count.
 
 Data: a variant is selected with `!variant`. Tag optional only when disjoint; otherwise a missing tag is a validation error. Emitter rule: if two variants share a class, tag every value. `@disjoint` on the declaration asserts the derived fact and fails the load if false.
 
@@ -157,7 +157,7 @@ Labelled-sum idiom: a record whose entire body is one REQUIRED group, e.g. `even
 
 ## 10. Annotations in schemas
 
-Annotations are types resolved **one hop** against the governing target — for a schema document, its `!!meta` target. Under `meta.tn`: `doc documentation alias` (through the kernel import) and `ordered bounded exact numeric disjoint deprecated since todo lang`. Local declarations and `!!import`s do not contribute to the schema document's own annotation namespace; custom annotations for schema documents require an extended meta-schema (`extension-meta-schemas.md`).
+Annotations are types resolved **one hop** against the governing target — for a schema document, its `!!meta` target. Under `meta.tn`: `doc documentation` (through the kernel import) and `ordered bounded exact numeric disjoint deprecated since todo lang title examples read_only write_only discriminator rest`. (`alias` was removed in Revision 35 with use-site flattening.) Local declarations and `!!import`s do not contribute to the schema document's own annotation namespace; custom annotations for schema documents require an extended meta-schema (`extension-meta-schemas.md`).
 
 For data documents governed by the schema, annotations resolve against the schema's namespace (locals + imports). Declare them:
 
@@ -172,13 +172,40 @@ Schemas have no comment syntax; `@doc:"…"` is the way to annotate. The `;` use
 
 A bare annotation is valid only against a `void`-targeted type; a valued one only against a non-void type. Any type in the namespace can serve as an annotation; the `@annotation` marker is advisory. Placement: before the declaration name → entry metadata; after `=>` → definition metadata; before a field name → field metadata. All preserved in resolver output.
 
+### Checked annotations: `@discriminator` and `@rest`
+
+Revision 35 added a third annotation category. A **checked** annotation is honoured at either declaration
+position and carries a load-time check, on `@disjoint`'s verified-or-error precedent. The criterion for
+putting something here rather than in the model: an annotation never changes a value, its type, or its
+validity; it may add a load-time check, and it may direct how a *class* of encodings represents a value.
+Force is confined to the encoding class that claims it — TSON text keeps `!variant` at every non-disjoint
+choice regardless, and a discriminated choice admits exactly the variants it admitted.
+
+`@discriminator: field_name` names the field a member-dispatching encoding selects a choice's variant on.
+Checked at schema load, two outcomes and no third:
+
+1. every variant is a record declaring the named field;
+2. that field is REQUIRED_FIXED in every variant — never REQUIRED_DEFAULT, since a default is omissible and
+   so cannot dispatch;
+3. the fixed values are pairwise distinct.
+
+`field_name` is an identifier, so a non-name spelling fails at the annotation's own type.
+
+`@rest` (bare, on `void`) designates the map-typed field a flattening encoding puts a record's undeclared
+entries in, a record being closed under its type. Checked: the field's type resolves to a text-keyed map,
+and at most one field per composed chain carries the mark.
+
+**The restated-field rule** these need either way: a restated field's annotations are the restatement's own,
+in source order, followed by the inherited field's, in source order. A restatement **adds and never
+removes**.
+
 ## 11. Namespaces — what a name means where
 
 Two namespaces, consulted at different grammar positions:
 
-- **Structure namespace** = the `!!meta` target's full closure (for `meta.tn` that is meta + kernel). Consulted only for `!C` application targets and the sugar desugar targets. This is where `enum`, `binary`, `array`, `map`, `set`, `tuple`, `choice`, `extern`, `integer_type`, `text_type`, … live. They are **not** usable as field types (`f: enum` is unresolved).
+- **Structure namespace** = the `!!meta` target's full closure (for `meta.tn` that is meta + kernel). Consulted only for `!C` application targets and the sugar desugar targets. This is where `enum`, `bytes_type`, `array`, `map`, `set_type`, `tuple`, `choice`, `scoped`, `integer_type`, `text_type`, … live. They are **not** usable as field types (`f: enum` is unresolved).
 - **Type-name namespace** = parameters of the enclosing definition, then local declarations, then `!!import` entries in order. Consulted for every type reference: field types, arguments, variants, `&`/`^`/`-` operands, refinement sources (`!I ^` looks `I` up here).
 
-Imports are transitive and the namespace is flat: one name means one thing across the closure; the same schema reached twice unifies; two *different* schemas declaring one name, or a local redeclaring an imported name, fail the load (no shadowing, no aliasing). Import cycles are errors; share types via a third schema or use `extern`.
+Imports are transitive and the namespace is flat: one name means one thing across the closure; the same schema reached twice unifies; two *different* schemas declaring one name, or a local redeclaring an imported name, fail the load (no shadowing, no aliasing). Import cycles are errors; share types via a third schema or use a `scoped` position (`extern`, `extern_of<…>`).
 
 Forward references within a schema are fine (two-pass resolution). A schema never resolves `!name` against its own definitions when used as *data* — only against its `!!schema` target.
