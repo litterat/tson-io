@@ -14,7 +14,7 @@
 export const SERIES = '2026';
 
 /** Bump when starting a new spec revision. */
-export const CURRENT_REVISION = '34';
+export const CURRENT_REVISION = '35';
 
 /**
  * Optional one-line summary per revision, shown on the revisions index.
@@ -22,11 +22,14 @@ export const CURRENT_REVISION = '34';
  */
 export const REVISION_NOTES: Record<string, string> = {
   // Plain text — rendered as-is, so no markdown.
+  '35':
+    'In progress.',
   '34':
-    'In progress. Adjudicates the 17-entry implementation feedback register against ' +
-    'revision 33. Names and enum members become identifiers, open template bodies are ' +
-    'held rather than quoted, the optional-value map form is added, and name hygiene is ' +
-    'on by default — the change log carries a disposition for every input.',
+    'Adjudicates the 17-entry implementation feedback register against revision 33. ' +
+    'Names and enum members become identifiers, open template bodies are held rather ' +
+    'than quoted, the optional-value map form is added, and name hygiene is on by ' +
+    'default — the change log carries a disposition for every input. Carries the ' +
+    'implementation feedback register written against it, which revision 35 adjudicates.',
   '33':
     'Adopts CR-structure-templates in full: cross-namespace template linkage ' +
     'removed, the container constructors de-parameterised, and a sugar form for the map type ' +
