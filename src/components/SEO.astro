@@ -38,8 +38,13 @@ const {
 
 const SITE_NAME = "tson.io";
 const TWITTER_HANDLE = ""; // e.g. "@litterat" — leave empty if you don't have one
+// Wording is deliberate, and SEO-led. "JSON alternative" is the phrase with real
+// comparison-intent search demand (Slashdot and AlternativeTo both run "JSON
+// alternatives" pages); "JSON-like" is established descriptive vocabulary that
+// MongoDB, BSON and MessagePack all use, so it belongs in prose; "JSON family" is
+// not a term anyone uses or searches for, and is not used anywhere on this site.
 const DEFAULT_DESCRIPTION =
-  "TSON (Typed Schema Object Notation) is a Unicode-first, typed notation in the JSON family with closed-world, SHA-256-verifiable schemas.";
+  "TSON (Typed Schema Object Notation) is a typed alternative to JSON and JSON Schema: a JSON-like notation with closed-world, SHA-256-verifiable schemas.";
 
 const origin = Astro.site?.origin ?? "https://tson.io";
 const canonical = new URL(Astro.url.pathname, origin).href;
