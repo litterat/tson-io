@@ -71,18 +71,29 @@ const schemaRows = [
     snippets: [
       { tag: 'schema', kind: 'schema', html: `<span class="tk">tags</span>   <span class="gain">=&gt;</span> <span class="tp">[</span><span class="ts">text</span><span class="gain">;</span> <span class="tn">1..10</span><span class="tp">]</span>
 <span class="tk">point</span>  <span class="gain">=&gt;</span> <span class="tp">[</span><span class="ts">number</span><span class="tp">,</span> <span class="ts">number</span><span class="tp">]</span>
-<span class="tk">badges</span> <span class="gain">=&gt;</span> <span class="gain">!set</span> { <span class="tk">element_type</span><span class="tp">:</span> <span class="ts">text</span> }` },
+<span class="tk">badges</span> <span class="gain">=&gt;</span> <span class="gain">set</span><span class="tp">&lt;</span><span class="ts">text</span><span class="tp">&gt;</span>` },
       { tag: 'data (array, tuple and set all encode as array)', kind: 'data', html: `<span class="gain">!tags</span> <span class="tp">[</span><span class="ts">urgent reviewed</span><span class="tp">]</span>\n<span class="gain">!point</span> <span class="tp">[</span><span class="tn">3.5 7.2</span><span class="tp">]</span>\n<span class="gain">!badges</span> <span class="tp">[</span><span class="ts">alpha beta</span><span class="tp">]</span>` },
     ],
   },
   {
-    chip: '§5.5', href: `${part2Url}#55-constructor-application-and-atom-refinement`, title: 'Atoms and enums',
-    why: 'Refine an atom\'s constraint vocabulary with ^, or mint a fresh atom family with a constructor. The refinement IS-A its source; the enum is its own family.',
+    chip: '§5.3', href: `${part2Url}#53-type-expressions`, title: 'Maps with typed keys',
+    why: 'A record has fixed named fields; a map has variable associations, and its key is a declared type — not every key flattened to a string. Sizes constrain the map, and ? admits an absent value.',
     snippets: [
-      { tag: 'schema', kind: 'schema', html: `<span class="tk">port</span>  <span class="gain">=&gt;</span> <span class="gain">!integer</span> <span class="gain">^</span> { <span class="tk">min</span><span class="tp">:</span> <span class="tn">1</span>  <span class="tk">max</span><span class="tp">:</span> <span class="tn">65535</span> }
-<span class="tk">sku</span>   <span class="gain">=&gt;</span> <span class="gain">!text</span> <span class="gain">^</span> { <span class="tk">pattern</span><span class="tp">:</span> <span class="ts">"[A-Z]-[0-9]{3}"</span> }
-<span class="tk">rank</span> <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>` },
-      { tag: 'data', kind: 'data', html: `<span class="gain">!port</span> <span class="tn">8080</span>\n<span class="gain">!sku</span> <span class="ts">"A-123"</span>\n<span class="gain">!rank</span> <span class="tn">L2</span>` },
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">by_id</span>    <span class="gain">=&gt;</span> {<span class="ts">uuid</span> <span class="gain">=&gt;</span> <span class="ts">employee</span>}
+<span class="tk">holidays</span> <span class="gain">=&gt;</span> {<span class="ts">date</span> <span class="gain">=&gt;</span> <span class="ts">text</span><span class="gain">;</span> <span class="tn">1..</span>}
+<span class="tk">readings</span> <span class="gain">=&gt;</span> {<span class="ts">datetime</span> <span class="gain">=&gt;</span> <span class="ts">number</span><span class="gain">?</span>}` },
+      { tag: 'data (a key is a value, and may be absent)', kind: 'data', html: `<span class="gain">!holidays</span> { <span class="tn">2026-01-26</span> <span class="gain">=&gt;</span> <span class="ts">"Australia Day"</span> }\n<span class="gain">!readings</span> { <span class="ts">"2026-07-01T09:00:00Z"</span> <span class="gain">=&gt;</span> <span class="gain">_</span> }` },
+    ],
+  },
+  {
+    chip: '§5.5', href: `${part2Url}#55-constructor-application-and-atom-refinement`, title: 'Atoms and enums',
+    why: 'Refine an atom\'s constraint vocabulary with ^, or mint a fresh atom family with a constructor. A range narrows with min and max, a progression with multiple_of, a sparse set with members. The refinement IS-A its source; the enum is its own family.',
+    snippets: [
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">port</span>   <span class="gain">=&gt;</span> <span class="gain">!integer</span> <span class="gain">^</span> { <span class="tk">min</span><span class="tp">:</span> <span class="tn">1</span>  <span class="tk">max</span><span class="tp">:</span> <span class="tn">65535</span> }
+<span class="tk">sku</span>    <span class="gain">=&gt;</span> <span class="gain">!text</span> <span class="gain">^</span> { <span class="tk">pattern</span><span class="tp">:</span> <span class="ts">"[A-Z]-[0-9]{3}"</span> }
+<span class="tk">status</span> <span class="gain">=&gt;</span> <span class="gain">!integer</span> <span class="gain">^</span> { <span class="tk">members</span><span class="tp">:</span> <span class="tp">[</span><span class="tn">200 404 500</span><span class="tp">]</span> }
+<span class="tk">rank</span>   <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>` },
+      { tag: 'data', kind: 'data', html: `<span class="gain">!port</span> <span class="tn">8080</span>\n<span class="gain">!sku</span> <span class="ts">"A-123"</span>\n<span class="gain">!status</span> <span class="tn">404</span>\n<span class="gain">!rank</span> <span class="tn">L2</span>` },
     ],
   },
   {
@@ -91,7 +102,7 @@ const schemaRows = [
     snippets: [
       { tag: 'schema', kind: 'schema', html: `<span class="tk">audit</span>  <span class="gain">=&gt;</span> { <span class="tk">created</span><span class="tp">:</span> <span class="ts">datetime</span>  <span class="tk">updated</span><span class="tp">:</span> <span class="ts">datetime</span><span class="gain">?</span> }
 <span class="tk">ticket</span> <span class="gain">=&gt;</span> <span class="ts">audit</span> <span class="gain">&amp;</span> { <span class="tk">id</span><span class="tp">:</span> <span class="ts">uuid</span>  <span class="tk">title</span><span class="tp">:</span> <span class="ts">text</span> }` },
-      { tag: 'data', kind: 'data', html: `<span class="gain">!ticket</span> {\n  <span class="tk">created</span><span class="tp">:</span> <span class="tn">2026-07-01T09:00:00Z</span>\n  <span class="tk">id</span><span class="tp">:</span> <span class="tn">550e8400-e29b-41d4-a716-446655440000</span>\n  <span class="tk">title</span><span class="tp">:</span> <span class="ts">"Server unreachable"</span>\n}` },
+      { tag: 'data', kind: 'data', html: `<span class="gain">!ticket</span> {\n  <span class="tk">created</span><span class="tp">:</span> <span class="ts">"2026-07-01T09:00:00Z"</span>\n  <span class="tk">id</span><span class="tp">:</span> <span class="tn">550e8400-e29b-41d4-a716-446655440000</span>\n  <span class="tk">title</span><span class="tp">:</span> <span class="ts">"Server unreachable"</span>\n}` },
     ],
   },
   {
@@ -144,6 +155,24 @@ const schemaRows = [
       { tag: 'data', kind: 'data', html: `<span class="gain">!checkout</span> { <span class="tk">attempts</span><span class="tp">:</span> <span class="tn">10</span> }` },
     ],
   },
+  {
+    chip: '§7.8', href: `${part2Url}#78-cross-schema-type-references`, title: 'Extension points that stay verified',
+    why: 'A position where the data names its own type. declared keeps the choice inside this schema; extern_of admits any type of one named foreign schema, which the data binds with its own pinned !!schema. The payload is validated in full against the type it names — this is not an escape hatch to unchecked data.',
+    snippets: [
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">event</span> <span class="gain">=&gt;</span> {
+  <span class="tk">at</span><span class="tp">:</span>      <span class="ts">datetime</span>
+  <span class="tk">subject</span><span class="tp">:</span> <span class="ts">declared</span>
+  <span class="tk">payload</span><span class="tp">:</span> <span class="ts">extern_of</span><span class="gain">&lt;</span><span class="ts">"https://example.com/claim.tn"</span><span class="gain">&gt;</span>
+}` },
+      { tag: 'data (each value names its type; the foreign one names its schema too)', kind: 'data', html: `<span class="gain">!event</span> {
+  <span class="tk">at</span><span class="tp">:</span>      <span class="ts">"2026-07-01T09:00:00Z"</span>
+  <span class="tk">subject</span><span class="tp">:</span> <span class="gain">!employee</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">"Ada Lovelace"</span> }
+  <span class="tk">payload</span><span class="tp">:</span>
+    <span class="gain">!!schema:</span><span class="ts">"https://example.com/claim.tn?sha256=ac3f2e1a…"</span>
+    <span class="gain">!claim</span> { <span class="tk">reference</span><span class="tp">:</span> <span class="ts">"CLM-5678"</span> }
+}` },
+    ],
+  },
 ];
 
 // ── notation section: the diff demo (unchanged mechanics) ────
@@ -160,7 +189,7 @@ const diffTson = `{
   <span class="tk">born</span><span class="tp">:</span> <span class="gain">!date</span> <span class="tn">1815-12-10</span>
   <span class="tk">fields</span><span class="tp">:</span> <span class="tp">[</span><span class="ts">mathematics computing</span><span class="tp">]</span>
   <span class="tk">verified</span><span class="tp">:</span> <span class="tn">true</span>
-  <span class="tk">note</span><span class="tp">:</span> <span class="tn">null</span>
+  <span class="tk">note</span><span class="tp">:</span> <span class="gain">_</span>
 }`;
 
 // ── notation ledger: description left, examples right ────────
@@ -175,7 +204,7 @@ const ledger = [
   },
   {
     chip: '§2.4', href: `${part1Url}#24-tokens`, title: 'Commas are whitespace',
-    why: 'Any whitespace separates items; commas still work, so JSON habits carry over. Trailing commas remain errors in both.',
+    why: 'Any whitespace separates items; commas still work, so JSON habits carry over. A trailing comma is fine too — TSON has no elision, so there is nothing for a stray comma to be confused with.',
     snippets: [
       { tag: 'json', kind: 'json', html: '<span class="tp">[</span><span class="tn">1</span><span class="tp">,</span> <span class="tn">2</span><span class="tp">,</span> <span class="tn">3</span><span class="tp">,</span> <span class="tn">4</span><span class="tp">,</span> <span class="tn">5</span><span class="tp">]</span>' },
       { tag: 'tson', kind: 'tson', html: '<span class="tp">[</span><span class="tn">1 2 3 4 5</span><span class="tp">]</span>' },
@@ -207,7 +236,7 @@ const ledger = [
   },
   {
     chip: '§2.9', href: `${part1Url}#29-the-absent-sentinel`, title: 'Absent is not null',
-    why: 'JSON gives two states (key missing, or null) to do three jobs. TSON\'s absent sentinel _ says "this position exists and holds no value".',
+    why: 'JSON gives two states — key missing, or null — to do three jobs. TSON has no null at all: the absent sentinel _ says "this position exists and holds no value", and it works in an array, where a missing key cannot.',
     snippets: [
       { tag: 'json (is this unset, unknown, or removed?)', kind: 'json', html: '<span class="tp">"</span><span class="tk">phone</span><span class="tp">":</span> <span class="tn">null</span>' },
       { tag: 'tson', kind: 'tson', html: '<span class="tk">phone</span><span class="tp">:</span> <span class="gain">_</span>   <span class="tk">scores</span><span class="tp">:</span> <span class="tp">[</span><span class="tn">1</span> <span class="gain">_</span> <span class="tn">3</span> <span class="gain">_</span> <span class="tn">5</span><span class="tp">]</span>' },
@@ -223,10 +252,10 @@ const ledger = [
   },
   {
     chip: '§5.1', href: `${part1Url}#51-applicability`, title: 'Types when you want them',
-    why: 'Type annotations tag a value with what it is. A built-in vocabulary (dates, UUIDs, binary, precise numerics) works with no schema at all, and the value parses to the native type, not a string.',
+    why: 'Type annotations tag a value with what it is. A built-in vocabulary — dates, times, UUIDs, bytes, networks, exact decimals — works with no schema at all, and the value parses to the native type, not a string. An elapsed duration and a calendar period are separate types, because a month has no fixed length and a second does.',
     snippets: [
-      { tag: 'json (strings that mean things)', kind: 'json', html: '<span class="tp">"</span><span class="tk">id</span><span class="tp">": "</span><span class="ts">550e8400-e29b-41d4-a716-446655440000</span><span class="tp">",</span>\n<span class="tp">"</span><span class="tk">price</span><span class="tp">":</span> <span class="tn">19.99</span>' },
-      { tag: 'tson', kind: 'tson', html: '<span class="tk">id</span><span class="tp">:</span> <span class="gain">!uuid</span> <span class="tn">550e8400-e29b-41d4-a716-446655440000</span>\n<span class="tk">price</span><span class="tp">:</span> <span class="gain">!number</span> <span class="tn">19.99</span>' },
+      { tag: 'json (strings that mean things)', kind: 'json', html: '<span class="tp">"</span><span class="tk">id</span><span class="tp">": "</span><span class="ts">550e8400-e29b-41d4-a716-446655440000</span><span class="tp">",</span>\n<span class="tp">"</span><span class="tk">price</span><span class="tp">":</span> <span class="tn">19.99</span><span class="tp">, "</span><span class="tk">ttl</span><span class="tp">": "</span><span class="ts">PT30M</span><span class="tp">"</span>' },
+      { tag: 'tson', kind: 'tson', html: '<span class="tk">id</span><span class="tp">:</span> <span class="gain">!uuid</span> <span class="tn">550e8400-e29b-41d4-a716-446655440000</span>\n<span class="tk">price</span><span class="tp">:</span> <span class="gain">!number</span> <span class="tn">19.99</span>   <span class="tk">ttl</span><span class="tp">:</span> <span class="gain">!duration</span> <span class="tn">PT30M</span>\n<span class="tk">term</span><span class="tp">:</span> <span class="gain">!period</span> <span class="tn">P1Y</span>   <span class="tk">avatar</span><span class="tp">:</span> <span class="gain">!bytes</span> <span class="ts">"iVBORw0KGgo="</span>' },
     ],
   },
 ];
@@ -342,9 +371,9 @@ const routes = [
               <h3 class="text-lg font-semibold mb-1.5">{row.title}</h3>
               <p class="text-sm text-gray-500 max-w-md">{row.why}</p>
             </div>
-            <div class="grid gap-3 content-start">
+            <div class="grid gap-3 content-start min-w-0">
               {row.snippets.map((s) => (
-                <div class={`border border-gray-200 rounded-md border-l-3 ${s.kind === 'schema' ? 'border-l-teal-600' : 'border-l-gray-300'}`}>
+                <div class={`border border-gray-200 rounded-md border-l-3 min-w-0 ${s.kind === 'schema' ? 'border-l-teal-600' : 'border-l-gray-300'}`}>
                   <div class="font-mono text-[11px] uppercase tracking-widest text-gray-400 px-3.5 pt-2">{s.tag}</div>
                   <pre class="px-3.5 pb-3 pt-1 text-sm leading-6 overflow-x-auto"><code set:html={s.html} /></pre>
                 </div>
@@ -391,7 +420,9 @@ const routes = [
       <div class="font-mono text-xs font-semibold uppercase tracking-widest text-teal-800 mb-2">TSON Data</div>
       <h2 class="text-2xl md:text-3xl font-bold font-mono tracking-tight mb-3">A notation worth reading</h2>
       <p class="text-gray-500 max-w-2xl mb-8">
-        The schema system required a better JSON, so it got a Unicode-first superset of JSON.
+        The schema system required a better JSON, so it got a Unicode-first notation in the JSON
+        family — the same braces, brackets and quoted strings, with the punctuation optional and the
+        types real.
       </p>
       <div class="grid md:grid-cols-2 gap-6">
         <div class="border border-gray-200 rounded-md overflow-hidden">
@@ -433,9 +464,9 @@ const routes = [
               <h3 class="text-lg font-semibold mb-1.5">{row.title}</h3>
               <p class="text-sm text-gray-500 max-w-md">{row.why}</p>
             </div>
-            <div class="grid gap-3 content-start">
+            <div class="grid gap-3 content-start min-w-0">
               {row.snippets.map((s) => (
-                <div class={`border border-gray-200 rounded-md border-l-3 ${s.kind === 'tson' ? 'border-l-teal-600' : 'border-l-gray-300'}`}>
+                <div class={`border border-gray-200 rounded-md border-l-3 min-w-0 ${s.kind === 'tson' ? 'border-l-teal-600' : 'border-l-gray-300'}`}>
                   <div class="font-mono text-[11px] uppercase tracking-widest text-gray-400 px-3.5 pt-2">{s.tag}</div>
                   <pre class="px-3.5 pb-3 pt-1 text-sm leading-6 overflow-x-auto"><code set:html={s.html} /></pre>
                 </div>
@@ -445,20 +476,6 @@ const routes = [
         ))}
       </div>
 
-    </div>
-
-    <!-- ═══ Compatibility ═══ -->
-    <div class="max-w-5xl mx-auto px-6 py-8">
-      <div class="bg-gray-900 text-gray-200 rounded-xl px-8 py-10 md:px-10">
-        <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-3">Compatibility</h2>
-        <p class="font-mono font-semibold text-xl md:text-2xl leading-snug max-w-3xl">
-          Every valid JSON document is valid <span class="text-teal-400">TSON</span>.
-        </p>
-        <p class="mt-4 text-sm text-gray-400 max-w-2xl">
-          TSON is a strict superset of JSON, with its four atomic types (null, boolean, number and string), plus <span class="text-teal-400">UUIDs</span>, <span class="text-teal-400">dates</span>, <span class="text-teal-400">binary data</span>, and <span class="text-teal-400">arbitrary-precision numbers</span> as first-class
-          values, parsed straight from quoted or unquoted text, no schema required.
-        </p>
-      </div>
     </div>
 
     <!-- ═══ Section 5: routing ═══ -->
@@ -555,7 +572,7 @@ const routes = [
     if (ct) ct.textContent = `${nonWs(tsonPane)} chars`;
 
     const baseMsg = 'Same data, both sides.';
-    const diffMsg = `<b class="text-gray-900">${noise} characters</b> of required punctuation removed; one <b class="text-gray-900">typed date</b> gained.`;
+    const diffMsg = `<b class="text-gray-900">${noise} characters</b> of required punctuation removed; a <b class="text-gray-900">typed date</b> and an <b class="text-gray-900">absent sentinel</b> gained.`;
 
     toggle.addEventListener('click', () => {
       const on = root.classList.toggle('diff');
