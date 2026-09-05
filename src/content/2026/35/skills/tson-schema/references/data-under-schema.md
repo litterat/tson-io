@@ -7,8 +7,8 @@ Part 2 §7, condensed. This is what changes in a data document once `!!schema:"�
 - Header form binds the whole document; before a record field value, map entry value, or array element it binds that value alone, then reverts.
 - The referent is a schema *document*, never resolver output.
 - It names a **namespace**, not a root type. The value names its own type: `!task { … }`. An unannotated root is legal but vocabulary-only; a validator asked to validate the document must report it as a validation error — nothing was checked.
-- A nested `!!schema` at a position typed by the outer schema is a resolver error unless that position's type resolves to a `scoped` instance whose `scope` holds `EXTERN` — `extern`, `dynamic`, `extern_of<…>`, `extern_type<…>`, or a container of those (`[extern]`). Revision 35 made this a **derived fact** rather than a list: there is no permissive-type table to memorise, and `value` is no longer on it.
-- **A schemaless outer document opens no schema scope**: a nested `!!schema` in a document with no `!!schema` of its own is a validation error (Revision 35 replaced the old permission with its converse).
+- A nested `!!schema` at a position typed by the outer schema is a resolver error unless that position's type resolves to a `scoped` instance whose `scope` holds `EXTERN` — `extern`, `dynamic`, `extern_of<…>`, `extern_type<…>`, or a container of those (`[extern]`). This is a **derived fact**, not a list to memorise — and `value` is not one of them.
+- **A schemaless outer document opens no schema scope**: a nested `!!schema` in a document with no `!!schema` of its own is a validation error.
 
 ## Type annotations
 
@@ -21,9 +21,9 @@ Part 2 §7, condensed. This is what changes in a data document once `!!schema:"�
 
 ## Atom positions
 
-Base type resolution **does not apply under a schema at all** (Revision 35) — not merely at typed positions. `true`, `false` and `42` mean whatever the position's type says; `twelve` at an `integer` field is a resolver error, `300` at `age` is a validation error. The root names its type or the document is invalid; there is no "legal but vocabulary-only" root.
+Base type resolution **does not apply under a schema at all** — not merely at typed positions. `true`, `false` and `42` mean whatever the position's type says; `twelve` at an `integer` field is a resolver error, `300` at `age` is a validation error. The root names its type or the document is invalid; there is no "legal but vocabulary-only" root.
 
-**There is no `null`.** Revision 35 removed it from the notation, and with it the old concession that spelled `_` as `null` at a `void` position: `void` admits `_` alone. A bare `null` is the string `null`, so it satisfies a `text`-typed position and nothing else.
+**There is no `null`.** `void` admits `_` alone, and a bare `null` is the string `null` — so it satisfies a `text`-typed position and nothing else.
 
 Enums: the token's decoded text must equal a member name; `boolean` members `true`/`false` become host booleans.
 
@@ -31,7 +31,7 @@ Constraint values typed `value` in the meta layer (`decimal_type.min`, etc.) are
 
 ## Sets
 
-`[ … ]` syntax; set-ness is declared (`set<T>`, enum members). A repeated element is a validation error at the repeated occurrence. **Equality is over the element type's value space, not its lexical space** (Revision 35): two spellings of one value are one element, so `bytes` compares octets whatever the alphabet and `datetime` the instant whatever the offset. Order is unspecified; comparison tools sort. `_` elements are rejected. A `set<T>` is non-empty by default (`set_type.min_items` defaults to 1).
+`[ … ]` syntax; set-ness is declared (`set<T>`, enum members). A repeated element is a validation error at the repeated occurrence. **Equality is over the element type's value space, not its lexical space**: two spellings of one value are one element, so `bytes` compares octets whatever the alphabet and `datetime` the instant whatever the offset. Order is unspecified; comparison tools sort. `_` elements are rejected. A `set<T>` is non-empty by default (`set_type.min_items` defaults to 1).
 
 ## The absent sentinel `_`
 
@@ -59,15 +59,15 @@ Write `!variant value`. Omit the tag only when the choice is disjoint (every var
 
 ## Scoped positions: `declared`, `extern`, `dynamic`
 
-Revision 35 replaced `extern` and `unknown` with one constructor, `scoped`, whose `scope` names which
-namespaces a value's own type may be resolved in. Core declares the three admitting subsets and two
+One constructor, `scoped`, covers every position where the *data* names its own type; its `scope` names
+which namespaces that name may be resolved in. Core declares the three admitting subsets and two
 templates:
 
 | Core type | `scope` | The value's type comes from |
 |---|---|---|
 | `declared` | `[LOCAL]` | the governing schema (a `!type-ref`, resolved in the governing namespace) |
 | `extern` | `[EXTERN]` | any foreign schema (a nested `!!schema` plus a `!type-ref`) |
-| `dynamic` | `[LOCAL EXTERN]` | either — the successor to what earlier revisions called `unknown` |
+| `dynamic` | `[LOCAL EXTERN]` | either |
 | `extern_of<S>` | `[EXTERN]`, one schema | the one schema `S` names |
 | `extern_type<S, T>` | `[EXTERN]`, one type | the type `T` in the schema `S` |
 

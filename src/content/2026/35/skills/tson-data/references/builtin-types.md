@@ -83,8 +83,6 @@ another *instance* (`hexdigest => !bytes_type { encoding: HEX }`), never a refin
 nothing, so `hexdigest ^ bytes` would claim an IS-A no base64 position could honour. Equality, identity and
 content addressing are over the octets and never over a spelling.
 
-Revision 35 removed `!base64url`, `!base32` and `!hex`. There is no `!base64` either — the name is `!bytes`.
-
 ## Temporal atoms
 
 | Annotation | Format | Quote? |
@@ -154,4 +152,4 @@ CIDR prefix out of range or nonzero host bits → validation error. Everything e
 
 ## What does not exist
 
-There is no `!binary`, `!base64`, `!base64url`, `!base32`, `!hex` (all replaced by `!bytes`), `!string`, `!str`, `!int`, `!integer` (as a *built-in*; core declares `integer` for schemas), `!float`, `!double`, `!bool`, `!boolean`, `!timestamp`, `!decimal`, `!url`, `!ip`, `!json`, `!any`, `!null`, `!void`, `!enum`, `!list`, `!array`, `!map`, `!record`. Under a schemaless document any such name is silently preserved as an uninterpreted marker — a processor will not complain, which is exactly why an author should not rely on one.
+There is no `!binary`, `!base64`, `!base64url`, `!base32` or `!hex` — the one binary tag is `!bytes`. Nor `!string`, `!str`, `!int`, `!integer` (as a *built-in*; core declares `integer` for schemas), `!float`, `!double`, `!bool`, `!boolean`, `!timestamp`, `!decimal`, `!url`, `!ip`, `!json`, `!any`, `!null`, `!void`, `!enum`, `!list`, `!array`, `!map`, `!record`. Under a schemaless document any such name is silently preserved as an uninterpreted marker — a processor will not complain, which is exactly why an author should not rely on one.

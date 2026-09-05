@@ -1,9 +1,8 @@
 # Extension meta-schemas
 
 Part 2 §2.2.2, §4.1, §4.2, §5.5, §6, §9, condensed — for the document that declares *constructors* of its own,
-such as an HTTP operation, a method on an interface, or a deployment record. Every rule here was checked against
-the Java implementation at Revision 34; the quoted messages are its diagnostics. Revision 35 removed the
-`~` marker (see below) — the mechanics here are unchanged, but the spelling and the parameter rule are not.
+such as an HTTP operation, a method on an interface, or a deployment record. The quoted diagnostics
+are the Java implementation's.
 
 ## When you are writing one
 
@@ -54,12 +53,11 @@ operation => data & signature & {
 }
 ```
 
-**Revision 35 removed the `~` marker**, and with it `type_definition.constructor` and §4.2's level
-discipline. What makes an entry a constructor now is **applicability: IS-A `top`** — a head is applicable
-exactly when it describes a type rather than a part of one, which admits the base kinds (`atom`, `product`,
-`sum`, `data`) and `reference`, and refuses `record_field` and its siblings. So a constructor is declared by
-naming a base kind in its supertype chain, with no marker, and the gate is §2.2.2's placement rule: only a
-schema governed by the meta-kernel may declare such an entry.
+There is **no constructor marker**. What makes an entry a constructor is **applicability: IS-A `top`** — a
+head is applicable exactly when it describes a type rather than a part of one, which admits the base kinds
+(`atom`, `product`, `sum`, `data`) and `reference`, and refuses `record_field` and its siblings. So a
+constructor is declared by naming a base kind in its supertype chain, and the gate is §2.2.2's placement
+rule: only a schema governed by the meta-kernel may declare such an entry.
 
 Rules that bite:
 
@@ -75,11 +73,10 @@ Rules that bite:
   then writes `!operation { safe: true }` is refused at load — *"'safe' is fixed on 'operation' and cannot be
   given another value — the schema declares it with '=' (fixed); for a default the data may override, use
   '~'"*. Use this to reserve a field for a later version of the vocabulary.
-- **Parameters.** Revision 35 deleted §4.2's value-route-only rule (its justifying clause was false), so a
-  constructor's parameters follow the ordinary template rules: an argument is read by the position it lands
-  in, and a parameter with no kind-determining use is a type parameter. Prefer a `type_ref` slot the
-  application fills over a type parameter on the constructor — the slot is what a governed schema writes into
-  — but the parameter is no longer refused at the declaration.
+- **Parameters.** A constructor's parameters follow the ordinary template rules: an argument is read by the
+  position it lands in, and a parameter with no kind-determining use is a type parameter. Prefer a `type_ref`
+  slot the application fills over a type parameter on the constructor — the slot is what a governed schema
+  writes into — but a type parameter is legal.
 - **Bodies are closed.** An application whose payload names a field the constructor does not declare is a
   resolver error naming the member and the real fields (§5.5).
 
@@ -186,7 +183,7 @@ the import or the schema fails to load, which is the property the whole arrangem
 | `!!import:"…/m/core.tn"` in the meta itself | not needed; kernel types are already field types here | drop it (governed schemas still import core) |
 | `operation => method & { … }` (`method` is `data`-kinded) | a DATA entry is not a composition operand | put shared fields in a plain record, compose it into both |
 | `request: type_name` / `request: text` | inert token; unresolved names load clean | `request: type_ref` |
-| `<T> data & { request: T }` | legal since Revision 35, but rarely what you want | prefer a `type_ref` slot the application fills |
+| `<T> data & { request: T }` | legal, but rarely what you want | prefer a `type_ref` slot the application fills |
 | `x => { s: some_operation }` in a governed schema | naming a DATA entry as a type | reference the payload's types, not the operation |
 | `field: (op_a \| op_b)` | DATA entries are not variants | a list of `type_ref`s to the payload types |
 

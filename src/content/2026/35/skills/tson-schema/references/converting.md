@@ -13,7 +13,7 @@ definition rather than from a domain.
 | `format: uuid/date-time/email/uri/ipv4` | `uuid`, `datetime`, `email`, `uri`, `ipv4` from core |
 | `enum: ["a","b"]` | `!enum [a b]` if members are identifiers; otherwise an atom refinement or documented mapping |
 | `const`, `default` | `= value`, `~ value` |
-| `nullable` / `T \| null` / `Optional[T]` | `field: T?` — TSON has no `null` at all since Revision 35, so absence is the only mapping. Use `void` only for a field that means "no value" |
+| `nullable` / `T \| null` / `Optional[T]` | `field: T?` — TSON has no `null`, so absence is the only mapping. Use `void` only for a field that means "no value" |
 | `oneOf` of distinct types | `(a \| b)` — check disjointness; else a field group |
 | `oneOf` by discriminator field / tagged union | a field group, or a choice with mandatory tags |
 | `allOf` | `a & b & { … }` (fields must not overlap) |

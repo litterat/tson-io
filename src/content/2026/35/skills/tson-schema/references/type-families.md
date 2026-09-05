@@ -1,6 +1,6 @@
 # Type families, constructors and facets
 
-Condensed from `meta-kernel.tn`, `meta.tn` and `core.tn` (2026 Revision 35). A **constructor** carries a family's constraint vocabulary — since Revision 35 it is simply an entry that IS-A `top`, declarable only by a schema whose own `!!meta` names the meta-kernel (the `~` marker is gone); a **core instance** is `!constructor {}` — the unconstrained member you refine with `!instance ^ { facets }`. User schemas refine instances; they do not apply atom constructors directly unless they deliberately want a *fresh, unrelated* family (`dogs => !integer_type {}` has no relation to `integer`).
+Condensed from `meta-kernel.tn`, `meta.tn` and `core.tn` (2026 Revision 35). A **constructor** carries a family's constraint vocabulary; it is an entry that IS-A `top`, declarable only by a schema whose own `!!meta` names the meta-kernel. A **core instance** is `!constructor {}` — the unconstrained member you refine with `!instance ^ { facets }`. User schemas refine instances; they do not apply atom constructors directly unless they deliberately want a *fresh, unrelated* family (`dogs => !integer_type {}` has no relation to `integer`).
 
 Bounds are written as **field groups**: per side, either the inclusive form (`min`, `max`) or the exclusive form (`exclusive_min`, `exclusive_max`), never both. `min > max` is a schema-load error.
 
@@ -14,9 +14,9 @@ Bounds are written as **field groups**: per side, either the inclusive form (`mi
 | `min` / `exclusive_min` | integer | lower bound |
 | `max` / `exclusive_max` | integer | upper bound |
 | `multiple_of` | integer | step |
-| `members` | `integer_member_set` | **sparse** value set (Revision 35). `!integer ^ { members: [2 3 5 7] }` |
+| `members` | `integer_member_set` | **sparse** value set: `!integer ^ { members: [2 3 5 7] }` |
 
-Core instances: `integer`; `int8 int16 int32 int64 int128 int256`; `uint8 … uint256` (via `size`); `positive_integer` (`min: 1`), `non_negative_integer` (`min: 0`), `negative_integer` (`max: -1`), `non_positive_integer` (`max: 0`). All `@ordered:TOTAL @exact:true`. The **kernel** also declares `non_negative_integer` now (Revision 35): every facet that counts — lengths, item counts, digit counts, bit widths, prefix lengths, precision — is typed by it. Data forms: decimal or based integers, optional sign, `_` separators.
+Core instances: `integer`; `int8 int16 int32 int64 int128 int256`; `uint8 … uint256` (via `size`); `positive_integer` (`min: 1`), `non_negative_integer` (`min: 0`), `negative_integer` (`max: -1`), `non_positive_integer` (`max: 0`). All `@ordered:TOTAL @exact:true`. The **kernel** declares `non_negative_integer` too: every facet that counts — lengths, item counts, digit counts, bit widths, prefix lengths, precision — is typed by it. Data forms: decimal or based integers, optional sign, `_` separators.
 
 ### `decimal_type` → `number` (meta)
 
@@ -26,7 +26,7 @@ The exact tier — SQL DECIMAL, ISO 11404 `scaled` radix 10 — and the JSON `nu
 |---|---|
 | `min`/`exclusive_min`, `max`/`exclusive_max` | bounds (value-typed: write them as numbers) |
 | `multiple_of` | exact step (`0.05` admits nickel steps only) |
-| `members` | **sparse** value set, `set<value>` (Revision 35); each element is read under the constrained atom before the set is formed |
+| `members` | **sparse** value set, `set<value>`; each element is read under the constrained atom before the set is formed |
 | `total_digits` | total significant digits (SQL precision) |
 | `fraction_digits` | digits after the point (SQL scale). `fraction_digits: 2` admits any hundredth; `multiple_of: 0.05` is stricter |
 
@@ -45,7 +45,7 @@ Approximate tier: the value is rounded onto the IEEE 754-2019 grid named by `for
 There is deliberately **no `multiple_of`** — a step cannot hold on a binary grid. Use `number`.
 
 **Two rules stated once, across `integer_type`, `decimal_type`, `rational_type`, `duration_type` and
-`period_type`** (Revision 35): `multiple_of` is strictly positive, the sign of the value is ignored, and a
+`period_type`**: `multiple_of` is strictly positive, the sign of the value is ignored, and a
 refinement tightens only to an integer multiple. `members` requires every member to satisfy the body's other
 facets (a derived width included), and a refinement may only shrink the set.
 
@@ -57,7 +57,7 @@ Exact ℚ. Facets: `min`/`exclusive_min`, `max`/`exclusive_max`, `multiple_of`. 
 
 One facet, `component: INTEGER | NUMBER | RATIONAL | FLOAT32 | FLOAT64` (default `NUMBER`). Exactness follows the component. No ordering, so no bounds. `gaussian => !complex ^ { component: INTEGER }`.
 
-`component` is a selector over a **partial order** (Revision 35): `INTEGER ⊂ NUMBER ⊂ RATIONAL` and `FLOAT32 ⊂ FLOAT64`, the two families incomparable, and a refinement may move it only *down*. So `!complex ^ { component: FLOAT64 }` is refused — a float complex is its own instance.
+`component` is a selector over a **partial order**: `INTEGER ⊂ NUMBER ⊂ RATIONAL` and `FLOAT32 ⊂ FLOAT64`, the two families incomparable, and a refinement may move it only *down*. So `!complex ^ { component: FLOAT64 }` is refused — a float complex is its own instance.
 
 ## Text family (`text_type`, kernel)
 
@@ -88,9 +88,8 @@ Spec-bound sub-families compose `text_type & atom_specification`, so they inheri
 | `duration_type` → `duration` | same, `precision`, `multiple_of` | **TOTAL** — signed exact decimal **seconds** |
 | `period_type` → `period` | same, `multiple_of` | **TOTAL** — signed integer **months** |
 
-Revision 35 changed all five. Every family now carries the **exclusive** bound forms as well as the
-inclusive ones, and every one is totally ordered — an ordered-bound facet requires a totally ordered value
-space, which is now true of each.
+Every family carries the **exclusive** bound forms as well as the inclusive ones, and every one is totally
+ordered — an ordered-bound facet requires a totally ordered value space, which each of these has.
 
 **`time` and `datetime` are instants.** The offset RFC 3339 makes mandatory is a *spelling*:
 `2026-01-01T10:00:00+01:00` and `2026-01-01T09:00:00Z` are one value, and `-00:00` is the same instant as
@@ -113,7 +112,7 @@ mandates the offset. Bound values are written as the atom's own text, quoted whe
 |---|---|
 | `uuid_type` → `uuid` | `version: integer?` |
 | `ipv4_type` → `ipv4` | `within: [cidr text]?`, `excluding: [cidr text]?` — inside at least one `within` (if present) and no `excluding` |
-| — | **A `within`/`excluding` pair MUST admit at least one value** (Revision 35), exactly, and a network family's prefix bounds participate in the check |
+| — | **A `within`/`excluding` pair MUST admit at least one value**, exactly, and a network family's prefix bounds participate in the check |
 | `ipv6_type` → `ipv6` | same |
 | `cidr4_type` → `cidr4` | `min_prefix`, `max_prefix` (0–32), `within` (subnet-of), `excluding` (no overlap) |
 | `cidr6_type` → `cidr6` | same, 0–128 |
@@ -126,8 +125,8 @@ CIDR lists are quoted strings: `within: ["10.0.0.0/8" "192.168.0.0/16"]`.
 `bytes_type => atom & { encoding: bytes_encoding ~ BASE64  length: non_negative_integer?  min_length: non_negative_integer?  max_length: non_negative_integer? }`, with
 `bytes_encoding => !enum [BASE64 BASE64URL BASE32 HEX]`.
 
-Core instance: `bytes => !bytes_type { encoding: BASE64 }`. Revision 35 replaced the four nominal types
-`base64`, `base64url`, `base32` and `hex` with this one.
+Core instance: `bytes => !bytes_type { encoding: BASE64 }` — the one binary type; there is no `base64`,
+`base64url`, `base32` or `hex`.
 
 **The value is the octets.** Equality, identity, content addressing and the length facets are all over
 octets, never over a spelling — `length: 32` is a 32-byte digest whether it arrives as base64 or hex, and
@@ -139,9 +138,9 @@ narrows nothing, so `hexdigest ^ bytes` would claim an IS-A that no base64 posit
 
 ## Unit atoms (kernel; `unit` constructor)
 
-- `value` — the escape hatch: the token, uninterpreted, read by the type the position hands it to. Its inhabitants are boolean, integer, float and string (Revision 35 removed `null`). Base type resolution never reads it, and a `value` position is **not** a scope. Not narrowable. Used by the meta layer for value-typed facets and available to user schemas for "some scalar".
+- `value` — the escape hatch: the token, uninterpreted, read by the type the position hands it to. Its inhabitants are boolean, integer, float and string. Base type resolution never reads it, and a `value` position is **not** a scope. Not narrowable. Used by the meta layer for value-typed facets and available to user schemas for "some scalar".
 - `identifier` — a name (identifier grammar, NFC). Not for data values.
-- `void` — the only value is `_`; Revision 35 removed the `null` spelling. Target for bare annotations; a field typed `void` means "no value here". Core re-declares `void` so data documents can reach it.
+- `void` — the only value is `_`. Target for bare annotations; a field typed `void` means "no value here". Core re-declares `void` so data documents can reach it.
 
 ## Enumerations
 
@@ -156,7 +155,7 @@ Core: `boolean => !enum [true false]`.
 | `choice` (kernel) | `variants: [type_ref]` | sugar `(A \| B)`; two or more; no `void` variant; `disjoint` derived |
 | `scoped` (meta) | `scope: set<scope_kind>`, `schemas: {uri => [type_name; 1..]?; 1..}?` | open sum: the value names its own type, the instance names where that name resolves. `scope_kind => !enum [LOCAL EXTERN]` |
 
-Core instances of `scoped`, replacing Revision 34's `extern` and `unknown`:
+Core instances of `scoped`:
 `declared => !scoped { scope: [LOCAL] }`, `extern => !scoped { scope: [EXTERN] }`,
 `dynamic => !scoped { scope: [LOCAL EXTERN] }`, plus the templates
 `extern_of => <S> !scoped { scope: [EXTERN]  schemas: { S => _ } }` and
@@ -185,8 +184,8 @@ Identifier/network: `uuid ipv4 ipv6 cidr4 cidr6 mac`.
 Other: `boolean void unknown`.
 Annotation types for data documents: `annotation documentation doc alias`.
 
-Names that do **not** exist in core: `string str int float double bool binary timestamp decimal url ip any null list array map record object`, and — since Revision 35 — `base64 base64url base32 hex unknown`. (`bytes`, `period`, `declared`, `extern`, `dynamic`, `extern_of`, `extern_type` and `set` *do* exist.)
+Names that do **not** exist in core: `string str int float double bool binary base64 base64url base32 hex timestamp decimal url ip any null unknown list array map record object`. (`bytes`, `period`, `declared`, `extern`, `dynamic`, `extern_of`, `extern_type` and `set` *do* exist.)
 
 ## Annotation types available to schema documents (from `meta.tn`)
 
-`@doc:"…"` (and `@documentation`), `@title:"…"`, `@examples:[…]`, `@deprecated:"…"`, `@since:"…"`, `@todo:"…"`, `@lang:"en"`, `@ordered:NONE|PARTIAL|TOTAL`, `@bounded:true|false`, `@exact:true|false`, `@numeric` (bare), `@disjoint` (bare, on a choice), `@read_only` / `@write_only` (bare, never both on one field), `@discriminator:field_name` and `@rest` (bare) — the two *checked* representation directives — and `@synthetic` (resolver-attached; do not write it). `@alias` was removed in Revision 35.
+`@doc:"…"` (and `@documentation`), `@title:"…"`, `@examples:[…]`, `@deprecated:"…"`, `@since:"…"`, `@todo:"…"`, `@lang:"en"`, `@ordered:NONE|PARTIAL|TOTAL`, `@bounded:true|false`, `@exact:true|false`, `@numeric` (bare), `@disjoint` (bare, on a choice), `@read_only` / `@write_only` (bare, never both on one field), `@discriminator:field_name` and `@rest` (bare) — the two *checked* representation directives — and `@synthetic` (resolver-attached; do not write it).

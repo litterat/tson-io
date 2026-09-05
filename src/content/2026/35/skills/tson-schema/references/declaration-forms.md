@@ -85,6 +85,14 @@ Kind determination: the constructor's base kind (`atom`, `product`, `sum`, `data
 
 Category errors in data mirror this: `!integer_type 42` and `!age { min: 0 }` are both type errors — constructors type constraint records, instances type scalars.
 
+### The three spellings of "like `uuid`"
+
+| Spelling | Example | What it buys |
+|---|---|---|
+| reference | `id => uuid` | one type under two names; a hop, resolved but not rewritten |
+| refinement | `id => !uuid ^ {}` | a **new** type that IS-A `uuid` — the empty refinement is legal and is the nominal-subtype spelling |
+| fresh instance | `id => !uuid_type {}` | a new atom family with **no** relation to `uuid` |
+
 ## 5. Refinement `^`
 
 `T ^ { … }` — copy `T`, tighten, keep IS-A. Only existing fields may appear; adding one is an error. The source, after following its reference chain, must be an entry with a `!record` body — a fresh/refined/composed record, an open record template, or (in a meta-schema) a constructor. For an *atom* refinement the source is an atom-kinded entry that is not itself applicable. Not refinable: a top-level constructor application or sugar body (`{text => integer}`), a template instantiation, an alias to either, a choice. No removal clause on a refinement head.
@@ -116,7 +124,7 @@ A refinement taking an OPTIONAL field to `= _` is the IS-A-preserving way to for
 
 ## 6. Composition `&`
 
-`A & B & { body }` — the trailing body is optional. Parents must contribute **disjoint** field names (a field reaching the result through two paths — even from one origin — is an error). Body entries matching an inherited field are tightenings (§5 rules, elided types allowed); others are new fields, appended after all inherited fields. Field order: parents left to right, each in declared order, tightened fields in place. Parents may carry arguments (`vip => <T> customer & box<T> & { … }`) — the open parameters must be re-declared. Operands are named references only; no inline forms before `&`. Constructor-ness is *not* something a body inherits: since Revision 35 an entry is a constructor exactly when it IS-A `top`, and only a schema whose own `!!meta` names the meta-kernel may declare one.
+`A & B & { body }` — the trailing body is optional. Parents must contribute **disjoint** field names (a field reaching the result through two paths — even from one origin — is an error). Body entries matching an inherited field are tightenings (§5 rules, elided types allowed); others are new fields, appended after all inherited fields. Field order: parents left to right, each in declared order, tightened fields in place. Parents may carry arguments (`vip => <T> customer & box<T> & { … }`) — the open parameters must be re-declared. Operands are named references only; no inline forms before `&`. Constructor-ness is *not* something a body inherits: an entry is a constructor exactly when it IS-A `top`, and only a schema whose own `!!meta` names the meta-kernel may declare one.
 
 ## 7. Subtraction `-`
 
@@ -157,7 +165,7 @@ Labelled-sum idiom: a record whose entire body is one REQUIRED group, e.g. `even
 
 ## 10. Annotations in schemas
 
-Annotations are types resolved **one hop** against the governing target — for a schema document, its `!!meta` target. Under `meta.tn`: `doc documentation` (through the kernel import) and `ordered bounded exact numeric disjoint deprecated since todo lang title examples read_only write_only discriminator rest`. (`alias` was removed in Revision 35 with use-site flattening.) Local declarations and `!!import`s do not contribute to the schema document's own annotation namespace; custom annotations for schema documents require an extended meta-schema (`extension-meta-schemas.md`).
+Annotations are types resolved **one hop** against the governing target — for a schema document, its `!!meta` target. Under `meta.tn`: `doc documentation` (through the kernel import) and `ordered bounded exact numeric disjoint deprecated since todo lang title examples read_only write_only discriminator rest`. Local declarations and `!!import`s do not contribute to the schema document's own annotation namespace; custom annotations for schema documents require an extended meta-schema (`extension-meta-schemas.md`).
 
 For data documents governed by the schema, annotations resolve against the schema's namespace (locals + imports). Declare them:
 
@@ -174,8 +182,8 @@ A bare annotation is valid only against a `void`-targeted type; a valued one onl
 
 ### Checked annotations: `@discriminator` and `@rest`
 
-Revision 35 added a third annotation category. A **checked** annotation is honoured at either declaration
-position and carries a load-time check, on `@disjoint`'s verified-or-error precedent. The criterion for
+Beyond the documentary and the resolver-attached kinds there is a third: a **checked** annotation, honoured
+at either declaration position and carrying a load-time check, on `@disjoint`'s verified-or-error precedent. The criterion for
 putting something here rather than in the model: an annotation never changes a value, its type, or its
 validity; it may add a load-time check, and it may direct how a *class* of encodings represents a value.
 Force is confined to the encoding class that claims it — TSON text keeps `!variant` at every non-disjoint

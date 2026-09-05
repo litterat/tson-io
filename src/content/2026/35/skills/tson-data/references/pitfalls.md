@@ -1,22 +1,21 @@
 # TSON data pitfalls
 
-Every mistake this skill has seen writing TSON data documents, with the fix. The Revision 35 rows are
-repeated in SKILL.md because they catch habits carried from an earlier revision or from JSON; the rest
-live only here.
+Every mistake this skill has seen writing TSON data documents, with the fix. The rows SKILL.md repeats
+are the ones a JSON or YAML habit produces; the rest live only here.
 
 | You wrote | Problem | Write instead |
 |---|---|---|
 | `# comment` or `// comment` | `#`, `/` are lexer errors | `@doc:"comment"` on the value |
 | `'text'` | `'` is a lexer error | `"text"` |
-| `[, 1]`, `[1, , 2]` | a comma with no value before it | drop it — `[1, 2, 3,]` and `{ a: 1, }` are now legal |
+| `[, 1]`, `[1, , 2]` | a comma with no value before it | drop it — `[1, 2, 3,]` and `{ a: 1, }` are legal |
 | `time: 14:30:00Z`, `url: https://…`, `email: a@b.c`, `net: 10.0.0.0/8`, `ratio: 2/3` | `:` `@` `/` outside the profile | quote them |
 | `address: 0x71C7…` (meant as a string) | resolves to a number | `"0x71C7…"` |
 | `_id: 1` or `"_id": 1` | not an identifier, so not a field name; quoting does not help | `{ "_id" => 1 }` — use a map |
 | `"first name": 1`, `"Content-Type": "…"`, `42x: 2` | field names must be identifiers | move them into a map with `=>` |
 | `enabled: yes`, `flag: True` | strings, not booleans | `true` |
-| `missing: null` meaning "no value" | `null` is now the *string* `null` | `missing: _` |
+| `missing: null` meaning "no value" | `null` is the *string* `null` | `missing: _` |
 | `"a\/b"`, `"\uD83D\uDE00"` | `\/` is not an escape; no surrogate pairs | `"a/b"`, `"\u{1F600}"` |
-| `!base64 "…"`, `!hex "…"` | gone in Revision 35 | `!bytes "…"` (base64, padded) |
+| `!base64 "…"`, `!hex "…"` | no such tag | `!bytes "…"` (base64, padded) |
 | `!duration P1Y2M` | a year/month span is not a duration | `!period P1Y2M` |
 | `!duration P1W2D` | the week form stands alone | `P9D`, or `PT216H` |
 | `{ a => 1  b: 2 }` | mixing map and record | one or the other |

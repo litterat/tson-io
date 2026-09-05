@@ -7,7 +7,7 @@ description: Write, read, convert, and fix TSON data documents (.tn files) — t
 
 TSON (Typed Schema Object Notation) is a Unicode text format in the JSON family: quotes and commas are optional where the structure is unambiguous, there are three containers instead of two (records, maps, arrays), a distinct absent sentinel `_`, and three kinds of augmentation — annotations `@name`, type annotations `!name`, and directives `!!name:"…"`.
 
-**TSON is JSON-*like*, not a JSON superset.** A JSON document is not a TSON document: there is no `null` keyword, field names are identifiers rather than arbitrary strings, `\/` is not an escape, and there are no surrogate pairs. JSON is a second encoding of the same model, read through a JSON reader that maps its `null` to absence. Do not paste JSON and call it TSON — convert it (see below).
+**TSON is JSON-*like*, not a JSON superset.** A JSON document is not a TSON document, and JSON is a second encoding of the same model, read through a JSON reader that maps its `null` to absence. Do not paste JSON and call it TSON — convert it (see below).
 
 This skill covers **data documents** — the Class 1 format defined by *TSON Part 1: Text Data Format*, 2026 Revision 35. The rules below are the ones an author actually needs; `references/` holds the details to consult when a case is unusual.
 
@@ -94,7 +94,7 @@ Numbers are arbitrary precision. Distinct spellings of one value are equal (`255
 
 ## `_` — the absent sentinel
 
-`_` means "present, with no value", and since Revision 35 it is the *only* spelling of absence — there is no `null` to contrast it with. Use `_` for a field or entry that is deliberately blank. It can stand at any value position — field value, map entry value, array element (`[1 _ 3]` has three elements), or the whole document (`!!id:"…"` followed by `_` is a metadata-only document) — but never as a map key.
+`_` means "present, with no value", and it is the only spelling of absence — there is no `null`. Use `_` for a field or entry that is deliberately blank. It can stand at any value position — field value, map entry value, array element (`[1 _ 3]` has three elements), or the whole document (`!!id:"…"` followed by `_` is a metadata-only document) — but never as a map key.
 
 Under a schema, whether `_` is admitted at a position depends on the declared type (optional fields and `[T?]` elements admit it; required fields do not — omit the field instead and let the default inject).
 
@@ -141,7 +141,7 @@ When no schema is in scope, these names parse the following token by the named a
 | `!mac` | EUI-48, `aa-bb-cc-dd-ee-ff` or `aa:bb:…` | colon form yes, hyphen form no |
 | `!bytes` | base64 (RFC 4648 §4), **padding required**; the value is the octets | recommended |
 
-There is no generic `!binary`, `!string`, `!int`, `!float`, `!bool` or `!timestamp`, and since Revision 35 no `!base64url`, `!base32` or `!hex` — `!bytes` is the only binary tag. An alphabet is a *spelling* of an octet sequence, not a kind of value; a schema wanting another declares another type over the same `bytes`. A token the atom cannot parse is a resolver error; a parsed value out of range is a validation error.
+`!bytes` is the only binary tag: there is no `!base64`, `!base64url`, `!base32`, `!hex` or `!binary`, and no generic `!string`, `!int`, `!float`, `!bool` or `!timestamp`. An alphabet is a *spelling* of an octet sequence, not a kind of value; a schema wanting another declares another type over the same `bytes`. A token the atom cannot parse is a resolver error; a parsed value out of range is a validation error.
 
 **Value is not spelling.** `!bytes` is octets; `!datetime` is an instant and `!time` a UTC time of day, so `+01:00` and `Z` spellings of one instant are one value. `!duration` (signed decimal seconds) and `!period` (signed integer months) are two value spaces — `P1Y2M3DT4H5M6S` is an error under both, and a span that is genuinely both is a record with a field of each. See `references/builtin-types.md`.
 
@@ -178,7 +178,7 @@ There is no generic `!binary`, `!string`, `!int`, `!float`, `!bool` or `!timesta
 
 ## Converting from JSON and YAML
 
-**JSON is no longer a paste-in.** Three things must change, and the first two are silent corruptions if you skip them:
+**JSON is not a paste-in.** Three things must change, and the first two are silent corruptions if you skip them:
 
 1. **`null` → `_`.** JSON `null` means absence. Left as the bare token it becomes the *string* `null` — a valid document that says something else.
 2. **Object keys that are not identifiers → a map.** `{"first name": …}`, `{"_id": …}`, `{"Content-Type": …}` are parse errors as records; write those objects with `=>`. A JSON object whose keys are arbitrary (a dictionary) should be a map anyway.
@@ -190,18 +190,18 @@ YAML: `key: value` carries over when the key is an identifier, but every list be
 
 ## Pitfalls — check before delivering
 
-The Revision 35 traps first — these are the ones a habit from an earlier revision, or from JSON, produces:
+The errors a JSON or YAML habit produces come first:
 
 | You wrote | Problem | Write instead |
 |---|---|---|
 | `_id: 1` or `"_id": 1` | not an identifier, so not a field name; quoting does not help | `{ "_id" => 1 }` — use a map |
 | `"first name": 1`, `"Content-Type": "…"`, `42x: 2` | field names must be identifiers | move them into a map with `=>` |
-| `missing: null` meaning "no value" | `null` is now the *string* `null` | `missing: _` |
+| `missing: null` meaning "no value" | `null` is the *string* `null` | `missing: _` |
 | `"a\/b"`, `"\uD83D\uDE00"` | `\/` is not an escape; no surrogate pairs | `"a/b"`, `"\u{1F600}"` |
-| `!base64 "…"`, `!hex "…"` | gone in Revision 35 | `!bytes "…"` (base64, padded) |
+| `!base64 "…"`, `!hex "…"` | no such tag | `!bytes "…"` (base64, padded) |
 | `!duration P1Y2M` | a year/month span is not a duration | `!period P1Y2M` |
 | `!duration P1W2D` | the week form stands alone | `P9D`, or `PT216H` |
-| `[, 1]`, `[1, , 2]` | a comma with no value before it | drop it — `[1, 2, 3,]` and `{ a: 1, }` are now legal |
+| `[, 1]`, `[1, , 2]` | a comma with no value before it | drop it — `[1, 2, 3,]` and `{ a: 1, }` are legal |
 | `# comment` or `// comment` | `#`, `/` are lexer errors | `@doc:"comment"` on the value |
 | `'text'` | `'` is a lexer error | `"text"` |
 
@@ -222,5 +222,4 @@ Two implementations track this revision series:
 - **TypeScript** — https://github.com/litterat/ltr8-io-tson-typescript
 
 Either will check work this skill produces, reporting the diagnostics the specification defines.
-Language-specific guidance — APIs, bindings, build setup — belongs with those projects; look there
-for a `tson-java` or `tson-ts` skill.
+Language-specific guidance belongs with those projects; look there for a `tson-java` or `tson-ts` skill.

@@ -79,7 +79,7 @@ Format characters (`Cf`) and controls are never in a token: the bidi controls U+
 
 Non-ASCII letters and digits are ordinary token characters: `名前: 値` needs no quotes.
 
-**A field name is an identifier at every layer** (Revision 35), schemaless or governed. The production admits two spellings — unquoted, or single-line quoted; the multi-line form is not admitted in name position — and they are two spellings of one set of names. The decoded text is NFC-normalised and then matched in full against the identifier grammar, exactly as an annotation name's is; a token in name position whose decoded text is not an identifier is a **parse error**. So `{ "first name": 1 }`, `{ _id: 1 }` and `{ 42x: 2 }` fail, and the remedy is the one the format already has: a record's fields are the named members of a shape, which is what makes them declarable, and *a key that is not a name belongs in a map* — `{ "Content-Type" => "text/plain" }`. Under a schema a field name matches a declared one, and declared names are identifiers by the schema grammar, so nothing further is asked of a governed document.
+**A field name is an identifier at every layer**, schemaless or governed. The production admits two spellings — unquoted, or single-line quoted; the multi-line form is not admitted in name position — and they are two spellings of one set of names. The decoded text is NFC-normalised and then matched in full against the identifier grammar, exactly as an annotation name's is; a token in name position whose decoded text is not an identifier is a **parse error**. So `{ "first name": 1 }`, `{ _id: 1 }` and `{ 42x: 2 }` fail, and the remedy is the one the format already has: a record's fields are the named members of a shape, which is what makes them declarable, and *a key that is not a name belongs in a map* — `{ "Content-Type" => "text/plain" }`. Under a schema a field name matches a declared one, and declared names are identifiers by the schema grammar, so nothing further is asked of a governed document.
 
 ## 3. Whitespace, line terminators, bidi marks
 
@@ -98,7 +98,7 @@ Single-line quoted token: `"` … `"`. May contain any character from U+0020 upw
 | `\s` | U+0020 space (TSON extension, not JSON) |
 | `\uXXXX` / `\u{X…}` | one to six hex digits in the brace form; the value denoted MUST be a Unicode scalar value |
 
-**A solidus needs no escape and has none**: `\/` is an invalid escape (Revision 35).
+**A solidus needs no escape and has none**: `\/` is an invalid escape.
 
 **There are no surrogate pairs.** An escape names a character or it names nothing, so a surrogate code point (U+D800–U+DFFF) in either spelling is a lexer error and `\uD83D\uDE00` is *two* errors rather than one emoji — a TSON string is a well-formed sequence of scalar values by construction. `\u0041` and `\u{41}` are two spellings of one character; `\u{1F600}` names a supplementary character directly, as does `\u{E0100}` for a variation selector an ASCII-safe generator could otherwise only embed. The `{` after `u` decides the spelling at the first character, so the two forms never conflict; a brace form with no digits, more than six, or an unclosed brace is a lexer error. Unknown escapes (`\x41`, `\0`, `\e`) are lexer errors.
 
@@ -166,7 +166,7 @@ Annotation values are data values — never type definitions.
 - **Field names** in one record must be unique (resolver error otherwise). Identity is the NFC-normalised decoded text: `name` and `"name"` collide; `"café"` decomposed and precomposed collide. Case-sensitive.
 - **Map keys** must be unique. Textual identity is the minimum (`Alice` = `"Alice"`); a processor that decodes values also relates `0xFF` and `255`, `1_000` and `1000`. Annotations and type annotations on a key do not participate in identity (`!text a` = `a`). Under a schema the declared key type can make more keys equal (`1` and `1.0` under an integer-keyed map).
 - Unquoted tokens must already be NFC in the source (lexer error otherwise). Quoted tokens keep their exact content; at naming positions the resolver NFC-normalises them before comparing.
-- **Equality is over value spaces, not lexical spaces** (Revision 35). A type denotes a value space; an encoding defines a lexical space and one canonical form per value. Two spellings of one value are one value for map keys, sets, refinement, disjointness and content addressing — so `!bytes` compares octets whatever the alphabet, and `!datetime`/`!time` compare the instant whatever the offset (`+00:00`, `-00:00` and `Z` are one).
+- **Equality is over value spaces, not lexical spaces.** A type denotes a value space; an encoding defines a lexical space and one canonical form per value. Two spellings of one value are one value for map keys, sets, refinement, disjointness and content addressing — so `!bytes` compares octets whatever the alphabet, and `!datetime`/`!time` compare the instant whatever the offset (`+00:00`, `-00:00` and `Z` are one).
 
 ## 11. Error categories and canonical phrasing
 
@@ -183,13 +183,13 @@ Every diagnostic carries line, column, and byte offset.
 
 ## 12. JSON — what is shared, and where the two part
 
-**TSON is not a JSON superset.** Revision 35 deleted the claim and the rules that existed only for it. A JSON
-document is not a TSON document, and a JSON document is read through a **JSON reader** — a second encoding of
-the same model, which maps JSON `null` to *absence* and JSON numbers to `number`.
+**TSON is not a JSON superset.** A JSON document is not a TSON document. JSON is read through a **JSON
+reader** — a second encoding of the same model, which maps JSON `null` to *absence* and JSON numbers to
+`number`.
 
 Four differences, each of which makes some JSON documents illegal as TSON:
 
-1. **No `null` keyword.** A bare `null` is the four-character *string* (§4.4 of Part 1). Converting JSON, map
+1. **No `null` keyword.** A bare `null` is the four-character *string* (Part 1 §4.4). Converting JSON, map
    every `null` to `_`; leaving it produces a valid document that says something else.
 2. **Field names are identifiers.** `{"first name": …}`, `{"_id": …}`, `{"Content-Type": …}` are parse errors
    as records. Those objects are maps.
@@ -221,7 +221,7 @@ Media type `application/tson` (optionally `; version=1`). Extension `.tn` for th
 
 ## Resource limits (Part 1 §9.1)
 
-Revision 35 turned the DoS advice into one **limits policy**. Every limit has a default; a processor MUST
+Resource limits are one **policy**, not scattered advice. Every limit has a default; a processor MUST
 enforce each at its default or a configured value; the limit MUST be configurable or its enforced value
 documented; and exceeding one MUST be reported as a clear refusal naming the limit and the threshold, never as
 an out-of-memory or stack overflow. A refusal is not a verdict (§11 above) and is reported beside the

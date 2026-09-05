@@ -297,7 +297,7 @@ The following rows extend the adjacency table of [TSON-DATA] §7.5 for the opera
 | `&` | binary | composition | whitespace on either side optional |
 | `^` | binary | refinement (§5.5, §5.7) | whitespace on either side optional |
 | `-` | prefix | removal clause (§5.9) | at least one whitespace character MUST separate the preceding token from `-`; whitespace optional before the following `{` |
-| `~` | modifier | field default value (`port: integer ~ 8080`). The constructor marker was removed in Revision 35 | whitespace optional |
+| `~` | modifier | field default value (`port: integer ~ 8080`) — its only role in the grammar | whitespace optional |
 | `=` | modifier | fixed value | whitespace optional |
 | `\|` | separator | choice variant; field-group member | whitespace optional |
 | `;` | separator | array size spec; map size spec (§5.3) | whitespace optional |
@@ -316,7 +316,7 @@ Everything that makes a schema fail to load is a **resolver error**, however val
 
 Beyond the identifier grammar, conforming processors enforce by default (as *policy refusals*, not validity errors): skeleton distinctness (no two names in one scope may be visually confusable — `admin` vs Cyrillic `аdmin`, also pure-ASCII `comer`/`corner`), `Identifier_Status=Allowed` characters only, and a UTS #39 restriction level (default Highly Restrictive over the whole name; per-segment relaxation admits `id_пользователя`). Scopes at this layer: the members of one enum, the declared names of one schema, and the merged namespace at each `!!import`. Practical advice for an author: keep names single-script or separate scripts with `_`, and avoid pairs that differ only by `l`/`I`, `O`/`0`, `rn`/`m`.
 
-## Resource limits for schemas (Part 2 §11.5, new in Revision 35)
+## Resource limits for schemas (Part 2 §11.5)
 
 A schema is untrusted input wherever it is accepted over the wire or reached through `!!import`. These
 limits join Part 1 §9.1's policy on the same terms: every one has a default, MUST be configurable or have
