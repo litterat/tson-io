@@ -385,7 +385,7 @@
 }
 `;
 
-  const OBSERVATORY_BODY = `@doc:"A tour of the schema language: atom refinements, enums, templates, field groups, maps, sets, tuples, composition, refinement, subtraction and guarded recursion."
+  const OBSERVATORY_BODY = `@doc:"A tour of the schema language: atom refinements, enums, templates, field groups, maps, sets, tuples, composition, refinement, subtraction, scoped positions and guarded recursion."
 {
   @doc:"Three letters, a dash, three digits."
   designator => !text ^ { pattern: "^[A-Z]{3}-[0-9]{3}$" }
@@ -411,8 +411,8 @@
   @doc:"Partial application re-declares the open parameter."
   index_of => <V> {designator => V}
 
-  @doc:"A set: unordered, unique. Applied by constructor, since set has no sugar."
-  partner_set => !set { element_type: non_empty_text }
+  @doc:"A set: unordered, unique. Written through meta's set template."
+  partner_set => set<non_empty_text>
 
   coordinate => [number, number]
 
@@ -508,11 +508,11 @@
     endpoint:   uri
     host:       ipv4
     heartbeat:  duration
-    checksum:   base64
+    checksum:   bytes
     window_utc: time
     @deprecated:"superseded by endpoint"
     legacy_url: uri?
-    @since:"2026-34"
+    @since:"2026-35"
     mac_addr:   mac?
   }
 
@@ -533,6 +533,8 @@
     highlight:     pair<designator, non_empty_text>?
     published:     instrument_public?
     radio:         radio_instrument?
+    @doc:"A scoped position: the value names its own type, resolved in this schema."
+    spotlight:     declared
     telemetry:     telemetry
   }
 }
@@ -540,7 +542,7 @@
 
   const PEOPLE: SchemaSpec = { id: 'https://example.com/people.tn', body: PEOPLE_BODY };
   const OBSERVATORY: SchemaSpec = {
-    id: 'https://tson.io/2026/34/examples/observatory.tn',
+    id: 'https://tson.io/2026/35/examples/observatory.tn',
     body: OBSERVATORY_BODY,
   };
 
@@ -659,7 +661,7 @@
       root: 'observatory',
       ok: true,
       schema: OBSERVATORY,
-      data: `!!schema:"https://tson.io/2026/34/examples/observatory.tn?sha256=__PIN__"
+      data: `!!schema:"https://tson.io/2026/35/examples/observatory.tn?sha256=__PIN__"
 
 !observatory {
   id:          "MKA-001"
@@ -747,9 +749,11 @@
 
   highlight: { first: "MKA-777"  second: "brightest radio source in Cygnus" }
 
+  spotlight: !subsystem { name: "cryostat"  state: RETIRED }
+
   telemetry: {
     stream_id:  "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
-    endpoint:   "https://tson.io/2026/34/examples/observatory.tn"
+    endpoint:   "https://tson.io/2026/35/examples/observatory.tn"
     host:       "192.0.2.41"
     heartbeat:  "PT30S"
     checksum:   "3q2+7w=="
