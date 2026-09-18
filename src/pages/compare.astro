@@ -1,0 +1,551 @@
+---
+import Layout from '../layout/Layout.astro';
+import { CURRENT_REVISION } from '../lib/spec';
+
+const part1Url = `/2026/${CURRENT_REVISION}/tson-part1-data`;
+const part2Url = `/2026/${CURRENT_REVISION}/tson-part2-schema`;
+const coreUrl = `/2026/${CURRENT_REVISION}/m/core.tn`;
+const guideUrl = `/2026/${CURRENT_REVISION}/tson-guide`;
+
+const chipClass = 'inline-block font-mono text-xs font-semibold rounded-full px-3 py-1 mb-2 bg-gray-100 text-teal-800 hover:underline';
+
+// ── the systems compared, in column order ────────────────────
+const systems = [
+  { name: 'TSON', version: `Revision ${CURRENT_REVISION}` },
+  { name: 'XML Schema', version: 'XSD 1.1' },
+  { name: 'JSON Schema', version: '2020-12' },
+  { name: 'Protobuf', version: 'proto3 / editions' },
+  { name: 'ASN.1', version: 'X.680 series' },
+  { name: 'YAML', version: '1.2 core schema' },
+];
+
+// A cell is [level, text]. y = built in, p = partial (an annotation, a convention, an add-on, or
+// only part of the feature), n = not provided, i = descriptive (no verdict). Backticks in the
+// text render as code.
+type Level = 'y' | 'p' | 'n' | 'i';
+type Cell = [Level, string];
+type Row = { feature: string; cells: Cell[] };
+type Section = { id: string; eyebrow: string; title: string; intro: string; chip?: { label: string; href: string }; rows: Row[] };
+
+const sections: Section[] = [
+  {
+    id: 'types',
+    eyebrow: 'Built-in types',
+    title: 'Scalar types',
+    intro:
+      'What each system names for you, before you write a line of your own. TSON\'s atoms live in the core library, each pinned to the RFC that defines it, and each states its value space: equality and ordering are over values, never spellings. The core library is a starting set, not a ceiling: new atom types arrive through meta extensions (below).',
+    chip: { label: 'core.tn', href: coreUrl },
+    rows: [
+      { feature: 'Boolean', cells: [['y', '`boolean`'], ['y', '`boolean`'], ['y', '`boolean`'], ['y', '`bool`'], ['y', '`BOOLEAN`'], ['y', '`bool`']] },
+      { feature: 'Arbitrary-precision integer', cells: [['y', '`integer`'], ['y', '`integer`'], ['y', '`integer`'], ['n', '— 64-bit maximum'], ['y', '`INTEGER`'], ['p', '`int`, range left to the implementation']] },
+      { feature: 'Fixed-width integers', cells: [['y', '`int8` … `int256`, `uint8` … `uint256`'], ['y', '`byte`, `short`, `int`, `long` and unsigned forms, 8–64 bits'], ['p', 'via `minimum` / `maximum`'], ['y', '`int32`, `int64`, `uint32`, `uint64`, plus `sint` / `fixed` wire variants'], ['p', 'via range constraint, `INTEGER (0..255)`'], ['n', '—']] },
+      { feature: 'Sign-restricted integers', cells: [['y', '`positive_integer`, `non_negative_integer`, …'], ['y', '`positiveInteger`, `nonNegativeInteger`, …'], ['p', 'via `minimum`'], ['p', 'unsigned widths only'], ['p', 'via range constraint'], ['n', '—']] },
+      { feature: 'Exact decimal', cells: [['y', '`number` — exact, no NaN or infinity'], ['y', '`decimal`'], ['p', '`number`; exactness left to the validator'], ['n', '— a string, or `google.type.Decimal`'], ['p', '`REAL` constrained to base 10'], ['n', '— `float` only']] },
+      { feature: 'Rational', cells: [['y', '`rational` — `2/4` and `1/2` are one value'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'Complex', cells: [['y', '`complex`, components selectable'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'IEEE 754 floating point', cells: [['y', '`float32`, `float64`'], ['y', '`float`, `double`'], ['n', '— one `number` type'], ['y', '`float`, `double`'], ['p', '`REAL` constrained to base 2'], ['y', '`float`, with `.inf` and `.nan`']] },
+      { feature: 'Unicode text', cells: [['y', '`text`'], ['y', '`string`, `token`, `normalizedString`'], ['y', '`string`'], ['y', '`string`'], ['y', '`UTF8String` and a dozen restricted string types'], ['y', '`str`']] },
+      { feature: 'Binary', cells: [['y', '`bytes` — the value is octets; the alphabet is a spelling'], ['y', '`base64Binary`, `hexBinary` — two distinct types'], ['p', '`contentEncoding`, an annotation'], ['y', '`bytes`'], ['y', '`OCTET STRING`, `BIT STRING`'], ['p', '`!!binary` (YAML 1.1)']] },
+      { feature: 'Date', cells: [['y', '`date`'], ['y', '`date`, plus partials `gYear`, `gYearMonth`, …'], ['p', '`format: date`'], ['p', '`google.type.Date`, a common type'], ['y', '`DATE`'], ['p', '`!!timestamp` (YAML 1.1)']] },
+      { feature: 'Time of day', cells: [['y', '`time` — offset mandatory, totally ordered'], ['y', '`time` — offset optional, partially ordered'], ['p', '`format: time`'], ['p', '`google.type.TimeOfDay`, a common type'], ['p', '`TIME-OF-DAY` (local), or `TIME` with settings'], ['n', '—']] },
+      { feature: 'Date-time instant', cells: [['y', '`datetime` — offset mandatory'], ['y', '`dateTimeStamp`; `dateTime` has an optional offset'], ['p', '`format: date-time`'], ['y', '`google.protobuf.Timestamp`'], ['y', '`GeneralizedTime`, `UTCTime`'], ['p', '`!!timestamp` (YAML 1.1)']] },
+      { feature: 'Local date-time (no offset)', cells: [['n', '— excluded by design: an instant needs its offset'], ['y', '`dateTime` without an offset'], ['n', '— RFC 3339 requires the offset'], ['p', '`google.type.DateTime`, zone optional'], ['y', '`DATE-TIME`'], ['n', '—']] },
+      { feature: 'Elapsed duration', cells: [['y', '`duration` — seconds, totally ordered'], ['y', '`dayTimeDuration`'], ['p', '`format: duration`, months and seconds mixed'], ['y', '`google.protobuf.Duration`'], ['y', '`DURATION`, months and seconds mixed'], ['n', '—']] },
+      { feature: 'Calendar period', cells: [['y', '`period` — months, totally ordered'], ['y', '`yearMonthDuration`'], ['p', 'inside `format: duration`'], ['n', '—'], ['p', 'inside `DURATION`'], ['n', '—']] },
+      { feature: 'UUID', cells: [['y', '`uuid` (RFC 9562)'], ['n', '— via `pattern`'], ['p', '`format: uuid`'], ['n', '— a string or bytes'], ['n', '— `OCTET STRING (SIZE(16))`'], ['n', '—']] },
+      { feature: 'URI', cells: [['y', '`uri` (RFC 3986)'], ['y', '`anyURI`'], ['p', '`format: uri`, `iri`, `uri-reference`'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'Email address', cells: [['y', '`email` — the dot-atom core of RFC 5322'], ['n', '—'], ['p', '`format: email`, `idn-email`'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'IP addresses', cells: [['y', '`ipv4`, `ipv6`'], ['n', '—'], ['p', '`format: ipv4`, `ipv6`'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'Networks and hardware addresses', cells: [['y', '`cidr4`, `cidr6`, `mac`'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'Regular expression', cells: [['y', '`regex` — I-Regexp (RFC 9485)'], ['n', '— a facet, not a type'], ['p', '`format: regex`'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'Object identifier', cells: [['n', '— not in core; a meta extension can add it'], ['n', '—'], ['n', '—'], ['n', '—'], ['y', '`OBJECT IDENTIFIER`, `RELATIVE-OID`, `OID-IRI`'], ['n', '—']] },
+      { feature: 'Adding new built-in types', cells: [['y', 'meta extensions declare new atom constructors, facets included'], ['p', 'implementation-defined primitives (1.1)'], ['p', 'custom `$vocabulary` keywords and `format` values'], ['n', '— new types are messages'], ['n', '— a fixed set of built-in types'], ['p', 'application tags, `!mytype`']] },
+    ],
+  },
+  {
+    id: 'structures',
+    eyebrow: 'Data structures',
+    title: 'Structures and composition',
+    intro:
+      'How values combine. TSON gives each container its own bracket form, the same in the schema as in the data, and treats a record as closed: a field the schema does not declare is an error, not a pass-through. Any value, field or declaration can also carry annotations: typed metadata that never changes whether a value is valid.',
+    chip: { label: '§5.3', href: `${part2Url}#53-type-expressions` },
+    rows: [
+      { feature: 'Record (named fields)', cells: [['y', '`{ name: text }`'], ['y', '`complexType` with `sequence` / `all`'], ['y', '`object` with `properties`'], ['y', '`message`'], ['y', '`SEQUENCE`, `SET`'], ['p', 'mapping, untyped']] },
+      { feature: 'Closed to undeclared fields', cells: [['y', 'closed; extras go to an `@rest` map if declared'], ['y', 'closed unless `xs:any` is declared'], ['n', '— open unless `additionalProperties: false`'], ['n', '— unknown fields are kept and skipped'], ['p', 'closed, or open with an extension marker `...`'], ['n', '—']] },
+      { feature: 'Map with typed keys', cells: [['y', '`{K => V}`, any key type'], ['n', '— `key` / `keyref` identity constraints'], ['p', '`additionalProperties` + `propertyNames`; keys are strings'], ['y', '`map<K, V>`, integer or string keys'], ['n', '— `SEQUENCE OF` key/value pairs'], ['y', 'mapping; any node can be a key']] },
+      { feature: 'Array', cells: [['y', '`[T]`'], ['y', '`maxOccurs`, list types'], ['y', '`array` with `items`'], ['y', '`repeated`'], ['y', '`SEQUENCE OF`'], ['y', 'sequence']] },
+      { feature: 'Size bounds', cells: [['y', '`[T; 1..10]`, and the same on maps'], ['y', '`minOccurs` / `maxOccurs`, length facets'], ['y', '`minItems` / `maxItems`'], ['n', '—'], ['y', '`SIZE (1..10)`'], ['n', '—']] },
+      { feature: 'Tuple', cells: [['y', '`[number, number]`'], ['p', '`sequence` of named elements'], ['y', '`prefixItems` with `items: false`'], ['n', '—'], ['p', '`SEQUENCE` of named components'], ['n', '—']] },
+      { feature: 'Set (unordered, unique)', cells: [['y', '`set<T>`, uniqueness by value'], ['p', '`xs:unique` identity constraint'], ['p', '`uniqueItems`; order still significant'], ['n', '—'], ['y', '`SET OF`'], ['p', '`!!set` (YAML 1.1)']] },
+      { feature: 'Enumeration', cells: [['y', '`!enum [A B C]`'], ['y', '`enumeration` facet'], ['y', '`enum`, `const`'], ['y', '`enum`, open in proto3'], ['y', '`ENUMERATED`'], ['n', '—']] },
+      { feature: 'Choice between types', cells: [['y', '`(email | phone)` — tagged only where two variants share a form'], ['p', '`union`, simple types only'], ['p', '`oneOf` / `anyOf` — matched by validation, untagged'], ['n', '— wrap in a `oneof`'], ['p', '`CHOICE` — alternatives are labelled'], ['p', 'node tags']] },
+      { feature: 'Labelled alternatives', cells: [['y', 'field groups, `( a: T | b: U )`'], ['y', '`xs:choice`'], ['p', '`oneOf` with `required`'], ['y', '`oneof`'], ['y', '`CHOICE`'], ['n', '—']] },
+      { feature: 'Required, optional, default, fixed', cells: [['y', 'five field states: `T`, `T?`, `~ default`, `= fixed`, `T? = fixed`; defaults filled in on read'], ['y', '`minOccurs`, `default`, `fixed`'], ['p', '`required`, `const`; `default` is an annotation'], ['p', '`optional`; defaults are zero values'], ['y', '`OPTIONAL`, `DEFAULT`'], ['n', '—']] },
+      { feature: 'Absence', cells: [['y', 'one spelling, `_`; no `null` in the notation'], ['y', '`minOccurs="0"`, and `xsi:nil`'], ['y', 'omission, and `null`'], ['p', 'tracked only for `optional`; zero is otherwise unset'], ['y', '`OPTIONAL`, and `NULL`'], ['y', 'omission, and `null` / `~`']] },
+      { feature: 'Recursive types', cells: [['y', 'yes'], ['y', 'yes'], ['y', 'yes, via `$ref`'], ['y', 'yes'], ['y', 'yes'], ['n', '— anchors reuse values, not types']] },
+      { feature: 'Composition (inherit, IS-A)', cells: [['y', '`A & B & { … }` — several parents, no diamonds'], ['y', '`extension`, substitution groups; one parent'], ['p', '`allOf` merges constraints; no IS-A'], ['n', '— nest a message instead'], ['p', '`COMPONENTS OF` copies fields'], ['p', '`<<` merge key (YAML 1.1)']] },
+      { feature: 'Refinement (narrow, keep IS-A)', cells: [['y', '`T ^ { … }` — tighten, default or fix fields; never adds or removes one'], ['y', '`restriction`'], ['p', '`allOf` plus keywords; no subtype relation'], ['n', '—'], ['y', 'subtype constraints, `WITH COMPONENTS`'], ['n', '—']] },
+      { feature: 'Subtraction (remove fields)', cells: [['y', '`A - { password }` — breaks IS-A, keeps lineage'], ['p', '`restriction` can drop optional parts'], ['n', '— copy the schema'], ['n', '—'], ['p', '`WITH COMPONENTS` can mark optional components `ABSENT`'], ['n', '—']] },
+      { feature: 'Generics', cells: [['y', 'templates over types and values, `vector<T, N>`'], ['n', '—'], ['p', '`$dynamicRef` approximates'], ['n', '—'], ['y', 'parameterized types (X.683)'], ['n', '—']] },
+      { feature: 'Open type (value names its type)', cells: [['y', '`declared`, `extern`, `dynamic` — validated against the named type'], ['y', '`xs:any`, `xsi:type`'], ['p', '`{}` accepts anything, unchecked'], ['y', '`google.protobuf.Any`'], ['y', 'open types, `EMBEDDED PDV`'], ['p', 'tags']] },
+      { feature: 'Annotations on data', cells: [['y', '`@name:value` on any value, map key or field; preserved in order'], ['p', 'attributes, where the schema admits them'], ['n', '— JSON has no metadata channel'], ['n', '—'], ['n', '—'], ['p', 'tags and anchors; comments are discarded']] },
+      { feature: 'Typed, validated annotations', cells: [['y', 'every annotation is a type, `deprecated => @annotation text`; an unknown one is an error, and `@disjoint`, `@discriminator` and `@rest` are checked at load'], ['p', '`xs:appinfo` and foreign attributes, checked only if declared'], ['p', 'annotation keywords; custom ones via `$vocabulary`, unknown ones ignored'], ['y', 'custom options, typed by extending the `*Options` messages'], ['n', '— comments only'], ['n', '—']] },
+    ],
+  },
+  {
+    id: 'constraints',
+    eyebrow: 'Constraints',
+    title: 'Facets and constraints',
+    intro:
+      'What a schema can say about a value beyond its type. In TSON a constrained type is a named refinement — `age => !integer ^ { min: 0  max: 150 }` — and it IS-A the type it narrows.',
+    chip: { label: '§5.5', href: `${part2Url}#55-constructor-application-and-atom-refinement` },
+    rows: [
+      { feature: 'Numeric bounds, inclusive and exclusive', cells: [['y', '`min` / `exclusive_min`, `max` / `exclusive_max` — on dates too'], ['y', '`minInclusive` … `maxExclusive`'], ['y', '`minimum` … `exclusiveMaximum`'], ['n', '— the protovalidate add-on'], ['y', 'value ranges, `(0<..<10)`'], ['n', '—']] },
+      { feature: 'Multiple of', cells: [['y', '`multiple_of`'], ['n', '—'], ['y', '`multipleOf`'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'Decimal digits', cells: [['y', '`total_digits`, `fraction_digits`'], ['y', '`totalDigits`, `fractionDigits`'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'Text length', cells: [['y', '`min_length`, `max_length`, `length`'], ['y', '`minLength`, `maxLength`, `length`'], ['y', '`minLength`, `maxLength`'], ['n', '—'], ['y', '`SIZE`'], ['n', '—']] },
+      { feature: 'Pattern', cells: [['y', '`pattern` — I-Regexp, portable across engines'], ['y', '`pattern`, XSD\'s own dialect'], ['y', '`pattern`, ECMA-262'], ['n', '—'], ['y', '`PATTERN`, permitted alphabet `FROM`'], ['n', '—']] },
+      { feature: 'Temporal precision', cells: [['y', '`precision`, 0–9 fractional digits'], ['p', '`explicitTimezone`, or `pattern`'], ['n', '—'], ['n', '—'], ['p', 'time property settings'], ['n', '—']] },
+      { feature: 'Address ranges', cells: [['y', '`within` / `excluding` — an empty range is a schema error'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'Cross-field rules', cells: [['p', 'field groups only; conditionals declined by design'], ['y', '`xs:assert` (XPath 2.0), `key` / `keyref`'], ['y', '`if` / `then` / `else`, `dependentRequired`, `dependentSchemas`'], ['n', '— CEL through protovalidate'], ['y', 'table and user-defined constraints'], ['n', '—']] },
+      { feature: 'A misspelt constraint', cells: [['y', 'refused at load: `{ minimum: 1 }` names no facet of `integer`'], ['y', 'invalid against the schema for schemas'], ['n', '— `minimun: 1` is ignored and constrains nothing'], ['y', 'a `protoc` error'], ['y', 'a compiler error'], ['i', 'n/a']] },
+    ],
+  },
+  {
+    id: 'documents',
+    eyebrow: 'Documents',
+    title: 'Identity, evolution and encodings',
+    intro:
+      'How a schema is written, found, trusted and changed. Here the systems differ less in features than in model, so several rows describe rather than score.',
+    chip: { label: '§10', href: `${part2Url}#10-schema-resolution-model` },
+    rows: [
+      { feature: 'Schema written in', cells: [['y', 'TSON — the data\'s own notation'], ['y', 'XML'], ['y', 'JSON'], ['i', 'its own IDL, `.proto`'], ['i', 'its own notation'], ['n', '— no schema language; JSON Schema is used']] },
+      { feature: 'Meta-schema that describes itself', cells: [['y', 'the meta-kernel'], ['y', 'the schema for schemas'], ['y', 'the meta-schema'], ['p', '`descriptor.proto`'], ['n', '—'], ['n', '—']] },
+      { feature: 'Data names its schema', cells: [['y', '`!!schema`, hash-pinned'], ['p', '`xsi:schemaLocation`, a hint'], ['n', '— by convention only'], ['n', '— except `Any` type URLs'], ['n', '—'], ['n', '—']] },
+      { feature: 'Content-hash pinning', cells: [['y', 'SHA-256 on every `!!id`, `!!meta`, `!!import` and `!!schema`'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'Types in data without a schema', cells: [['y', '`!uuid "…"`, `!ipv4 "…"` — checked with no schema at all'], ['y', '`xsi:type`'], ['n', '—'], ['n', '—'], ['y', 'universal tags in BER and DER'], ['p', 'tags, `!!int`, `!!timestamp`']] },
+      { feature: 'Evolution model', cells: [['i', 'immutable: a version is a new hash, so a new required field is safe'], ['i', 'namespaces, versioned by convention'], ['i', '`$id` per version, by convention'], ['i', 'field numbers: never reuse, avoid `required`'], ['i', 'extension markers `...`, version brackets `[[ ]]`'], ['i', '—']] },
+      { feature: 'Encodings', cells: [['i', 'TSON text; JSON, compact and binary planned'], ['i', 'XML, EXI'], ['i', 'JSON; YAML in practice'], ['i', 'binary wire, ProtoJSON, text format'], ['i', 'BER, DER, PER, OER, XER, JER'], ['i', 'YAML']] },
+      { feature: 'Documentation metadata', cells: [['y', '`@doc`, `@title`, `@examples`, `@deprecated`, `@since`'], ['y', '`xs:documentation`, `xs:appinfo`'], ['y', '`title`, `description`, `examples`, `deprecated`'], ['p', 'comments, `deprecated` option'], ['p', 'comments'], ['n', '—']] },
+      { feature: 'Comments', cells: [['n', '— annotations instead, which survive parsing'], ['y', '`<!-- -->`'], ['p', '`$comment`'], ['y', '`//` in `.proto`'], ['y', '`--`'], ['y', '`#`']] },
+      { feature: 'Standing', cells: [['i', '2026 working draft; Java and TypeScript implementations'], ['i', 'W3C Recommendation, 2012'], ['i', 'IETF draft series; the widest tooling'], ['i', 'Google, open since 2008; code generation for most languages'], ['i', 'ITU-T and ISO since 1984; telecoms and PKI'], ['i', 'YAML 1.2.2, 2021']] },
+    ],
+  },
+];
+
+// How the vocabulary grows, from lightest to heaviest. Snippet HTML uses the home page's classes.
+const kernelPin = `https://tson.io/2026/${CURRENT_REVISION}/m/meta-kernel.tn?sha256=…`;
+const extendTiers = [
+  {
+    title: 'Refine an atom',
+    where: 'any schema',
+    body: 'Tighten an existing type with its own facets. The result IS-A the type it narrows, so it is accepted wherever that type is.',
+    html: `<span class="tk">currency_code</span> <span class="gain">=&gt;</span> <span class="gain">!text</span> <span class="gain">^</span> <span class="tp">{</span> <span class="tk">pattern</span><span class="tp">:</span> <span class="ts">"[A-Z]{3}"</span> <span class="tp">}</span>`,
+  },
+  {
+    title: 'Found a new family',
+    where: 'any schema',
+    body: 'Apply an existing constructor afresh: same facets and parsing contract, but a distinct type, so a stock ID is refused where an order ID is expected.',
+    html: `<span class="tk">stock_id</span> <span class="gain">=&gt;</span> <span class="gain">!uuid_type</span> <span class="tp">{}</span>
+<span class="tk">order_id</span> <span class="gain">=&gt;</span> <span class="gain">!uuid_type</span> <span class="tp">{}</span>`,
+  },
+  {
+    title: 'Extend the meta layer',
+    where: 'a meta-schema',
+    body: 'Declare a new constructor: a new atom family with its own facet vocabulary, pinned to the specification that defines it. This is how every atom in core is built, and the one place constructors may be declared. Processors that read it need to implement its parsing contract.',
+    html: `<span class="gain">!!meta:</span><span class="ts">"${kernelPin}"</span>
+<span class="gain">!!import:</span><span class="ts">"${kernelPin}"</span>
+<span class="tp">{</span>
+  <span class="tk">oid_type</span> <span class="gain">=&gt;</span> <span class="ts">atom</span> <span class="gain">&amp;</span> <span class="ts">atom_specification</span> <span class="gain">&amp;</span> <span class="tp">{</span>
+    <span class="tk">spec</span><span class="tp">:</span>     <span class="gain">=</span> <span class="ts">"https://www.itu.int/rec/T-REC-X.660"</span>
+    <span class="tk">max_arcs</span><span class="tp">:</span> <span class="ts">non_negative_integer</span><span class="gain">?</span>
+  <span class="tp">}</span>
+<span class="tp">}</span>`,
+  },
+];
+
+const levelLabel: Record<Level, string> = {
+  y: 'Built in',
+  p: 'Partial',
+  n: 'Not provided',
+  i: '',
+};
+
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+// Long identifiers may break after `.` or `_` (`google.protobuf.Timestamp`, `non_negative_integer`)
+// and at a camelCase boundary (`additionalProperties`).
+const fmt = (s: string) =>
+  esc(s).replace(/`([^`]+)`/g, (_, c: string) => `<code class="font-mono text-[12.5px]${c.length <= 15 ? ' whitespace-nowrap' : ''}">${c.replace(/([._])(?=\w)|([a-z])(?=[A-Z])/g, '$1$2<wbr>')}</code>`);
+
+// Where the others go further — the page is a comparison, not a scoreboard.
+// ── Foundations: the derivation behind the structure rows ────
+const navItems = sections.flatMap((s) =>
+  s.id === 'structures'
+    ? [{ id: s.id, title: s.title }, { id: 'foundations', title: 'Why these structures' }]
+    : [{ id: s.id, title: s.title }],
+);
+
+const foundations = [
+  {
+    title: 'Two questions come from the medium',
+    body: 'A reader of a linear stream has to know where a sequence ends and what each element means. Either the schema fixes the elements or the data decides how many there are; either an element is known by where it sits or by a label written beside it. Two questions give four cells, and each is a structure every schema language rediscovers under its own name.',
+  },
+  {
+    title: 'Every other property collapses',
+    body: 'Mixed element types are a choice, `[(integer | text)]`, not a new container. Order and uniqueness are instructions to the reader, since a serialized sequence is always ordered and can always repeat. So a set is an array with both switched on — in TSON `set_type` is literally a refinement of `array` — and vectors, bags, ordered sets and multimaps are constrained configurations of the same four.',
+  },
+  {
+    title: 'What falls outside is declined',
+    body: 'The cases the four cannot reach need something a sequence does not have: a tuple flattened into an array (JSON Schema\'s `prefixItems`), structure chosen by an earlier value (`if`/`then`/`else`), or references between values. TSON leaves these out rather than add a fifth container. The research calls this a constructive argument, not a formal proof: every case it examines either names one of the four or reduces to them.',
+  },
+];
+
+const spectrum = [
+  {
+    title: 'Template',
+    body: 'Types are still blank. Nothing can be validated until they are filled.',
+    html: `<span class="tk">pair</span> <span class="gain">=&gt;</span> <span class="tp">&lt;</span><span class="ts">T</span><span class="tp">,</span> <span class="ts">U</span><span class="tp">&gt;</span> <span class="tp">{</span> <span class="tk">first</span><span class="tp">:</span> <span class="ts">T</span>  <span class="tk">second</span><span class="tp">:</span> <span class="ts">U</span> <span class="tp">}</span>`,
+  },
+  {
+    title: 'Type',
+    body: 'Every type is known and the values are blank. A default, `~`, is a value placed but replaceable.',
+    html: `<span class="tk">config</span> <span class="gain">=&gt;</span> <span class="tp">{</span> <span class="tk">host</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">port</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">~</span> <span class="ts">8080</span> <span class="tp">}</span>`,
+  },
+  {
+    title: 'Refinement',
+    body: 'Some values are fixed, `=`, and can no longer change. The result still IS-A the type it refines.',
+    html: `<span class="tk">production</span> <span class="gain">=&gt;</span> <span class="ts">config</span> <span class="gain">^</span> <span class="tp">{</span> <span class="tk">host</span><span class="tp">:</span> <span class="gain">=</span> <span class="ts">"prod.example.com"</span> <span class="tp">}</span>`,
+  },
+  {
+    title: 'Value',
+    body: 'Nothing is blank. The fixed host and any unstated default are filled in on read.',
+    data: true,
+    html: `<span class="gain">!production</span> <span class="tp">{</span> <span class="tk">port</span><span class="tp">:</span> <span class="ts">5432</span> <span class="tp">}</span>`,
+  },
+];
+
+const spectrumNote =
+  'TSON follows the research in keeping blanks out of data: templates are schema-only, and a data document holds values. It also stops short of two ideas Part 5 floats. Parameters carry no bounds (`<T: text | full_name>`), and a bare template name is never read as the family of its instantiations: every reference binds all its parameters, `pair<text,\u00a0integer>`.';
+
+// Bodies are HTML (the YAML entry links to the guide).
+const further = [
+  { title: 'XML Schema', body: 'XPath assertions and identity constraints state cross-field and cross-document rules TSON deliberately does not, and partial dates (gYear, gMonthDay) have no TSON counterpart.' },
+  { title: 'JSON Schema', body: 'Conditionals and dependent schemas express rules over whole objects, and it was designed to validate JSON documents that were written without a schema.' },
+  { title: 'YAML', body: `Comments, anchors and aliases, and multi-document streams make it a comfortable format for hand-edited configuration. TSON leaves anchors and aliases out on purpose: what appears at a position is the whole value, so a reader can check it is what it claims to be without chasing a reference elsewhere in the document (<a href="${guideUrl}#22-no-anchors-references-or-merge-operators" class="text-teal-400 underline">why</a>).` },
+  { title: 'ASN.1', body: 'Six standardised encodings from one schema, including the canonical DER that certificates depend on, and forty years of deployment in telecoms and PKI. The cost is access: the standard spans a dozen documents, the ISO/IEC editions are sold (ITU-T publishes the same text free), and the most complete compilers are commercial.' },
+  { title: 'Protobuf', body: 'A compact, fast binary wire format with generated code for most languages.' },
+];
+
+const reports = [
+  { title: 'Schema mappings synthesis', href: '/2026/32/reports/schema-mappings-synthesis', body: 'Five schema languages mapped onto the TSON kernel, and what each mapping asked of it.' },
+  { title: 'JSON Schema to TSON', href: '/2026/32/reports/json-schema-to-tson-mapping', body: 'Construct-by-construct, with OpenAPI, and what TSON declines by design.' },
+  { title: 'Protobuf to TSON', href: '/2026/32/reports/protobuf-to-tson-mapping', body: 'Presence disciplines, oneof as field groups, and protovalidate as refinements.' },
+  { title: 'ASN.1 to TSON', href: '/2026/32/reports/asn1-to-tson-mapping', body: 'Subtype constraints, CHOICE, parameterized types, and the information object system.' },
+];
+---
+
+<Layout
+  title="TSON Compared: XML Schema, JSON Schema, Protobuf, ASN.1, YAML"
+  description="TSON's built-in types, data structures, constraints and document model side by side with XML Schema, JSON Schema, Protocol Buffers, ASN.1 and YAML."
+>
+  <!-- ═══ Header ═══ -->
+  <div class="max-w-5xl mx-auto px-6 pt-10">
+    <div class="font-mono text-xs font-semibold uppercase tracking-widest text-teal-800 mb-2">Comparison</div>
+    <h1 class="text-3xl lg:text-[34px] font-bold font-mono tracking-tight mb-3 leading-tight">
+      TSON beside the schema languages you know
+    </h1>
+    <p class="text-gray-500 max-w-3xl">
+      Built-in types, data structures, constraints and the document model, side by side with
+      XML Schema, JSON Schema, Protocol Buffers, ASN.1 and YAML. YAML has no schema language of
+      its own, so its column is the types its core schema resolves, with the YAML 1.1 types
+      marked where they matter.
+    </p>
+    <div class="flex flex-wrap gap-x-5 gap-y-2 pt-5 text-sm text-gray-500">
+      <span class="inline-flex items-center gap-2"><span class="mark mark-y" aria-hidden="true"></span>Built in</span>
+      <span class="inline-flex items-center gap-2"><span class="mark mark-p" aria-hidden="true"></span>Partial — an annotation, a convention, an add-on, or part of the feature</span>
+      <span class="inline-flex items-center gap-2"><span class="mark mark-n" aria-hidden="true"></span>Not provided</span>
+    </div>
+    <nav class="flex flex-wrap gap-2 pt-5" aria-label="Sections">
+      {navItems.map((n) => (
+        <a href={`#${n.id}`} class="font-mono text-xs font-semibold rounded-full px-3 py-1 border border-gray-200 text-gray-600 hover:border-gray-400">{n.title}</a>
+      ))}
+    </nav>
+  </div>
+
+  {sections.map((s) => (
+    <>
+    <section id={s.id} class="max-w-5xl mx-auto px-6 pt-14 scroll-mt-4">
+      <div class="font-mono text-xs font-semibold uppercase tracking-widest text-teal-800 mb-2">{s.eyebrow}</div>
+      <h2 class="text-2xl md:text-3xl font-bold font-mono tracking-tight mb-3">{s.title}</h2>
+      <p class="text-gray-500 max-w-3xl mb-3" set:html={fmt(s.intro)} />
+      {s.chip && <a href={s.chip.href} class={chipClass}>{s.chip.label}</a>}
+      <div class="relative mt-4 border border-gray-200 rounded-md overflow-x-auto">
+        <table class="cmp w-full min-w-[960px] table-fixed text-sm border-collapse">
+          <thead>
+            <tr>
+              <th scope="col" class="sticky left-0 z-10 bg-gray-50 w-36"><span class="sr-only">Feature</span></th>
+              {systems.map((sys, i) => (
+                <th scope="col" class={i === 0 ? 'tson bg-teal-50' : 'bg-gray-50'}>
+                  <div class={`font-mono font-semibold ${i === 0 ? 'text-teal-800' : 'text-gray-800'}`}>{sys.name}</div>
+                  <div class="font-mono text-[11px] font-normal text-gray-400">{sys.version}</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {s.rows.map((row) => (
+              <tr>
+                <th scope="row" class="sticky left-0 z-10 bg-white font-semibold text-gray-900">{row.feature}</th>
+                {row.cells.map(([level, text], i) => (
+                  <td class={i === 0 ? 'tson' : ''}>
+                    <div class="flex gap-2 items-start">
+                      {level !== 'i' && <span class={`mark mark-${level} mt-[5px]`} aria-hidden="true"></span>}
+                      {level !== 'i' && <span class="sr-only">{levelLabel[level]}: </span>}
+                      <span class={level === 'n' ? 'text-gray-400' : 'text-gray-700'} set:html={fmt(level === 'n' ? text.replace(/^—\s*/, '') : text)} />
+                    </div>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {s.id === 'types' && (
+        <div class="pt-10">
+          <h3 class="text-lg font-semibold mb-1.5">Extending the vocabulary</h3>
+          <p class="text-sm text-gray-500 max-w-3xl mb-5">
+            The TSON column is what the core library ships, not everything TSON can say. Types grow
+            in three steps, and only the last needs a meta-schema: the meta layer is the format's
+            sanctioned extension point, so new type vocabularies arrive as meta-schemas chaining to
+            the meta-kernel, never as grammar changes. The same route adds non-type vocabulary, such
+            as an HTTP operation binding request and response types.
+          </p>
+          <div class="grid gap-5">
+            {extendTiers.map((t) => (
+              <div class="grid md:grid-cols-[5fr_7fr] gap-4 md:gap-8">
+                <div>
+                  <div class="font-mono text-[11px] uppercase tracking-widest text-gray-400">{t.where}</div>
+                  <h4 class="font-semibold mb-1">{t.title}</h4>
+                  <p class="text-sm text-gray-500 max-w-md">{t.body}</p>
+                </div>
+                <div class="self-start border border-gray-200 rounded-md border-l-3 border-l-teal-600 min-w-0">
+                  <pre class="px-3.5 py-3 text-sm leading-6 overflow-x-auto"><code set:html={t.html} /></pre>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div class="flex flex-wrap gap-2 pt-5">
+            <a href={`${part2Url}#222-the-meta-directive`} class={chipClass}>§2.2.2 the meta layer as extension point</a>
+            <a href={`${part2Url}#42-type-construction`} class={chipClass}>§4.2 type construction</a>
+            <a href={`${part2Url}#9-the-meta-layer`} class={chipClass}>§9 guidance for extension meta-schemas</a>
+          </div>
+        </div>
+      )}
+    </section>
+    {s.id === 'structures' && (
+      <section id="foundations" class="max-w-5xl mx-auto px-6 pt-14 scroll-mt-4">
+        <div class="font-mono text-xs font-semibold uppercase tracking-widest text-teal-800 mb-2">Foundations</div>
+        <h2 class="text-2xl md:text-3xl font-bold font-mono tracking-tight mb-3">Why these structures, and no others</h2>
+        <p class="text-gray-500 max-w-3xl mb-8">
+          TSON's containers weren't chosen from other languages' feature lists. The{' '}
+          <a href="/research" class="text-teal-700 hover:underline">proto-schema research</a> derives
+          them from what a serialized document physically is: linear, immutable, finite and
+          divisible. Once written out, every structure is a sequence, so the question becomes which
+          kinds of sequence a schema needs to name.
+        </p>
+
+        <div class="grid md:grid-cols-[5fr_7fr] gap-6 md:gap-8">
+          <div class="min-w-0">
+            <table class="grid2 w-full text-sm border-collapse">
+              <thead>
+                <tr>
+                  <th scope="col"><span class="sr-only">Length</span></th>
+                  <th scope="col">identified by position</th>
+                  <th scope="col">identified by a label in the data</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">schema fixes the elements</th>
+                  <td><div class="font-semibold">Tuple</div><code class="font-mono text-[12.5px] whitespace-nowrap">[number, number]</code></td>
+                  <td><div class="font-semibold">Record</div><code class="font-mono text-[12.5px]">{"{ name: text }"}</code></td>
+                </tr>
+                <tr>
+                  <th scope="row">data decides how many</th>
+                  <td><div class="font-semibold">Array</div><code class="font-mono text-[12.5px]">[T]</code></td>
+                  <td><div class="font-semibold">Map</div><code class="font-mono text-[12.5px]">{"{K => V}"}</code></td>
+                </tr>
+              </tbody>
+            </table>
+            <a href="/research/proto-schema/part-4-sequences" class={`${chipClass} mt-4`}>Proto-schema Part 4: Sequences</a>
+          </div>
+          <div class="grid gap-5 content-start">
+            {foundations.map((f) => (
+              <div>
+                <h3 class="font-semibold mb-1">{f.title}</h3>
+                <p class="text-sm text-gray-500" set:html={fmt(f.body)} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div class="pt-12">
+          <h3 class="text-lg font-semibold mb-1.5">One spectrum, from template to value</h3>
+          <p class="text-sm text-gray-500 max-w-3xl mb-5">
+            The second idea holds the rest together: data and schemas are not separate kinds of
+            thing but points on one line, told apart by how many blanks remain. A template leaves
+            types blank, a type leaves values blank, and a value has none left. The{' '}
+            <a href={`${guideUrl}#5-a-tour-of-the-type-operations`} class="text-teal-700 hover:underline">developer guide</a>{' '}
+            names this spectrum of completeness as the basis of TSON's templates, and every type
+            operation is a step along it, in one direction only.
+          </p>
+          <ol class="grid gap-3">
+            {spectrum.map((st, i) => (
+              <li class="grid md:grid-cols-[5fr_7fr] gap-3 md:gap-8 items-start">
+                <div class="flex gap-3">
+                  <span class="font-mono text-xs font-semibold text-teal-800 pt-0.5">{i + 1}</span>
+                  <div>
+                    <div class="font-semibold">{st.title}</div>
+                    <p class="text-sm text-gray-500 max-w-md" set:html={fmt(st.body)} />
+                  </div>
+                </div>
+                <div class={`self-start border border-gray-200 rounded-md border-l-3 min-w-0 ${st.data ? 'border-l-gray-300' : 'border-l-teal-600'}`}>
+                  <pre class="px-3.5 py-2.5 text-sm leading-6 overflow-x-auto"><code set:html={st.html} /></pre>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <p class="text-sm text-gray-500 max-w-3xl pt-5" set:html={fmt(spectrumNote)} />
+          <a href="/research/proto-schema/part-5-templates" class={`${chipClass} mt-4`}>Proto-schema Part 5: Templates</a>
+        </div>
+      </section>
+    )}
+    </>
+  ))}
+
+  <!-- ═══ Where the others go further ═══ -->
+  <div class="max-w-5xl mx-auto px-6 pt-16">
+    <div class="bg-gray-900 text-gray-200 rounded-xl px-8 py-10 md:px-10">
+      <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-3">Where the others go further</h2>
+      <p class="font-mono font-semibold text-xl md:text-2xl leading-snug max-w-2xl mb-6">
+        A table favours <span class="text-teal-400">whoever drew it</span>.
+      </p>
+      <p class="text-sm text-gray-400 max-w-3xl">
+        Every system here made trade-offs TSON did not, and some of them are the right call for
+        the job in front of you.
+      </p>
+      <div class="grid sm:grid-cols-2 gap-x-8 gap-y-5 pt-7">
+        {further.map((f) => (
+          <div>
+            <h3 class="font-semibold text-gray-100 text-sm mb-1">{f.title}</h3>
+            <p class="text-sm text-gray-400" set:html={f.body} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ The mapping reports ═══ -->
+  <div class="max-w-5xl mx-auto px-6 pt-16">
+    <div class="font-mono text-xs font-semibold uppercase tracking-widest text-teal-800 mb-2">Going deeper</div>
+    <h2 class="text-2xl md:text-3xl font-bold font-mono tracking-tight mb-3">The mapping reports</h2>
+    <p class="text-gray-500 max-w-3xl mb-6">
+      Each of these languages was mapped onto TSON construct by construct, as input to the
+      revisions that followed. The reports were written against Revision 32, so read them for
+      the reasoning; the table above is the current state. The type vocabulary itself is in{' '}
+      <a href={`${part1Url}#5-built-in-type-vocabulary`} class="text-teal-700 hover:underline">Part 1 §5</a>{' '}
+      and <a href={coreUrl} class="text-teal-700 hover:underline">core.tn</a>.
+    </p>
+    <div class="grid md:grid-cols-2 gap-4">
+      {reports.map((r) => (
+        <a href={r.href} class="block border border-gray-200 rounded-md p-5 hover:border-gray-400">
+          <h3 class="font-semibold mb-1">{r.title}</h3>
+          <p class="text-sm text-gray-500">{r.body}</p>
+        </a>
+      ))}
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .cmp th,
+  .cmp td {
+    padding: 0.625rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--color-gray-200);
+  }
+  .cmp :global(code) {
+    overflow-wrap: anywhere;
+  }
+  .cmp thead th {
+    vertical-align: bottom;
+  }
+  .cmp tbody tr:last-child th,
+  .cmp tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  .cmp tbody th {
+    font-weight: 600;
+    box-shadow: inset -1px 0 0 var(--color-gray-200);
+  }
+  .cmp td.tson {
+    background: color-mix(in oklab, var(--color-teal-50) 60%, white);
+  }
+  /* Snippet colours, matching the home page's light panes. */
+  pre :global(.tk) { color: #111827; font-weight: 500; }
+  pre :global(.ts) { color: #6e5a44; }
+  pre :global(.tp) { color: #9ca3af; }
+  pre :global(.gain) { color: #0f766e; font-weight: 500; }
+  .grid2 th,
+  .grid2 td {
+    border: 1px solid var(--color-gray-200);
+    padding: 0.75rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  .grid2 thead th {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-top: 0;
+  }
+  .grid2 thead th:first-child,
+  .grid2 tbody th {
+    border-left: 0;
+  }
+  .grid2 tbody th {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-gray-500);
+    width: 26%;
+  }
+  .grid2 td {
+    background: color-mix(in oklab, var(--color-teal-50) 60%, white);
+  }
+  .mark {
+    display: inline-block;
+    flex: none;
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 9999px;
+  }
+  .mark-y {
+    background: var(--color-teal-600);
+  }
+  .mark-p {
+    border: 2px solid var(--color-amber-500);
+  }
+  .mark-n {
+    width: 0.625rem;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--color-gray-400);
+  }
+  .cmp .mark-n {
+    margin-top: 9px !important;
+  }
+</style>

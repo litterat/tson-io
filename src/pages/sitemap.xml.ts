@@ -2,7 +2,7 @@
  * /sitemap.xml — canonical page index per the sitemaps.org protocol.
  * https://www.sitemaps.org/protocol.html
  *
- * Lists rendered HTML pages only (home, research index/articles, the revisions
+ * Lists rendered HTML pages only (home, the comparison page, research index/articles, the revisions
  * index, spec index/documents, change logs, reports) — not the raw-markdown or llms.txt
  * endpoints, which are for LLM/tool consumption rather than search indexing.
  *
@@ -31,6 +31,7 @@ export const GET: APIRoute = async ({ site }) => {
 
   const urls = [
     `${base}/`,
+    `${base}/compare`,
     `${base}/research`,
     ...researchEntries.map(e => `${base}/research/${e.id}`),
     `${base}${REVISIONS_PATH}`,
