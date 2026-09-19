@@ -25,7 +25,7 @@ const systems = [
 type Level = 'y' | 'p' | 'n' | 'i';
 type Cell = [Level, string];
 type Row = { feature: string; cells: Cell[] };
-type Section = { id: string; eyebrow: string; title: string; intro: string; chip?: { label: string; href: string }; rows: Row[] };
+type Section = { id: string; eyebrow: string; title: string; intro: string; chip?: { label: string; href: string }; chips?: { label: string; href: string }[]; rows: Row[] };
 
 const sections: Section[] = [
   {
@@ -129,6 +129,29 @@ const sections: Section[] = [
       { feature: 'Documentation metadata', cells: [['y', '`@doc`, `@title`, `@examples`, `@deprecated`, `@since`'], ['y', '`xs:documentation`, `xs:appinfo`'], ['y', '`title`, `description`, `examples`, `deprecated`'], ['p', 'comments, `deprecated` option'], ['p', 'comments'], ['n', '—']] },
       { feature: 'Comments', cells: [['n', '— annotations instead, which survive parsing'], ['y', '`<!-- -->`'], ['p', '`$comment`'], ['y', '`//` in `.proto`'], ['y', '`--`'], ['y', '`#`']] },
       { feature: 'Standing', cells: [['i', '2026 working draft; Java and TypeScript implementations'], ['i', 'W3C Recommendation, 2012'], ['i', 'IETF draft series; the widest tooling'], ['i', 'Google, open since 2008; code generation for most languages'], ['i', 'ITU-T and ISO since 1984; telecoms and PKI'], ['i', 'YAML 1.2.2, 2021']] },
+    ],
+  },
+  {
+    id: 'untrusted',
+    eyebrow: 'Security',
+    title: 'Names, values and limits',
+    intro:
+      'What a processor promises when the document comes from a model, a partner or a stranger. Every conforming TSON processor carries three configurable policies: an identifier policy for names, a token policy for values, and a limits policy. The identifier and limits policies are enforced by default; the token policy starts unrestricted, since values are data. The deployment sets each one in code, never a document or schema, and all three are reported with any refusal. A refusal is not a verdict — the document may be valid, and the next processor may accept it.',
+    chips: [
+      { label: 'Part 1 §8.2 name hygiene', href: `${part1Url}#82-name-hygiene` },
+      { label: 'Part 1 §9.1 limits', href: `${part1Url}#91-denial-of-service` },
+      { label: 'Part 2 §11.5 schema limits', href: `${part2Url}#115-resource-limits-for-schemas` },
+    ],
+    rows: [
+      { feature: 'Look-alike names', cells: [['y', 'identifier policy: refused by default (UTS #39 skeletons)'], ['n', '— any XML name'], ['n', '— any string is a key'], ['p', 'identifiers are ASCII'], ['p', 'identifiers are ASCII'], ['n', '— any string is a key']] },
+      { feature: 'Mixed-script and obsolete characters in names', cells: [['y', 'identifier policy: Highly Restrictive by default; level, unit and scripts set in code'], ['n', '—'], ['n', '—'], ['p', 'ASCII only'], ['p', 'ASCII only'], ['n', '—']] },
+      { feature: 'Resource limits with specified defaults', cells: [['y', 'limits policy: twelve, each configurable; tight defaults such as depth 64'], ['n', '— parser-specific'], ['n', '— left to implementations'], ['p', 'implementation defaults, such as recursion depth 100'], ['n', '— left to implementations'], ['n', '— parser-specific']] },
+      { feature: 'A limit exceeded', cells: [['y', 'a refusal naming the limit; never a crash, never “invalid”'], ['n', '— implementation-defined'], ['n', '— implementation-defined'], ['n', '— implementation-defined'], ['n', '— implementation-defined'], ['n', '— implementation-defined']] },
+      { feature: 'Policy known in advance', cells: [['y', 'all three policies and the Unicode version, reported with refusals and queryable up front'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'Screening values', cells: [['y', 'token policy: unrestricted by default; set a restriction level to screen untrusted values'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'Pattern matching cost', cells: [['y', 'I-Regexp: linear-time by construction'], ['y', 'a regular dialect, no backreferences'], ['n', '— ECMA-262, exposed to catastrophic backtracking'], ['i', 'no patterns'], ['i', 'own `PATTERN` notation'], ['i', 'no patterns']] },
+      { feature: 'Expansion attacks', cells: [['y', 'none: no anchors, references or entities'], ['p', 'DTD entities can expand; parsers cap them'], ['y', 'none: JSON data has no references'], ['y', 'none'], ['y', 'none'], ['n', '— aliases can expand (billion laughs)']] },
+      { feature: 'Bidirectional overrides in names', cells: [['y', 'never in a name or unquoted token'], ['y', 'outside XML name characters'], ['n', '— any string is a key'], ['y', 'ASCII only'], ['y', 'ASCII only'], ['n', '— any printable character']] },
     ],
   },
 ];
@@ -278,7 +301,9 @@ const reports = [
       <div class="font-mono text-xs font-semibold uppercase tracking-widest text-teal-800 mb-2">{s.eyebrow}</div>
       <h2 class="text-2xl md:text-3xl font-bold font-mono tracking-tight mb-3">{s.title}</h2>
       <p class="text-gray-500 max-w-3xl mb-3" set:html={fmt(s.intro)} />
-      {s.chip && <a href={s.chip.href} class={chipClass}>{s.chip.label}</a>}
+      <div class="flex flex-wrap gap-2">
+        {(s.chips ?? (s.chip ? [s.chip] : [])).map((c) => <a href={c.href} class={chipClass}>{c.label}</a>)}
+      </div>
       <div class="relative mt-4 border border-gray-200 rounded-md overflow-x-auto">
         <table class="cmp w-full min-w-[960px] table-fixed text-sm border-collapse">
           <thead>

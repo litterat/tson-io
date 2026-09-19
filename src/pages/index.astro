@@ -260,6 +260,26 @@ const ledger = [
   },
 ];
 
+// ── untrusted input: the name, token and limits policies ─────
+const safety = [
+  {
+    title: 'Look-alike names are refused',
+    body: 'Latin admin and a Cyrillic аdmin cannot sit side by side, and mixed-script or obsolete characters stay out of names. A deployment can set the restriction level, apply it per name segment, or permit another script, in code and never by an environment variable.',
+  },
+  {
+    title: 'Every limit is configurable',
+    body: 'Nesting depth 64, 16 MiB documents, a cap on total values, sixteen foreign schemas. The defaults sit at the tight end, so a document that fits them fits any processor, and a deployment raises whichever it needs.',
+  },
+  {
+    title: 'A refusal is not a verdict',
+    body: 'Hitting a limit gives a refusal naming the limit and the threshold, never a stack overflow, and never a claim that a valid document is invalid.',
+  },
+  {
+    title: 'The policy is known in advance',
+    body: 'Every refusal carries the Unicode data version and the identifier, token and limits policies it was judged under, and a processor states them up front, so a generator can write a document that fits.',
+  },
+];
+
 // ── audience routing ─────────────────────────────────────────
 const routes = [
   { label: 'Learn more about TSON?', title: 'The Developer Guide', href: guideUrl, body: 'The chain walked end to end, versioning, worked examples, and the reasoning behind the design.' },
@@ -476,6 +496,39 @@ const routes = [
         ))}
       </div>
 
+    </div>
+
+    <!-- ═══ Security: identifier, token and limits policies ═══ -->
+    <div class="max-w-5xl mx-auto px-6 pt-16">
+      <div class="bg-gray-900 text-gray-200 rounded-xl px-8 py-10 md:px-10">
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-3">Security</h2>
+        <p class="font-mono font-semibold text-xl md:text-2xl leading-snug max-w-2xl mb-6">
+          Built to read documents <span class="text-teal-400">you didn't write</span>
+        </p>
+        <p class="text-sm text-gray-400">
+          Model output, a partner's upload, a request from a stranger: most documents a service reads
+          come from someone it doesn't trust. Every conforming TSON processor carries three
+          configurable policies: an{' '}
+          <a href={`${part1Url}#82-name-hygiene`} class="text-teal-400 underline">identifier policy</a>{' '}
+          for names, a token policy for values, and a{' '}
+          <a href={`${part1Url}#91-denial-of-service`} class="text-teal-400 underline">limits policy</a>.
+          The identifier and limits policies are enforced out of the box; the token policy starts
+          unrestricted, since values are data, and is there for a service that renders or matches
+          them. The deployment sets all three in its own code, never the document or its schema,
+          which cannot vouch for itself. The rest is closed by design: patterns are I-Regexp, which
+          matches in linear time; there are no anchors or entities to expand; and a bidirectional
+          override cannot hide inside a name.
+        </p>
+        <div class="grid sm:grid-cols-2 gap-x-8 gap-y-5 pt-7">
+          {safety.map((r) => (
+            <div>
+              <h3 class="font-semibold text-gray-100 text-sm mb-1">{r.title}</h3>
+              <p class="text-sm text-gray-400">{r.body}</p>
+            </div>
+          ))}
+        </div>
+        <a href="/compare#untrusted" class="inline-block font-mono text-sm font-semibold text-teal-400 hover:underline pt-7">How it compares →</a>
+      </div>
     </div>
 
     <!-- ═══ Section 5: routing ═══ -->
