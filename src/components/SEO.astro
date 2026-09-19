@@ -49,7 +49,19 @@ const DEFAULT_DESCRIPTION =
 const origin = Astro.site?.origin ?? "https://tson.io";
 const canonical = new URL(Astro.url.pathname, origin).href;
 const ogImage = image ? new URL(image, origin).href : undefined;
-const fullTitle = home || /^TSON\b/i.test(title) ? title : `TSON - ${title}`;
+// Every title carries the expansion, because "TSON" alone is contested: several
+// unrelated projects use the acronym, two of them (tsonformat.com, zenoaihq/tson)
+// aimed at the same LLM audience as this site. The parenthesised form matches the
+// home page's own title, and sits after the page's distinguishing words so a
+// truncated SERP still shows what the page is.
+const titled = home || /^TSON\b/i.test(title) ? title : `TSON - ${title}`;
+const fullTitle = /Typed Schema Object Notation/i.test(titled)
+  ? titled
+  : titled.includes('(')
+    // A title already carrying a parenthetical — "(Revision 34)" on a retained
+    // page — takes the dash form rather than a second pair of brackets.
+    ? `${titled} — Typed Schema Object Notation`
+    : `${titled} (Typed Schema Object Notation)`;
 const metaDescription = description ?? DEFAULT_DESCRIPTION;
 
 // --- JSON-LD structured data -------------------------------------------------
