@@ -27,7 +27,7 @@ const v2Schema = `<span class="gain">!!id:</span><span class="ts">"https://examp
 <span class="gain">!!import:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/core.tn?sha256=3f9d2c71…b8e5c194"</span>
 {
   <span class="tk">person</span>   <span class="gain">=&gt;</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">born</span><span class="tp">:</span> <span class="ts">date</span>  <span class="added"><span class="tk">email</span><span class="tp">:</span> <span class="ts">text</span></span> }
-  <span class="tk">employee</span> <span class="gain">=&gt;</span> <span class="ts">person</span> <span class="gain">&amp;</span> { <span class="tk">department</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">level</span><span class="tp">:</span> <span class="ts">rank</span> <span class="gain">~</span> <span class="tn">L1</span> }
+  <span class="tk">employee</span> <span class="gain">=&gt;</span> <span class="ts">person</span> <span class="gain">&amp;</span> { <span class="tk">department</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">level</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">rank</span> <span class="gain">~</span> <span class="tn">L1</span> }
   <span class="tk">rank</span>    <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>
 }`;
 
@@ -53,16 +53,17 @@ const ripples = [
 // ── schema grammar ledger: description left, schema + data right ─
 const schemaRows = [
   {
-    chip: '§5.2', href: `${part2Url}#52-field-states`, title: 'Records and field states',
-    why: 'Fields are required by default. ~ supplies a default, = pins a value, ? makes the field optional. Five states, every one explicit in the declaration.',
+    chip: '§5.2', href: `${part2Url}#52-field-definitions`, title: 'Records and fields',
+    why: 'A field answers three questions, one slot each. ? on the name says the key may be left out; ? on the type says the value may be _; ~ supplies a default and = pins a value. Keys are required unless the name says otherwise.',
     snippets: [
       { tag: 'schema', kind: 'schema', html: `<span class="tk">config</span> <span class="gain">=&gt;</span> {
-  <span class="tk">host</span><span class="tp">:</span>    <span class="ts">text</span>
-  <span class="tk">port</span><span class="tp">:</span>    <span class="ts">integer</span> <span class="gain">~</span> <span class="tn">8080</span>
-  <span class="tk">retries</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">=</span> <span class="tn">3</span>
-  <span class="tk">comment</span><span class="tp">:</span> <span class="ts">text</span><span class="gain">?</span>
+  <span class="tk">host</span><span class="tp">:</span>     <span class="ts">text</span>
+  <span class="tk">port</span><span class="gain">?</span><span class="tp">:</span>    <span class="ts">integer</span> <span class="gain">~</span> <span class="tn">8080</span>
+  <span class="tk">retries</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">=</span> <span class="tn">3</span>
+  <span class="tk">comment</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">text</span>
+  <span class="tk">timeout</span><span class="tp">:</span>  <span class="ts">duration</span><span class="gain">?</span>
 }` },
-      { tag: 'data', kind: 'data', html: `<span class="gain">!config</span> { <span class="tk">host</span><span class="tp">:</span> <span class="ts">"prod.db.internal"</span>  <span class="tk">port</span><span class="tp">:</span> <span class="tn">5555</span> }` },
+      { tag: 'data (retries injected; timeout written, and deliberately blank)', kind: 'data', html: `<span class="gain">!config</span> { <span class="tk">host</span><span class="tp">:</span> <span class="ts">"prod.db.internal"</span>  <span class="tk">port</span><span class="tp">:</span> <span class="tn">5555</span>  <span class="tk">timeout</span><span class="tp">:</span> <span class="gain">_</span> }` },
     ],
   },
   {
@@ -100,17 +101,34 @@ const schemaRows = [
     chip: '§5.8', href: `${part2Url}#58-supertype-composition`, title: 'Composition',
     why: 'New fields with declared ancestry: ticket IS-A audit, and contributed field sets must be disjoint. No silent overrides, no diamond ambiguity.',
     snippets: [
-      { tag: 'schema', kind: 'schema', html: `<span class="tk">audit</span>  <span class="gain">=&gt;</span> { <span class="tk">created</span><span class="tp">:</span> <span class="ts">datetime</span>  <span class="tk">updated</span><span class="tp">:</span> <span class="ts">datetime</span><span class="gain">?</span> }
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">audit</span>  <span class="gain">=&gt;</span> { <span class="tk">created</span><span class="tp">:</span> <span class="ts">datetime</span>  <span class="tk">updated</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">datetime</span> }
 <span class="tk">ticket</span> <span class="gain">=&gt;</span> <span class="ts">audit</span> <span class="gain">&amp;</span> { <span class="tk">id</span><span class="tp">:</span> <span class="ts">uuid</span>  <span class="tk">title</span><span class="tp">:</span> <span class="ts">text</span> }` },
       { tag: 'data', kind: 'data', html: `<span class="gain">!ticket</span> {\n  <span class="tk">created</span><span class="tp">:</span> <span class="ts">"2026-07-01T09:00:00Z"</span>\n  <span class="tk">id</span><span class="tp">:</span> <span class="tn">550e8400-e29b-41d4-a716-446655440000</span>\n  <span class="tk">title</span><span class="tp">:</span> <span class="ts">"Server unreachable"</span>\n}` },
     ],
   },
   {
-    chip: '§5.7', href: `${part2Url}#57-refinement`, title: 'Refinement',
-    why: 'Tighten inherited fields without adding any: defaults can move, pins can\'t, contracts only narrow. One transition table governs every step.',
+    chip: '§5.2', href: `${part2Url}#52-field-definitions`, title: 'Sealed families',
+    why: 'An abstract base has no instances of its own, and each member pins the field written =?, so data is placed by the value it carries — OpenAPI\'s discriminator, a sealed interface — with no tag. Pins are checked distinct at load; final closes a record to extension.',
     snippets: [
-      { tag: 'schema', kind: 'schema', html: `<span class="tk">service</span>    <span class="gain">=&gt;</span> { <span class="tk">host</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">port</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">~</span> <span class="tn">8080</span> }
-<span class="tk">production</span> <span class="gain">=&gt;</span> <span class="ts">service</span> <span class="gain">^</span> { <span class="tk">port</span><span class="tp">:</span> <span class="gain">=</span> <span class="tn">443</span> }` },
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">pet</span>   <span class="gain">=&gt;</span> <span class="gain">abstract</span> { <span class="tk">kind</span><span class="tp">:</span> <span class="ts">text</span> <span class="gain">=?</span>  <span class="tk">name</span><span class="tp">:</span> <span class="ts">text</span> }
+<span class="tk">dog</span>   <span class="gain">=&gt;</span> <span class="ts">pet</span> <span class="gain">&amp;</span> { <span class="tk">kind</span><span class="tp">:</span> <span class="gain">=</span> <span class="ts">"dog"</span>  <span class="tk">breed</span><span class="tp">:</span> <span class="ts">text</span> }
+<span class="tk">cat</span>   <span class="gain">=&gt;</span> <span class="ts">pet</span> <span class="gain">&amp;</span> { <span class="tk">kind</span><span class="tp">:</span> <span class="gain">=</span> <span class="ts">"cat"</span>  <span class="tk">indoor</span><span class="tp">:</span> <span class="ts">boolean</span> }
+<span class="tk">owner</span> <span class="gain">=&gt;</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">pets</span><span class="tp">:</span> <span class="tp">[</span><span class="ts">pet</span><span class="tp">]</span> }` },
+      { tag: 'data (each pet placed by its kind; no tags)', kind: 'data', html: `<span class="gain">!owner</span> {
+  <span class="tk">name</span><span class="tp">:</span> <span class="ts">"Ada"</span>
+  <span class="tk">pets</span><span class="tp">:</span> <span class="tp">[</span>
+    { <span class="tk">kind</span><span class="tp">:</span> <span class="ts">dog</span>  <span class="tk">name</span><span class="tp">:</span> <span class="ts">Rex</span>  <span class="tk">breed</span><span class="tp">:</span> <span class="ts">kelpie</span> }
+    { <span class="tk">kind</span><span class="tp">:</span> <span class="ts">cat</span>  <span class="tk">name</span><span class="tp">:</span> <span class="ts">Tom</span>  <span class="tk">indoor</span><span class="tp">:</span> <span class="tn">true</span> }
+  <span class="tp">]</span>
+}` },
+    ],
+  },
+  {
+    chip: '§5.7', href: `${part2Url}#57-refinement`, title: 'Refinement',
+    why: 'Tighten inherited fields without adding any: defaults can move, pins can\'t, contracts only narrow. Each of a field\'s three answers moves one way and never back.',
+    snippets: [
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">service</span>    <span class="gain">=&gt;</span> { <span class="tk">host</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">port</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">~</span> <span class="tn">8080</span> }
+<span class="tk">production</span> <span class="gain">=&gt;</span> <span class="ts">service</span> <span class="gain">^</span> { <span class="tk">port</span><span class="gain">?</span><span class="tp">:</span> <span class="gain">=</span> <span class="tn">443</span> }` },
       { tag: "data (port fixed at 443; value doesn't need repeating)", kind: 'data', html: `<span class="gain">!production</span> { <span class="tk">host</span><span class="tp">:</span> <span class="ts">"prod.internal"</span> }` },
     ],
   },
@@ -125,7 +143,7 @@ const schemaRows = [
   },
   {
     chip: '§5.4', href: `${part2Url}#54-choice-types`, title: 'Choice',
-    why: 'Sum types. Structurally disjoint variants need no tag in data; overlapping ones require one. The resolver derives which, per encoding.',
+    why: 'Sum types. Structurally disjoint variants need no tag in data; overlapping ones require one. The resolver derives which, and the answer holds in every encoding.',
     snippets: [
       { tag: 'schema', kind: 'schema', html: `<span class="tk">shape</span>  <span class="gain">=&gt;</span> <span class="tp">(</span><span class="ts">circle</span> <span class="gain">|</span> <span class="ts">rect</span><span class="tp">)</span>
 <span class="tk">circle</span> <span class="gain">=&gt;</span> { <span class="tk">radius</span><span class="tp">:</span> <span class="ts">number</span> }
@@ -147,9 +165,9 @@ const schemaRows = [
   },
   {
     chip: '§5.10', href: `${part2Url}#510-templates-and-parameters`, title: 'Templates',
-    why: 'Definitions with blanks, over type parameters and value parameters both. A fully bound application becomes a real, named type in the resolved schema.',
+    why: 'Definitions with blanks, over type parameters and value parameters both. A declaration naming a fully bound application is that type, under its own name, in the resolved schema.',
     snippets: [
-      { tag: 'schema', kind: 'schema', html: `<span class="tk">paged</span>         <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">T</span><span class="gain">&gt;</span> { <span class="tk">items</span><span class="tp">:</span> <span class="tp">[</span><span class="ts">T</span><span class="tp">]</span>  <span class="tk">cursor</span><span class="tp">:</span> <span class="ts">text</span><span class="gain">?</span> }
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">paged</span>         <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">T</span><span class="gain">&gt;</span> { <span class="tk">items</span><span class="tp">:</span> <span class="tp">[</span><span class="ts">T</span><span class="tp">]</span>  <span class="tk">cursor</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">text</span> }
 <span class="tk">retry_policy</span> <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">N</span><span class="gain">&gt;</span> { <span class="tk">attempts</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">~</span> <span class="ts">N</span> }
 <span class="tk">checkout</span>     <span class="gain">=&gt;</span> <span class="ts">retry_policy</span><span class="gain">&lt;</span><span class="tn">5</span><span class="gain">&gt;</span>` },
       { tag: 'data', kind: 'data', html: `<span class="gain">!checkout</span> { <span class="tk">attempts</span><span class="tp">:</span> <span class="tn">10</span> }` },
@@ -283,7 +301,7 @@ const safety = [
 // ── audience routing ─────────────────────────────────────────
 const routes = [
   { label: 'Learn more about TSON?', title: 'The Developer Guide', href: guideUrl, body: 'The chain walked end to end, versioning, worked examples, and the reasoning behind the design.' },
-  { label: 'Delve into the Specifications?', title: 'Draft Specifications', href: specHubUrl, body: 'Text Data Format, Type System and Schema, Meta Schemas and Core types.' },
+  { label: 'Delve into the Specifications?', title: 'Draft Specifications', href: specHubUrl, body: 'Text Data Format, Type System and Schema, JSON Encoding, Meta Schemas and Core types.' },
   { label: 'Want the theory?', title: 'The proto-schema research', href: '/research', body: 'The schema model, derived from the physical constraints of serialized data.' },
 ];
 ---

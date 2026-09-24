@@ -71,7 +71,7 @@ const sections: Section[] = [
     chip: { label: '§5.3', href: `${part2Url}#53-type-expressions` },
     rows: [
       { feature: 'Record (named fields)', cells: [['y', '`{ name: text }`'], ['y', '`complexType` with `sequence` / `all`'], ['y', '`object` with `properties`'], ['y', '`message`'], ['y', '`SEQUENCE`, `SET`'], ['p', 'mapping, untyped']] },
-      { feature: 'Closed to undeclared fields', cells: [['y', 'closed; extras go to an `@rest` map if declared'], ['y', 'closed unless `xs:any` is declared'], ['n', '— open unless `additionalProperties: false`'], ['n', '— unknown fields are kept and skipped'], ['p', 'closed, or open with an extension marker `...`'], ['n', '—']] },
+      { feature: 'Closed to undeclared fields', cells: [['y', 'closed, with no exception; extras go in a declared map field'], ['y', 'closed unless `xs:any` is declared'], ['n', '— open unless `additionalProperties: false`'], ['n', '— unknown fields are kept and skipped'], ['p', 'closed, or open with an extension marker `...`'], ['n', '—']] },
       { feature: 'Map with typed keys', cells: [['y', '`{K => V}`, any key type'], ['n', '— `key` / `keyref` identity constraints'], ['p', '`additionalProperties` + `propertyNames`; keys are strings'], ['y', '`map<K, V>`, integer or string keys'], ['n', '— `SEQUENCE OF` key/value pairs'], ['y', 'mapping; any node can be a key']] },
       { feature: 'Array', cells: [['y', '`[T]`'], ['y', '`maxOccurs`, list types'], ['y', '`array` with `items`'], ['y', '`repeated`'], ['y', '`SEQUENCE OF`'], ['y', 'sequence']] },
       { feature: 'Size bounds', cells: [['y', '`[T; 1..10]`, and the same on maps'], ['y', '`minOccurs` / `maxOccurs`, length facets'], ['y', '`minItems` / `maxItems`'], ['n', '—'], ['y', '`SIZE (1..10)`'], ['n', '—']] },
@@ -80,16 +80,17 @@ const sections: Section[] = [
       { feature: 'Enumeration', cells: [['y', '`!enum [A B C]`'], ['y', '`enumeration` facet'], ['y', '`enum`, `const`'], ['y', '`enum`, open in proto3'], ['y', '`ENUMERATED`'], ['n', '—']] },
       { feature: 'Choice between types', cells: [['y', '`(email | phone)` — tagged only where two variants share a form'], ['p', '`union`, simple types only'], ['p', '`oneOf` / `anyOf` — matched by validation, untagged'], ['n', '— wrap in a `oneof`'], ['p', '`CHOICE` — alternatives are labelled'], ['p', 'node tags']] },
       { feature: 'Labelled alternatives', cells: [['y', 'field groups, `( a: T | b: U )`'], ['y', '`xs:choice`'], ['p', '`oneOf` with `required`'], ['y', '`oneof`'], ['y', '`CHOICE`'], ['n', '—']] },
-      { feature: 'Required, optional, default, fixed', cells: [['y', 'five field states: `T`, `T?`, `~ default`, `= fixed`, `T? = fixed`; defaults filled in on read'], ['y', '`minOccurs`, `default`, `fixed`'], ['p', '`required`, `const`; `default` is an annotation'], ['p', '`optional`; defaults are zero values'], ['y', '`OPTIONAL`, `DEFAULT`'], ['n', '—']] },
+      { feature: 'Required, optional, default, fixed', cells: [['y', 'three slots: `a?:` may be omitted, `T?` admits `_`, `~ default` / `= fixed`; defaults filled in on read'], ['y', '`minOccurs`, `default`, `fixed`'], ['p', '`required`, `const`; `default` is an annotation'], ['p', '`optional`; defaults are zero values'], ['y', '`OPTIONAL`, `DEFAULT`'], ['n', '—']] },
       { feature: 'Absence', cells: [['y', 'one spelling, `_`; no `null` in the notation'], ['y', '`minOccurs="0"`, and `xsi:nil`'], ['y', 'omission, and `null`'], ['p', 'tracked only for `optional`; zero is otherwise unset'], ['y', '`OPTIONAL`, and `NULL`'], ['y', 'omission, and `null` / `~`']] },
       { feature: 'Recursive types', cells: [['y', 'yes'], ['y', 'yes'], ['y', 'yes, via `$ref`'], ['y', 'yes'], ['y', 'yes'], ['n', '— anchors reuse values, not types']] },
       { feature: 'Composition (inherit, IS-A)', cells: [['y', '`A & B & { … }` — several parents, no diamonds'], ['y', '`extension`, substitution groups; one parent'], ['p', '`allOf` merges constraints; no IS-A'], ['n', '— nest a message instead'], ['p', '`COMPONENTS OF` copies fields'], ['p', '`<<` merge key (YAML 1.1)']] },
+      { feature: 'Sealed hierarchy (abstract, final, discriminator)', cells: [['y', '`abstract { kind: text =? }`; members pin `kind`, placed untagged; `final`'], ['p', '`abstract` and `final` on types; `xsi:type` selects'], ['p', '`oneOf` with `const`; OpenAPI adds `discriminator`'], ['n', '— no inheritance; wrap in a `oneof`'], ['n', '— `CHOICE` only'], ['n', '—']] },
       { feature: 'Refinement (narrow, keep IS-A)', cells: [['y', '`T ^ { … }` — tighten, default or fix fields; never adds or removes one'], ['y', '`restriction`'], ['p', '`allOf` plus keywords; no subtype relation'], ['n', '—'], ['y', 'subtype constraints, `WITH COMPONENTS`'], ['n', '—']] },
       { feature: 'Subtraction (remove fields)', cells: [['y', '`A - { password }` — breaks IS-A, keeps lineage'], ['p', '`restriction` can drop optional parts'], ['n', '— copy the schema'], ['n', '—'], ['p', '`WITH COMPONENTS` can mark optional components `ABSENT`'], ['n', '—']] },
       { feature: 'Generics', cells: [['y', 'templates over types and values, `vector<T, N>`'], ['n', '—'], ['p', '`$dynamicRef` approximates'], ['n', '—'], ['y', 'parameterized types (X.683)'], ['n', '—']] },
       { feature: 'Open type (value names its type)', cells: [['y', '`declared`, `extern`, `dynamic` — validated against the named type'], ['y', '`xs:any`, `xsi:type`'], ['p', '`{}` accepts anything, unchecked'], ['y', '`google.protobuf.Any`'], ['y', 'open types, `EMBEDDED PDV`'], ['p', 'tags']] },
       { feature: 'Annotations on data', cells: [['y', '`@name:value` on any value, map key or field; preserved in order'], ['p', 'attributes, where the schema admits them'], ['n', '— JSON has no metadata channel'], ['n', '—'], ['n', '—'], ['p', 'tags and anchors; comments are discarded']] },
-      { feature: 'Typed, validated annotations', cells: [['y', 'every annotation is a type, `deprecated => @annotation text`; an unknown one is an error, and `@disjoint`, `@discriminator` and `@rest` are checked at load'], ['p', '`xs:appinfo` and foreign attributes, checked only if declared'], ['p', 'annotation keywords; custom ones via `$vocabulary`, unknown ones ignored'], ['y', 'custom options, typed by extending the `*Options` messages'], ['n', '— comments only'], ['n', '—']] },
+      { feature: 'Typed, validated annotations', cells: [['y', 'every annotation is a type, `deprecated => @annotation text`; an unknown one is an error, and `@disjoint` is checked at load'], ['p', '`xs:appinfo` and foreign attributes, checked only if declared'], ['p', 'annotation keywords; custom ones via `$vocabulary`, unknown ones ignored'], ['y', 'custom options, typed by extending the `*Options` messages'], ['n', '— comments only'], ['n', '—']] },
     ],
   },
   {
@@ -180,8 +181,8 @@ const extendTiers = [
 <span class="gain">!!import:</span><span class="ts">"${kernelPin}"</span>
 <span class="tp">{</span>
   <span class="tk">oid_type</span> <span class="gain">=&gt;</span> <span class="ts">atom</span> <span class="gain">&amp;</span> <span class="ts">atom_specification</span> <span class="gain">&amp;</span> <span class="tp">{</span>
-    <span class="tk">spec</span><span class="tp">:</span>     <span class="gain">=</span> <span class="ts">"https://www.itu.int/rec/T-REC-X.660"</span>
-    <span class="tk">max_arcs</span><span class="tp">:</span> <span class="ts">non_negative_integer</span><span class="gain">?</span>
+    <span class="tk">spec</span><span class="gain">?</span><span class="tp">:</span>     <span class="gain">=</span> <span class="ts">"https://www.itu.int/rec/T-REC-X.660"</span>
+    <span class="tk">max_arcs</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">non_negative_integer</span>
   <span class="tp">}</span>
 <span class="tp">}</span>`,
   },
