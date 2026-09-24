@@ -35,13 +35,13 @@ const { title, description, image, type, home = false, publishedTime, modifiedTi
   </head>
   <body class="bg-white text-gray-900 min-h-screen flex flex-col">
     <header class="border-b border-gray-200">
-      <div class="max-w-5xl mx-auto px-6 py-2.5 flex items-center justify-between">
+      <div class="max-w-5xl mx-auto px-6 py-2.5 flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
         <a href="/" class="text-lg font-mono font-semibold tracking-tight hover:text-gray-600">
           tson.io
         </a>
-        <nav class="flex items-center gap-6 text-sm text-gray-600">
+        <nav class="flex flex-wrap items-center gap-x-5 gap-y-1 sm:gap-6 text-sm text-gray-600">
           <a href="/2026" class="hover:text-gray-900">Specification</a>
-          <a href="/compare" class="hidden sm:inline hover:text-gray-900">Compare</a>
+          <a href="/compare" class="hover:text-gray-900">Compare</a>
           <a href="/research" class="hover:text-gray-900">Research</a>
           <a href="https://github.com/litterat/tson-io" rel="noopener" target="_blank" class="hover:text-gray-900">GitHub</a>
         </nav>
