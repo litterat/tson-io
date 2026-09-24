@@ -115,7 +115,8 @@ artifacts take `.tn1`.
 2. In the copies, rewrite `2026/33` -> `2026/34` (the self-referencing
    `!!id`/`!!meta`/`!!import`/`!!schema` URLs and the spec's own cross-references), and the
    `## 2026 Revision 33` headings. Drop the previous revision's "what changed" sentence from the
-   **Status:** paragraph — it describes the old revision, not the new one. The skills carry the
+   **Status:** paragraph — it describes the old revision, not the new one. The hash pins come
+   across stale (see below) until the author re-stamps them. The skills carry the
    same URLs and a "2026 Revision 33" line of their own, and bundle copies of `m/*.tn` that must
    be re-copied from the new revision.
 3. Bump `CURRENT_REVISION` in `src/lib/spec.ts` to `'34'`, and add `REVISION_NOTES` entries: one
@@ -129,11 +130,15 @@ artifacts take `.tn1`.
 rules cover every revision. Each uses one Cloudflare placeholder plus one splat, which is the
 maximum a single rule allows.
 
-The `.tn` files' hash pins are placeholders, not computed digests: from revision 33 they spell
-the digest as the literal token `xxhash` (`?sha256=xxhash`, and `…_xxhash` in synthetic entry
-names), which keeps the pin's *shape* normative without freezing draft byte content — the
-meta-kernel header says so. Copying them forward is therefore safe; real digests are computed
-bottom-up at publication, not when a revision opens.
+The `.tn` files carry **real** sha256 pins (revisions 33–36 all do): the digest is over the file's
+bytes after its `!!id` line, computed bottom-up — the kernel first, then meta pinning the kernel,
+then core pinning meta — and Part 2 §13.2 repeats the three. Copying a revision forward therefore
+carries the *previous* revision's digests into the new files, which no longer match once the URLs
+are rewritten; the author re-stamps them when the revision lands, and the change log's artifact
+section names the new ones. Check them against the bytes with
+`tail -n +2 m/meta-kernel.tn | shasum -a 256`, and against §13.2 and the change log. The
+`…_xxhash` suffix in the fixtures' synthetic entry names is a different thing: a placeholder for
+an implementation-chosen content hash, and stays as written.
 
 ## Schema files and public sync
 

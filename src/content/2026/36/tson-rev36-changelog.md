@@ -394,12 +394,10 @@ unmarked name.
    gone and `field_role`, `record_extension_type`, `enum_profile` and `text_member_set` are
    declared; `rest` and `discriminator` are gone from meta; `record`, `template`, `enum`
    and `text_type` carry their new fields.
-3. **Outstanding: two stale docs.** meta.tn's `disjoint` doc still says "derived
-   `type_definition.disjoint` fact" where Revision 35's second pass moved the fact into the
-   `!choice` body; and the kernel's `type_ref` doc still says a fully-bound application
-   "materialises an instantiation entry" without #15's qualification that a declaration
-   naming it is that entry. Neither changes a byte of resolved output; both are doc edits
-   for the next re-stamp.
+3. **Done: two stale docs.** meta.tn's `disjoint` doc now places the derived fact in the
+   `!choice` body, where Revision 35's second pass moved it; and the kernel's `type_ref` doc
+   carries #15's qualification that a declaration naming a fully-bound application is that
+   entry. Neither changes a byte of resolved output.
 4. **Not verified**, carried as a note: #15's cross-schema unification is stated as given
    up, and no bundled schema or corpus vector exercises an import that would need it.
 

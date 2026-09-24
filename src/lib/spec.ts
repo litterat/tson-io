@@ -23,7 +23,13 @@ export const CURRENT_REVISION = '36';
 export const REVISION_NOTES: Record<string, string> = {
   // Plain text — rendered as-is, so no markdown.
   '36':
-    'In progress.',
+    'In progress. Adjudicates the 21-entry spec-feedback register against revision 35. ' +
+    'A record field gets three slots — ? on the name for an omittable key, ? on the type ' +
+    'for an admitted _, and the modifier for its value — in place of six states. Records ' +
+    'can be abstract or final, and a field written =? is the selector a sealed family\'s ' +
+    'members pin, retiring @discriminator and @rest. A declaration naming an application ' +
+    'is its entry, enums gain a TEXT profile, text gains a member set, and disjoint becomes ' +
+    'the same in every encoding. Publishes Part 3, the JSON encoding.',
   '35':
     'Adjudicates the 36-entry implementation feedback register against revision 34. ' +
     'Drops the JSON-superset claim and the rules that existed only for it: ' +
