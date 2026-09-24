@@ -387,7 +387,7 @@ unmarked name.
 
 1. **Received at Revision 36** — all six artifacts carry "2026 Revision 36 draft" and
    `/2026/36/` identities with the hash chain recomputed bottom-up over the shipped bytes:
-   kernel `93c62422…`, meta `329affb2…`, core `837990c6…`. Part 2 §13.2 carries them. Hash
+   kernel `e778e463…`, meta `ede51d23…`, core `d924ef91…`. Part 2 §13.2 carries them. Hash
    *values* remain non-normative; only the pin's shape is.
 2. **Done: the re-spelling** — every `T?` field, every injecting default and pin, and
    every `= _` in the kernel, meta and core is in the three-slot form; `field_state` is
