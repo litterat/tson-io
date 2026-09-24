@@ -40,14 +40,14 @@ Approximate tier: the value is rounded onto the IEEE 754-2019 grid named by `for
 |---|---|
 | `format` | `BINARY16 BINARY32 BINARY64 BINARY128 BINARY256 DECIMAL32 DECIMAL64 DECIMAL128` — the decimal formats are base-10 *floating point*, still approximate. Set by core for `float32`/`float64`; a selector, so a refinement cannot change it |
 | `min`/`exclusive_min`, `max`/`exclusive_max` | checked on the value as written, before rounding; do not bound the specials |
-| `allow_nan`, `allow_infinity`, `allow_subnormal`, `allow_negative_zero` | default `true`; may be tightened to `false` |
+| `allow_nan`, `allow_infinity`, `allow_subnormal`, `allow_negative_zero` | default `true`; may be tightened to `false`. While `allow_nan` or `allow_infinity` is true the type has **no discrimination class**, so `( float64 \| text )` needs tags; narrow both to `false` to make it disjoint |
 
 There is deliberately **no `multiple_of`** — a step cannot hold on a binary grid. Use `number`.
 
 **Two rules stated once, across `integer_type`, `decimal_type`, `rational_type`, `duration_type` and
 `period_type`**: `multiple_of` is strictly positive, the sign of the value is ignored, and a
 refinement tightens only to an integer multiple. `members` requires every member to satisfy the body's other
-facets (a derived width included), and a refinement may only shrink the set.
+facets (a derived width included), and a refinement may only shrink the set — except `text_type.members`, which is settable once.
 
 ### `rational_type` → `rational` (meta)
 
@@ -64,19 +64,20 @@ One facet, `component: INTEGER | NUMBER | RATIONAL | FLOAT32 | FLOAT64` (default
 | Facet | Meaning |
 |---|---|
 | `min_length`, `max_length`, `length` | in code points |
-| `pattern` | I-Regexp (RFC 9485) — the interoperable subset: no back-references, no look-around, no `\d` shorthand outside the defined set; anchored to the whole value |
+| `pattern` | I-Regexp (RFC 9485) — the interoperable subset: no back-references, no look-around, no `\d` shorthand outside the defined set; anchored to the whole value. **Settable once**: a refinement may set it where unset or restate it, never change it |
+| `members` | `text_member_set` — the admitted strings outright, still parsed by the family (`!uri ^ { members: ["https://a.example/" "https://b.example/"] }`). Every member must satisfy the other facets, the pattern included. Settable once, like `pattern` |
 
 Core instances: `text`, `non_empty_text` (`min_length: 1`).
 
-Spec-bound sub-families compose `text_type & atom_specification`, so they inherit all four facets and add a pinned `spec`:
+Spec-bound sub-families compose `text_type & atom_specification`, so they inherit all five facets and add a pinned `spec`:
 
 | Constructor → instance | Extra facets | Notes |
 |---|---|---|
-| `uri_type` → `uri` | `scheme: text?` | RFC 3986 |
+| `uri_type` → `uri` | `scheme?: text` | RFC 3986 |
 | `regex_type` → `regex` | — | RFC 9485 I-Regexp |
 | `email_type` → `email` (meta) | — | dot-atom `@` dot-atom only |
 
-`spec` is fixed (`=`) in each constructor; a refinement must not restate it with a different value.
+`spec` is pinned (`spec?: = "…"`) in each constructor; a refinement must not restate it with a different value.
 
 ## Temporal (meta)
 
@@ -110,8 +111,8 @@ mandates the offset. Bound values are written as the atom's own text, quoted whe
 
 | Constructor → instance | Facets |
 |---|---|
-| `uuid_type` → `uuid` | `version: integer?` |
-| `ipv4_type` → `ipv4` | `within: [cidr text]?`, `excluding: [cidr text]?` — inside at least one `within` (if present) and no `excluding` |
+| `uuid_type` → `uuid` | `version?: non_negative_integer` |
+| `ipv4_type` → `ipv4` | `within?: [cidr text]`, `excluding?: [cidr text]` — inside at least one `within` (if present) and no `excluding` |
 | — | **A `within`/`excluding` pair MUST admit at least one value**, exactly, and a network family's prefix bounds participate in the check |
 | `ipv6_type` → `ipv6` | same |
 | `cidr4_type` → `cidr4` | `min_prefix`, `max_prefix` (0–32), `within` (subnet-of), `excluding` (no overlap) |
@@ -122,7 +123,7 @@ CIDR lists are quoted strings: `within: ["10.0.0.0/8" "192.168.0.0/16"]`.
 
 ## Bytes (meta)
 
-`bytes_type => atom & { encoding: bytes_encoding ~ BASE64  length: non_negative_integer?  min_length: non_negative_integer?  max_length: non_negative_integer? }`, with
+`bytes_type => atom & { encoding?: bytes_encoding ~ BASE64  length?: non_negative_integer  min_length?: non_negative_integer  max_length?: non_negative_integer }`, with
 `bytes_encoding => !enum [BASE64 BASE64URL BASE32 HEX]`.
 
 Core instance: `bytes => !bytes_type { encoding: BASE64 }` — the one binary type; there is no `base64`,
@@ -144,7 +145,12 @@ narrows nothing, so `hexdigest ^ bytes` would claim an IS-A that no base64 posit
 
 ## Enumerations
 
-`enum => atom & { members: enum_set }`, `enum_set => !set_type { element_type: identifier }`. Members are identifiers, unique, at least one. Positional form: `!enum [A B C]`. Refinement of an enum may only *shrink* the member set: `open_states => !status ^ { members: [OPEN ACTIVE] }`. Discrimination class of an enum is its members' shared class (`[true false]` boolean; `[A B]` string; mixed → none).
+`enum => atom & { members: enum_set  profile?: enum_profile ~ IDENTIFIER }`, `enum_set => !set_type { element_type: text }`, `enum_profile => !enum [IDENTIFIER TEXT]`. Members are unique, at least one, compared as decoded text.
+
+- **`IDENTIFIER`** (default) — a vocabulary of names: every member matches the identifier grammar, name hygiene applies, host enum generation is guaranteed. Positional form: `!enum [A B C]`. Class: the members' shared class (`[true false]` boolean; `[A B]` string; mixed → none).
+- **`TEXT`** — a value set of arbitrary texts: `!enum { members: ["sedentary" "lightly active"]  profile: TEXT }`. Always string-class, even `["80" "443"]`; only the confusable-pair hygiene check applies; binds to host text.
+
+Numbers are never enum members under either profile — use `!integer ^ { members: [...] }`. Refinement of an enum may only *shrink* the member set (`open_states => !status ^ { members: [OPEN ACTIVE] }`) and may move `profile` only from `TEXT` to `IDENTIFIER`, once.
 
 Core: `boolean => !enum [true false]`.
 
@@ -152,8 +158,8 @@ Core: `boolean => !enum [true false]`.
 
 | Constructor | Fields | Notes |
 |---|---|---|
-| `choice` (kernel) | `variants: [type_ref]`, `disjoint: boolean?` | sugar `(A \| B)`; two or more; no `void` variant. The resolver derives `disjoint` and writes it in the choice body; it is discarded and recomputed on ingest |
-| `scoped` (meta) | `scope: set<scope_kind>`, `schemas: {uri => [type_name; 1..]?; 1..}?` | open sum: the value names its own type, the instance names where that name resolves. `scope_kind => !enum [LOCAL EXTERN]` |
+| `choice` (kernel) | `variants: [type_ref]`, `disjoint?: boolean` | sugar `(A \| B)`; two or more; no `void` variant. The resolver derives `disjoint` and writes it in the choice body; it is discarded and recomputed on ingest |
+| `scoped` (meta) | `scope: set<scope_kind>`, `schemas?: {uri => [type_name; 1..]?; 1..}` | open sum: the value names its own type, the instance names where that name resolves. `scope_kind => !enum [LOCAL EXTERN]` |
 
 Core instances of `scoped`:
 `declared => !scoped { scope: [LOCAL] }`, `extern => !scoped { scope: [EXTERN] }`,
@@ -166,10 +172,10 @@ A value naming no type at a scoped position is a validation error.
 
 | Constructor | Fields | Sugar |
 |---|---|---|
-| `record` | `fields: [record_field]`, `groups: [field_group]?`, `supertypes: [type_name]?` | `{ … }` |
-| `array` | `element_type: type_ref`, `state: REQUIRED\|OPTIONAL ~ REQUIRED`, `unordered ~ false`, `unique_items ~ false`, `min_items?`, `max_items?` | `[T]`, `[T; N..M]`, `[T?]` |
-| `set_type` (`array ^`) | `state = REQUIRED`, `unordered = true`, `unique_items = true`, `min_items ~ 1` | `set<T>` — the template meta and core each declare. A set is **non-empty by default** |
-| `map` | `key_type`, `value_type`, `state ~ REQUIRED`, `min_items?`, `max_items?` | `{K => V}`, `{K => V?; 1..}` |
+| `record` | `fields: [record_field]`, `groups?: [field_group]`, `extension?: record_extension_type ~ OPEN`, `supertypes?: [type_ref]`, `discriminators?: [field_name]` | `{ … }`; `abstract { … }`, `final { … }`; `=?` on a field |
+| `array` | `element_type: type_ref`, `state?: REQUIRED\|OPTIONAL ~ REQUIRED`, `unordered? ~ false`, `unique_items? ~ false`, `min_items?`, `max_items?` | `[T]`, `[T; N..M]`, `[T?]` |
+| `set_type` (`array ^`) | `state? = REQUIRED`, `unordered? = true`, `unique_items? = true`, `min_items? ~ 1` | `set<T>` — the template meta and core each declare. A set is **non-empty by default** |
+| `map` | `key_type`, `value_type`, `state? ~ REQUIRED`, `min_items?`, `max_items?` | `{K => V}`, `{K => V?; 1..}` |
 | `tuple` | `elements: [{ element_type  state }]` | `[T, U?]` |
 
 Explicit constructor applications are legal as declaration bodies (`lookup => !map { key_type: text  value_type: integer }`) and are the way to reach a composite map key type, or a set that may be empty (`!set_type { element_type: T  min_items: 0 }`).
@@ -178,14 +184,15 @@ Explicit constructor applications are legal as declaration bodies (`lookup => !m
 
 Numeric: `integer int8 int16 int32 int64 int128 int256 uint8 uint16 uint32 uint64 uint128 uint256 positive_integer non_negative_integer negative_integer non_positive_integer number rational complex float32 float64`.
 Text: `text non_empty_text regex uri email`.
-Binary: `base64 base64url base32 hex`.
+Binary: `bytes`.
 Temporal: `date time datetime duration period`.
 Identifier/network: `uuid ipv4 ipv6 cidr4 cidr6 mac`.
-Other: `boolean void unknown`.
-Annotation types for data documents: `annotation documentation doc alias`.
+Scoped: `declared extern dynamic`, and the templates `extern_of extern_type`.
+Other: `boolean void set`.
+Annotation types for data documents: `annotation documentation doc`.
 
 Names that do **not** exist in core: `string str int float double bool binary base64 base64url base32 hex timestamp decimal url ip any null unknown list array map record object`. (`bytes`, `period`, `declared`, `extern`, `dynamic`, `extern_of`, `extern_type` and `set` *do* exist.)
 
 ## Annotation types available to schema documents (from `meta.tn`)
 
-`@doc:"…"` (and `@documentation`), `@title:"…"`, `@examples:[…]`, `@deprecated:"…"`, `@since:"…"`, `@todo:"…"`, `@lang:"en"`, `@ordered:NONE|PARTIAL|TOTAL`, `@bounded:true|false`, `@exact:true|false`, `@numeric` (bare), `@disjoint` (bare, on a choice), `@read_only` / `@write_only` (bare, never both on one field), `@discriminator:field_name` and `@rest` (bare) — the two *checked* representation directives — and `@synthetic` (resolver-attached; do not write it).
+`@doc:"…"` (and `@documentation`), `@title:"…"`, `@examples:[…]`, `@deprecated:"…"`, `@since:"…"`, `@todo:"…"`, `@lang:"en"`, `@ordered:NONE|PARTIAL|TOTAL`, `@bounded:true|false`, `@exact:true|false`, `@numeric` (bare), `@disjoint` (bare, on a choice), `@read_only` / `@write_only` (bare, never both on one field), and `@synthetic` (resolver-attached; do not write it). There is no `@discriminator` or `@rest`: a sealed family is `abstract` plus a `=?` selector, and open-ended data is a map field.

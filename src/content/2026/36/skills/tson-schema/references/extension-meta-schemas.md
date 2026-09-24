@@ -38,18 +38,18 @@ status_code => !integer ^ { min: 100  max: 599 }
 parameter   => { name: text  in: parameter_location  type: type_ref  required: boolean }
 
 signature => {
-  request:   type_ref?
-  response:  type_ref?
-  errors:    [type_ref]?
-  safe:      boolean ~ false
+  request?:  type_ref
+  response?: type_ref
+  errors?:   [type_ref]
+  safe?:     boolean ~ false
 }
 
 method    => data & signature
 operation => data & signature & {
   verb:    http_verb
   path:    text
-  status:  status_code ~ 200
-  safe:    = false
+  status?: status_code ~ 200
+  safe?:   = false
 }
 ```
 
@@ -68,8 +68,9 @@ Rules that bite:
   vocabulary: put the common fields in an ordinary record (`signature`) and compose it into each constructor.
   **Do not** try `operation => method & { … }` — see below.
 - **Trailing body optional.** `method => data & signature` is complete.
-- **Tightening in the body.** A body field matching an inherited one is a tightening under the §5.7 table
-  (elided type allowed): `safe: = false` pins the inherited default to a fixed value, and a governed schema that
+- **Tightening in the body.** A body field matching an inherited one is a tightening along §5.7's three orders
+  (elided type allowed): `safe?: = false` pins the inherited default to a fixed value (DEFAULT → FIXED; keep the
+  `?` on the name, or the pin becomes a marker every instance must write), and a governed schema that
   then writes `!operation { safe: true }` is refused at load — *"'safe' is fixed on 'operation' and cannot be
   given another value — the schema declares it with '=' (fixed); for a default the data may override, use
   '~'"*. Use this to reserve a field for a later version of the vocabulary.
@@ -120,7 +121,7 @@ Consequences for a design:
   applications. Write each application out.
 - If the entries *are* naturally the type of something — a call record, an exchange — consider a record type
   under plain `meta.tn` instead: `place_order => method<order, order> & { … }`, `create_order => place_order &
-  http & { verb: = POST  path: = "/orders" }` composes, IS-A holds, fixed values read back from the resolved
+  http & { verb?: = POST  path?: = "/orders" }` composes, IS-A holds, fixed values read back from the resolved
   schema, and the reference is compiler-checked. The cost is that schema facts stated as fields are injected
   into every instance.
 

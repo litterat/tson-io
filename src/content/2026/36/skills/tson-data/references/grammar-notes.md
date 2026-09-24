@@ -177,15 +177,15 @@ Four categories, one severity (there are no warnings):
 - **Resolver error** — `_` as a map key, duplicate field names or map keys, a built-in annotation on a container, a token an atom's contract rejects.
 - **Validation error** — numeric range violations, CIDR prefix/host-bit violations, and (under a schema) every declared constraint.
 
-**Refusals are a fifth outcome, not a verdict.** A name-hygiene refusal (confusable names, restricted scripts) or a resource-limit refusal is reported in the same report as the four categories, told apart by the rule that refused, and is not a claim that the document is invalid — a conforming processor may legitimately not refuse at all. A processor makes available, with any report carrying a refusal, its identifier policy, token policy, limits policy and the UCD version it judged under, and SHOULD make them reachable with no document in hand.
+**Not judged is a fifth outcome, not a verdict.** It has two members. A **refusal** — name hygiene (confusable names, restricted scripts) or a resource limit — means *this processor declined*, under its stated policy; a conforming processor may legitimately not refuse at all. An **unavailable schema** means *this processor could not obtain the schema* (not held, fetching not permitted, unreachable…), so nothing is known about conformance. Both are reported in the same report as the four categories, told apart by the rule or the reason, and neither is a claim that the document is invalid — the next processor may accept it unchanged. A processor makes available, with any report carrying a refusal, its identifier policy, token policy, limits policy and the UCD version it judged under, and SHOULD make them reachable with no document in hand.
 
 Every diagnostic carries line, column, and byte offset.
 
 ## 12. JSON — what is shared, and where the two part
 
 **TSON is not a JSON superset.** A JSON document is not a TSON document. JSON is read through a **JSON
-reader** — a second encoding of the same model, which maps JSON `null` to *absence* and JSON numbers to
-`number`.
+reader** — a second encoding of the same model, whose rules are *TSON Part 3: JSON Encoding* — which maps
+JSON `null` to *absence* and JSON numbers to `number`.
 
 Four differences, each of which makes some JSON documents illegal as TSON:
 
@@ -217,7 +217,7 @@ Never write a digest from memory — compute it (`scripts/pin.py`) or leave the 
 
 UTF-8 recommended (required for content-addressed documents); UTF-16/32 permitted. Invalid byte sequences are lexer errors; no U+FFFD substitution. A leading U+FEFF is discarded; anywhere else outside quotes it is a lexer error.
 
-Media type `application/tson` (optionally `; version=1`). Extension `.tn` for the 2026 revision series; `.tn1` is reserved for the frozen version 1 and must not be used before it. Document kind is decided by the header, not the extension.
+Media type `application/tson` (optionally `; version=1`). Over HTTP the governing schema may also travel out of band in the **`TSON-Schema`** header field (an RFC 9651 String Item, defined in Part 3 §3.5); where it and `!!schema` are both present they MUST agree by canonical identity, and disagreement is an error, not a precedence question. Extension `.tn` for the 2026 revision series; `.tn1` is reserved for the frozen version 1 and must not be used before it. Document kind is decided by the header, not the extension.
 
 ## Resource limits (Part 1 §9.1)
 

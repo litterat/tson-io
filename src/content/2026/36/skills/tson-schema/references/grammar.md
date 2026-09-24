@@ -2,7 +2,7 @@
 
 Verbatim excerpts from TSON Part 2 §12 (2026 Revision 36): the schema-body ABNF, the disambiguation summary, and the adjacency rules; followed by condensed notes on error categories, name hygiene, and the schema-side resource limits. The header (`!!id`, `!!meta`, `!!import`) is Part 1 grammar; see the tson-data skill's grammar notes.
 
-The schema-document header is defined entirely by [TSON-DATA]'s grammar; this document defines the schema body: `schema-map`, the annotated, braced declaration map that [TSON-DATA]'s `schema-doc` production delegates here. `ws`, `ws1`, `separator`, `token`, `unquoted-token`, `absent`, `annotation`, `field-name`, `record`, `empty-brace`, `identifier`, and `core-value` are imported from [TSON-DATA] §7.3, §7.4, and §7.7; the data grammar's value productions appear at exactly two points — the full `core-value` as the constructor-application payload (`instance`, §5.6), and its braced subset (`record` / `empty-brace`) as the atom-refinement body (`atom-refinement`, §5.5), the same text under two heads, which is the desugar §5.6 states. No production of this grammar uses the full `data-value`: a record-refinement body is a braced `record-def` (§5.7), and a field-modifier value is restricted to a bare token or the absent sentinel (§5.2), never annotations, a type-ref, or a container.
+The schema-document header is defined entirely by [TSON-DATA]'s grammar; this document defines the schema body: `schema-map`, the annotated, braced declaration map that [TSON-DATA]'s `schema-doc` production delegates here. `ws`, `ws1`, `separator`, `token`, `unquoted-token`, `annotation`, `field-name`, `record`, `empty-brace`, `identifier`, and `core-value` are imported from [TSON-DATA] §7.3, §7.4, and §7.7; the data grammar's value productions appear at exactly two points — the full `core-value` as the constructor-application payload (`instance`, §5.6), and its braced subset (`record` / `empty-brace`) as the atom-refinement body (`atom-refinement`, §5.5), the same text under two heads, which is the desugar §5.6 states. No production of this grammar uses the full `data-value`: a record-refinement body is a braced `record-def` (§5.7), and a field-modifier value is restricted to a bare token — or, for the selector `=?`, nothing at all — (§5.2), never the absent sentinel, annotations, a type-ref, or a container.
 
 A `schema-map` copies the shape of [TSON-DATA]'s `map` production but requires at least one entry — `{}` at schema-body position is a parse error. An entry is called a **declaration**. Annotations before the opening brace bind to the schema; annotations at the head of an entry bind to the key; annotations after `=>` bind to the type definition (§2.1, §6).
 
@@ -13,7 +13,16 @@ schema-map       = *( annotation ws ) "{" ws schema-map-entry
                    *( separator schema-map-entry ) ws "}"
 
 schema-map-entry = *( annotation ws ) type-name ws "=>" ws
-                   *( annotation ws ) type-def
+                   *( annotation ws ) [ definition-mark ws ] type-def
+
+definition-mark  = "abstract" / "final"
+                 ; how a record may be realised (§5.2): one word,
+                 ; read unconditionally at this one position and an
+                 ; ordinary identifier everywhere else; a bare mark
+                 ; with no type-def is a declaration missing its
+                 ; definition; a mark on a non-record definition is
+                 ; a resolver error; written before the parameter
+                 ; list of a template (§5.10)
 
 ; ── Type Definition (declaration right-hand side) ─────────
 
@@ -77,23 +86,33 @@ instance     = [type-params ws] "!" type-name ws core-value
 
 ; ── Field Definitions ─────────────────────────────────────
 
-field-def      = *annotation field-name ws ":" ws
+field-def      = *annotation field-name ["?"] ws ":" ws
                  ( field-type field-modifier
                  / field-type
                  / field-modifier )
+               ; the "?" on the name answers omission (§5.2);
+               ; "a?:" lexes as name, "?", ":" with no lexer change
 
 field-type     = type-ref ["?"]
+               ; the "?" on the type answers a written "_" — the
+               ; field is voidable (§5.2)
 
-field-modifier = ws ("~" / "=") ws ( token / absent )
-               ; the value is a single scalar token or the
-               ; absent sentinel — never a compound value (§5.2)
+field-modifier = ws ("~" / "=") ws token
+               / ws "=" ws "?"
+               ; "~" default, "=" fixed: the value is a single
+               ; scalar token, never a compound value and never
+               ; the absent sentinel (§5.2); "=?" is the selector
+               ; a discriminated family's members pin (§5.2) —
+               ; two special tokens, no value
 
 ; ── Field Groups (§5.11) ──────────────────────────────────
 
 group-def    = *annotation "(" ws group-member
                1*( ws "|" ws group-member ) ws ")" ["?"]
-group-member = *annotation field-name ws ":" ws type-ref
-               ; no "?", no modifier on members
+group-member = *annotation field-name ws ":" ws type-ref ["?"]
+               ; no "?" on a member's name and no modifier: the
+               ; group answers omission and never injects; the
+               ; "?" on the type makes the member voidable (§5.11)
 
 ; ── Type References (any type position) ───────────────────
 
@@ -174,10 +193,12 @@ type-name  = identifier
 
 Notes:
 
-- The `type-params` slot declares type parameters (§5.10); parameters take precedence over schema-namespace lookup, and references to a parameterized type MUST supply matching type arguments.
+- The `type-params` slot declares type parameters (§5.10); parameters take precedence over schema-namespace lookup, and references to a parameterized type MUST supply matching type arguments — except that a record-bodied template may be named bare at a type position as a family base (§5.10).
+- `definition-mark` is read unconditionally: `pet => abstract base & { … }` is a marked composition, and a type named `abstract` cannot stand alone as a declaration's whole body, which is the sole reservation the two words carry (§5.2, [TSON-DATA] §7.7).
+- `=?` is two tokens the lexer already emits — `=` then `?` — admitted by `field-modifier` only with no value; `a: T =? v` is a parse error. It is refused by the resolver on a name carrying `?`, on a voidable type, on a group member, and on a type that is not an atom-family instance or an enum (§5.2).
 - `paren-type` produces choice types; choices require at least two variants — `(T)` is a parse error.
 - `group-def` produces field groups (§5.11); a group requires at least two members. Inside a record body, `(` at entry position (after any leading annotations) opens a group; `(` after a `field-name ":"` opens a `paren-type`. The two never collide — a group is an entry, a choice is a type-ref. The `?` after the closing `)` sets the group's state; member positions reject `?` and modifiers by grammar.
-- The `?` suffix marks field-level, tuple-position-level, array-element-level, or group-level optionality and is valid only in those positions, recording `state: OPTIONAL` on the containing `record_field`, `tuple_element`, `array`, or `field_group`. There is no generic "optional type" in TSON.
+- A `?` after a field's *name* records `optional: true` on the `record_field`; a `?` after a *type* at a field, tuple position, array element, map value or group member records that the position admits `_` (`voidable: true` on a `record_field`, `state: OPTIONAL` on a `tuple_element`, `array` or `map`); a `?` after a group's closing `)` records `state: OPTIONAL` on the `field_group`. Those are the only positions, and there is no generic "optional type" in TSON.
 - `type-def` reaches the bracket and map forms through `type-ref` like any other position; there is no separate declaration-level container production, and no positional restriction on size specifiers or element/position `?` (§5.3).
 - `instance` is decidable on one token after the optional parameter list: `!` opens an `instance`, with or without a preceding `<…>`; `<` only ever starts `type-params`, so consuming it first costs no lookahead. Inside the `!` branch a following `^` separates `atom-refinement` from `instance`; `atom-refinement` admits no parameter list — a parameterised refinement of an atom instance is no form (§5.10), and `<…> ! name ^` is a parse error.
 - The trailing record-def in `construction-def` is optional (`customer => address & contact` is valid). When a `{` follows a `&`-chain, it always belongs to the construction's record-def.
@@ -185,7 +206,7 @@ Notes:
 - The removal clause attaches to construction heads only; a refinement head admits none — `T ^ { ... } - { ... }` is a parse error (§5.7, §5.9).
 - After a bare type-ref in type-def position, `{` is a parse error; the diagnostic SHOULD suggest `^` (refinement) or `&` (composition).
 - Parameters and type arguments inside `<>` alike separate by comma or whitespace — the general separator convention ([TSON-DATA] §7.4): `<T, MIN>` and `<T MIN>`, `map<text, integer>` and `map<text integer>` are all valid.
-- `_` is not valid in type-ref or type-def body positions (§7.6); empty records use `{}`.
+- `_` is not valid in type-ref, type-def body or field-modifier positions (§5.2, §7.6); empty records use `{}`, and a field that may only be omitted or `_` is spelled `a?: void?`.
 
 
 ### 12.2 Disambiguation Summary
@@ -203,6 +224,8 @@ This section is informative.
 ;   anything else  → parse error
 ;
 ; type-def position (after =>):
+;   abstract / final → definition-mark (§5.2); consumed, then
+;                    dispatch continues on what follows
 ;   <              → type-params; then dispatch continues:
 ;     !              → instance, held open (§5.10)
 ;     otherwise      → templated structural-def / type-ref
@@ -222,6 +245,7 @@ This section is informative.
 ;                      interior annotations, §5.3, so "@"
 ;                      commits to a record)
 ;     name ":"       → record-def (field)
+;     name "?"       → record-def (field with an omittable key)
 ;     name "=>"      → map-type
 ;     name "<"       → map-type (generic key; consume the
 ;                      arguments, expect "=>")
@@ -244,6 +268,13 @@ This section is informative.
 ; record-def entry position (after leading annotations):
 ;   (              → group-def (field group, §5.11)
 ;   name ":"       → field-def
+;   name "?" ":"   → field-def, key omittable (§5.2)
+;
+; after a field's type-ref:
+;   ?              → voidable (§5.2)
+;   ~ token        → default
+;   = token        → fixed
+;   = ?            → selector (§5.2); no value follows
 ;   name "=>"      → parse error ("record body expected; =>
 ;                    begins a map type only at type positions")
 ;
@@ -299,6 +330,8 @@ The following rows extend the adjacency table of [TSON-DATA] §7.5 for the opera
 | `-` | prefix | removal clause (§5.9) | at least one whitespace character MUST separate the preceding token from `-`; whitespace optional before the following `{` |
 | `~` | modifier | field default value (`port: integer ~ 8080`) — its only role in the grammar | whitespace optional |
 | `=` | modifier | fixed value | whitespace optional |
+| `=?` | modifier | selector (§5.2) | whitespace optional before `=` and between `=` and `?` |
+| `?` | suffix | field name (omittable key, §5.2) | MUST be adjacent to the preceding field name |
 | `\|` | separator | choice variant; field-group member | whitespace optional |
 | `;` | separator | array size spec; map size spec (§5.3) | whitespace optional |
 | `..` | binary | size-spec range (§5.3) | whitespace on either side optional |
@@ -310,11 +343,11 @@ The whitespace requirement before removal `-` is a lexer fact restated as a rule
 
 ## Error categories at the schema layer (Part 2 §1.3, Part 1 §8.1)
 
-Everything that makes a schema fail to load is a **resolver error**, however value-like the rule: unresolved names, unknown facet members, incoherent bounds, invalid defaults, refuted `@disjoint`, unproductive recursion, unused or shadowing parameters, an entry that IS-A `top` declared by a schema whose `!!meta` is not the meta-kernel, a failed `@discriminator` or `@rest` check, import collisions or cycles, hash mismatches. **Validation errors** are reserved for data checked against a schema that loaded. Parse errors are grammar-level (`name {` without an operator, `(T)` one-variant choice, `[text,]`, `_` at a type position, `?` or a modifier on a group member, `T ^ { } - { }`). There are no warnings.
+Everything that makes a schema fail to load is a **resolver error**, however value-like the rule: unresolved names, unknown facet members, incoherent bounds, invalid defaults, refuted `@disjoint`, unproductive recursion, unused or shadowing parameters, an entry that IS-A `top` declared by a schema whose `!!meta` is not the meta-kernel, a refused field spelling (a default on an unmarked name, a pin on a voidable type, `=?` where a selector cannot stand), a failed family check (a member not pinning a selector, colliding pins, composing onto or refining a FINAL record), import collisions or cycles, hash mismatches. A schema the processor cannot obtain is not an error but **not judged** — reported as unavailable, beside the categories. **Validation errors** are reserved for data checked against a schema that loaded. Parse errors are grammar-level (`name {` without an operator, `(T)` one-variant choice, `[text,]`, `_` at a type position, a `?` on a group member's name or a modifier on a member, `a: T =? v`, two definition marks, `T ^ { } - { }`). There are no warnings.
 
 ## Name hygiene at the schema layer (Part 2 §11.4, Part 1 §8.2)
 
-Beyond the identifier grammar, conforming processors enforce by default (as *policy refusals*, not validity errors): skeleton distinctness (no two names in one scope may be visually confusable — `admin` vs Cyrillic `аdmin`, also pure-ASCII `comer`/`corner`), `Identifier_Status=Allowed` characters only, and a UTS #39 restriction level (default Highly Restrictive over the whole name; per-segment relaxation admits `id_пользователя`). Scopes at this layer: the members of one enum, the declared names of one schema, and the merged namespace at each `!!import`. Practical advice for an author: keep names single-script or separate scripts with `_`, and avoid pairs that differ only by `l`/`I`, `O`/`0`, `rn`/`m`.
+Beyond the identifier grammar, conforming processors enforce by default (as *policy refusals*, not validity errors): skeleton distinctness (no two names in one scope may be visually confusable — `admin` vs Cyrillic `аdmin`, also pure-ASCII `comer`/`corner`), `Identifier_Status=Allowed` characters only, and a UTS #39 restriction level (default Highly Restrictive over the whole name; per-segment relaxation admits `id_пользователя`). Scopes at this layer: the members of one `IDENTIFIER`-profile enum (a `TEXT` enum's members are values, reached only by the confusable-pair check), the declared names of one schema, and the merged namespace at each `!!import`. Practical advice for an author: keep names single-script or separate scripts with `_`, and avoid pairs that differ only by `l`/`I`, `O`/`0`, `rn`/`m`.
 
 ## Resource limits for schemas (Part 2 §11.5)
 

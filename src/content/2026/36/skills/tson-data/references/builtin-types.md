@@ -1,6 +1,6 @@
 # Built-in type vocabulary — full contracts
 
-Source: TSON Part 1 §5 and §7.6 (2026 Revision 36). These annotations apply **only in schemaless processing**. Under a `!!schema`, every `!name` resolves through the schema's namespace; the core type library (`https://tson.io/2026/36/m/core.tn`) declares types with the same names and the same parsing contracts, so a schema that imports core gives its data documents this vocabulary back.
+Source: TSON Part 1 §5 and §7.6 (2026 Revision 36). These annotations apply **only in schemaless processing** (a document with no `!!schema`); where a processor reads such a document into a declared host type, an annotation MUST agree with the family that type names. Under a `!!schema`, every `!name` resolves through the schema's namespace; the core type library (`https://tson.io/2026/36/m/core.tn`) declares types with the same names and the same parsing contracts, so a schema that imports core gives its data documents this vocabulary back.
 
 ## The atom parsing model
 
@@ -138,6 +138,7 @@ overflows with no single component long enough to catch.
 
 | Annotation | Contract | Quote? |
 |---|---|---|
+| `!boolean` | the tokens `true` and `false`, case-sensitive; any other token is a validation error (an enum-member violation). The form is not consulted: `!boolean "true"` and `!boolean true` are one value. Core's `boolean`, `!enum [true false]` | no |
 | `!text` | any token; host value is the text. Exists to assert the string case (`!text "42"`) and to anchor the `text_type` family | as content requires |
 | `!uuid` | RFC 9562, 8-4-4-4-12 hex with hyphens | no |
 | `!uri` | RFC 3986 | yes if it contains `:`, `/`, `?`, `#`, `%`, `@` |
@@ -152,4 +153,4 @@ CIDR prefix out of range or nonzero host bits → validation error. Everything e
 
 ## What does not exist
 
-There is no `!binary`, `!base64`, `!base64url`, `!base32` or `!hex` — the one binary tag is `!bytes`. Nor `!string`, `!str`, `!int`, `!integer` (as a *built-in*; core declares `integer` for schemas), `!float`, `!double`, `!bool`, `!boolean`, `!timestamp`, `!decimal`, `!url`, `!ip`, `!json`, `!any`, `!null`, `!void`, `!enum`, `!list`, `!array`, `!map`, `!record`. Under a schemaless document any such name is silently preserved as an uninterpreted marker — a processor will not complain, which is exactly why an author should not rely on one.
+There is no `!binary`, `!base64`, `!base64url`, `!base32` or `!hex` — the one binary tag is `!bytes`. Nor `!string`, `!str`, `!int`, `!integer` (as a *built-in*; core declares `integer` for schemas), `!float`, `!double`, `!bool`, `!timestamp`, `!decimal`, `!url`, `!ip`, `!json`, `!any`, `!null`, `!void`, `!enum`, `!list`, `!array`, `!map`, `!record`. Under a schemaless document any such name is silently preserved as an uninterpreted marker — a processor will not complain, which is exactly why an author should not rely on one.

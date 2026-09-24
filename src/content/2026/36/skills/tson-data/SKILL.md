@@ -7,7 +7,7 @@ description: Write, read, convert, and fix TSON data documents (.tn files) — t
 
 TSON (Typed Schema Object Notation) is a Unicode text format in the JSON family: quotes and commas are optional where the structure is unambiguous, there are three containers instead of two (records, maps, arrays), a distinct absent sentinel `_`, and three kinds of augmentation — annotations `@name`, type annotations `!name`, and directives `!!name:"…"`.
 
-**TSON is JSON-*like*, not a JSON superset.** A JSON document is not a TSON document, and JSON is a second encoding of the same model, read through a JSON reader that maps its `null` to absence. Do not paste JSON and call it TSON — convert it (see below).
+**TSON is JSON-*like*, not a JSON superset.** A JSON document is not a TSON document, and JSON is a second encoding of the same model (*TSON Part 3: JSON Encoding*), read through a JSON reader that maps its `null` to absence. Do not paste JSON and call it TSON — convert it (see below).
 
 This skill covers **data documents** — the Class 1 format defined by *TSON Part 1: Text Data Format*, 2026 Revision 36. The rules below are the ones an author actually needs; `references/` holds the details to consult when a case is unusual.
 
@@ -53,9 +53,7 @@ Unquoted tokens must be in Unicode NFC; if you generate non-ASCII names, emit NF
 
 A **field name**, an annotation name and a type-annotation name are *names*, not arbitrary strings. Each is matched — after unquoting and NFC normalisation — in full against the identifier grammar: it starts with `XID_Start` and continues with `XID_Continue` or `-`. A token in name position whose decoded text is not an identifier is a **parse error**, schemaless or governed.
 
-Quoting a name buys relief from the *lexical* accidents of the unquoted form; it does not buy a different set of names. So all of these fail:
-
-So `{ "first name": 1 }` (space), `{ _id: 1 }` and `{ "_id": 1 }` (no identifier starts with `_`, and quoting does not help) and `{ 42x: 2 }` (must start with `XID_Start`) are all parse errors.
+Quoting a name buys relief from the *lexical* accidents of the unquoted form; it does not buy a different set of names. So `{ "first name": 1 }` (space), `{ _id: 1 }` and `{ "_id": 1 }` (no identifier starts with `_`, and quoting does not help) and `{ 42x: 2 }` (must start with `XID_Start`) are all parse errors.
 
 The remedy is the one the format already has: **a key that is not a name belongs in a map.** Write `{ "Content-Type" => "text/plain" }`, `{ "_id" => 1 }`. Record fields are the named members of a shape, which is what makes them declarable; map keys are values and are never matched against the identifier grammar.
 
@@ -65,9 +63,9 @@ The remedy is the one the format already has: **a key that is not a name belongs
 
 Single-line strings use the escapes `\" \\ \b \f \n \r \t` plus TSON's `\s` (a space). **`\/` is not an escape** — a solidus needs none. A literal tab must be escaped as `\t`.
 
-Character escapes come in two spellings, `"\u" ( 4HEXDIG / "{" 1*6HEXDIG "}" )`, and the value denoted must be a Unicode scalar value — in range and not a surrogate code point. `A` and `\u{41}` are two spellings of one character; `\u{1F600}` names a supplementary character directly, as does `\u{E0100}` for an invisible variation selector. **There are no surrogate pairs**: the JSON spelling `\uD83D\uDE00` is two lexer errors, not one emoji — write `\u{1F600}`, or paste the character itself.
+Character escapes are `\uXXXX` or `\u{1-6 hex}`, denoting a Unicode scalar value. **There are no surrogate pairs**: JSON's `\uD83D\uDE00` is two lexer errors — write `\u{1F600}`, or paste the character.
 
-Multi-line strings open with `"""` plus a line break and close with `"""` on its own line. Common leading indentation (measured against the closing line too, character by character — tabs and spaces do not match) is stripped; trailing spaces are stripped (use `\s` to keep one); the final newline before the close is not part of the value. Literal `"` and `""` inside are content; literal tabs are allowed.
+Multi-line strings open with `"""` plus a line break and close with `"""` on its own line. Common leading indentation (the closing line included; tabs and spaces do not match) and trailing spaces are stripped (`\s` keeps one); the final newline is not part of the value. Worked examples: `references/grammar-notes.md`.
 
 ```
 notes: """
@@ -78,7 +76,7 @@ notes: """
 
 ## What an unquoted token means (base type resolution)
 
-Base type resolution assigns one of **three** host base types — boolean, number, string — and it applies **only in schemaless documents**: a document whose header carries no `!!schema`. Under a schema it does not apply at all; every value is typed by its position or its tag, and each declared atom owns its parsing contract. A built-in `!type` annotation also overrides it for its token.
+Base type resolution assigns one of **three** host base types — boolean, number, string — and it applies **only where nothing types the position**: a document with no `!!schema`, read into no declared type. Under a schema — or when a processor binds into a host type naming a family Part 1 defines — the type's own contract reads the token, and each declared atom owns its parsing contract. A built-in `!type` annotation also overrides it for its token.
 
 Where it applies, every unquoted token is resolved in this order — first match wins, and the whole token must match:
 
@@ -96,7 +94,7 @@ Numbers are arbitrary precision. Distinct spellings of one value are equal (`255
 
 `_` means "present, with no value", and it is the only spelling of absence — there is no `null`. Use `_` for a field or entry that is deliberately blank. It can stand at any value position — field value, map entry value, array element (`[1 _ 3]` has three elements), or the whole document (`!!id:"…"` followed by `_` is a metadata-only document) — but never as a map key.
 
-Under a schema, whether `_` is admitted at a position depends on the declared type (optional fields and `[T?]` elements admit it; required fields do not — omit the field instead and let the default inject).
+Under a schema, `_` is admitted where the declared type carries `?` (`a: T?`, `a?: T?`, `[T?]`); elsewhere it is an error, and omitting the key is what triggers a default. Schemaless, `_` and omission both read as absence.
 
 ## Augmentation
 
@@ -127,6 +125,7 @@ When no schema is in scope, these names parse the following token by the named a
 | `!rational` | `a/b`, b nonzero, not normalised | **yes** (`/`) |
 | `!complex` | `3+4i`, `2.5-1j`, or plain number | no |
 | `!text` | any token; asserts "this is a string" (`!text "42"`) | as content requires |
+| `!boolean` | `true` or `false`, case-sensitive; `!boolean "true"` is the same value | no |
 | `!date` | RFC 3339 `YYYY-MM-DD` | no |
 | `!time` | RFC 3339 `HH:MM:SS[.frac](Z\|±HH:MM)` — offset mandatory; the value is the time of day **in UTC** | **yes** |
 | `!datetime` | RFC 3339 `YYYY-MM-DDTHH:MM:SS…` with offset; the value is the **instant** | **yes** |
@@ -180,7 +179,7 @@ When no schema is in scope, these names parse the following token by the named a
 
 **JSON is not a paste-in.** Three things must change, and the first two are silent corruptions if you skip them:
 
-1. **`null` → `_`.** JSON `null` means absence. Left as the bare token it becomes the *string* `null` — a valid document that says something else.
+1. **`null` → `_`.** JSON `null` means absence. Left as the bare token it becomes the *string* `null` — a valid document that says something else. (Under a schema whose field refuses `_` — `a?: T` — omit the field instead.)
 2. **Object keys that are not identifiers → a map.** `{"first name": …}`, `{"_id": …}`, `{"Content-Type": …}` are parse errors as records; write those objects with `=>`. A JSON object whose keys are arbitrary (a dictionary) should be a map anyway.
 3. **`\/` → `/`**, and surrogate pairs → one `\u{…}` escape.
 
