@@ -14,7 +14,7 @@
 export const SERIES = '2026';
 
 /** Bump when starting a new spec revision. */
-export const CURRENT_REVISION = '35';
+export const CURRENT_REVISION = '36';
 
 /**
  * Optional one-line summary per revision, shown on the revisions index.
@@ -22,9 +22,11 @@ export const CURRENT_REVISION = '35';
  */
 export const REVISION_NOTES: Record<string, string> = {
   // Plain text — rendered as-is, so no markdown.
+  '36':
+    'In progress.',
   '35':
-    'In progress. Adjudicates the 36-entry implementation feedback register against ' +
-    'revision 34. Drops the JSON-superset claim and the rules that existed only for it: ' +
+    'Adjudicates the 36-entry implementation feedback register against revision 34. ' +
+    'Drops the JSON-superset claim and the rules that existed only for it: ' +
     'null leaves the notation, a field name is an identifier at every layer, and a comma ' +
     'may follow a value. The constructor marker goes, applicability becoming IS-A top; ' +
     'scoped replaces extern and unknown; one bytes type replaces the four spelled ' +
