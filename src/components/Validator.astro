@@ -380,7 +380,7 @@
     email:     email
     started:   date
     active:    boolean
-    tags:      [non_empty_text]?
+    tags?:     [non_empty_text]
   }
 }
 `;
@@ -388,7 +388,7 @@
   const OBSERVATORY_BODY = `@doc:"A tour of the schema language: atom refinements, enums, templates, field groups, maps, sets, tuples, composition, refinement, subtraction, scoped positions and guarded recursion."
 {
   @doc:"Three letters, a dash, three digits."
-  designator => !text ^ { pattern: "^[A-Z]{3}-[0-9]{3}$" }
+  designator => !text ^ { pattern: "[A-Z]{3}-[0-9]{3}" }
 
   @doc:"Metres above the reference ellipsoid."
   altitude_m => !integer ^ { min: -500  max: 9000 }
@@ -425,8 +425,8 @@
   @doc:"Guarded recursion: the child list is optional, so the type has finite members."
   subsystem => {
     name:      non_empty_text
-    state:     status ~ ACTIVE
-    children:  [subsystem]?
+    state?:    status ~ ACTIVE
+    children?: [subsystem]
   }
 
   @doc:"Mixin contributing provenance to anything that composes it."
@@ -454,32 +454,50 @@
   }
 
   instrument => identified & provenance & {
-    @doc:"REQUIRED - must be supplied."
-    band:        band
-    @doc:"REQUIRED_DEFAULT - injected when omitted."
-    channel:     channel ~ 1
-    @doc:"REQUIRED_FIXED - immutable from here down."
-    schema_kind: text = "instrument"
-    @doc:"OPTIONAL - may be absent."
-    serial:      short_label?
-    @doc:"OPTIONAL_FIXED - if present, must be this value."
-    calibrated:  boolean? = true
-    @doc:"OPTIONAL_FIXED with no value - the field is forbidden to carry one."
-    retired_on:  date? = _
+    @doc:"Key written, any value."
+    band:         band
+    @doc:"Key may be omitted; omission injects 1."
+    channel?:     channel ~ 1
+    @doc:"A marker: key written, and written as this value."
+    schema_kind:  text = "instrument"
+    @doc:"Key may be omitted; _ refused."
+    serial?:      short_label
+    @doc:"Key may be omitted, injecting true; a written value must be true."
+    calibrated?:  boolean = true
+    @doc:"Key may be omitted; _ admitted - not retired is something a document can say."
+    retired_on?:  date?
+    @doc:"Key may be omitted or written as _, and never carries a value."
+    decommission?: void?
 
-    aperture_mm: positive_integer
-    cadence:     cadence
-    exposure:    exposure
-    targets:     [designator; 1..8]
-    tuning:      {non_empty_text => number; ..16}
-    samples:     sample_run
-    notes:       bag<non_empty_text>?
+    aperture_mm:  positive_integer
+    cadence:      cadence
+    exposure:     exposure
+    targets:      [designator; 1..8]
+    tuning:       {non_empty_text => number; ..16}
+    samples:      sample_run
+    notes?:       bag<non_empty_text>
   }
 
-  @doc:"Refinement pins fields of an existing record."
+  @doc:"Refinement tightens fields of an existing record: a pin, and a required field relaxed to an injected default."
   radio_instrument => instrument ^ {
-    band:        = RADIO
-    aperture_mm: ~ 25000
+    band:         = RADIO
+    aperture_mm?: ~ 25000
+  }
+
+  @doc:"A sealed family: the base has no instances, and each member pins the selector, so a mount is placed by its kind with no tag."
+  mount => abstract {
+    kind:      text =?
+    rated_kg:  positive_integer
+  }
+
+  alt_az => mount & {
+    kind:        = "alt-az"
+    slew_deg_s:  number
+  }
+
+  equatorial => mount & {
+    kind:          = "equatorial"
+    polar_offset:  number
   }
 
   @doc:"Subtraction removes fields from an existing record."
@@ -499,11 +517,11 @@
     by:         non_empty_text
     on:         date
     drift_ppm:  number
-    verified:   boolean ~ false
+    verified?:  boolean ~ false
   }
 
-  @doc:"Built-in atoms from core, each parsed and constrained by its own grammar."
-  telemetry => {
+  @doc:"Built-in atoms from core, each parsed and constrained by its own grammar. Final: nothing may compose onto it."
+  telemetry => final {
     stream_id:  uuid
     endpoint:   uri
     host:       ipv4
@@ -511,9 +529,9 @@
     checksum:   bytes
     window_utc: time
     @deprecated:"superseded by endpoint"
-    legacy_url: uri?
+    legacy_url?: uri
     @since:"2026-35"
-    mac_addr:   mac?
+    mac_addr?:   mac
   }
 
   @doc:"An observatory: the document root."
@@ -521,18 +539,19 @@
     established:   date
     site:          coordinate
     altitude:      altitude_m
-    status:        status ~ ACTIVE
+    status?:       status ~ ACTIVE
     tree:          subsystem
     window:        reading_window
     instruments:   [instrument; 1..]
+    mounts:        [mount]
     catalog:       index_of<non_empty_text>
     contacts:      {non_empty_text => email}
     readings:      {non_empty_text => number?}
-    partners:      partner_set?
+    partners?:     partner_set
     sparse_crew:   [non_empty_text?; 3]
-    highlight:     pair<designator, non_empty_text>?
-    published:     instrument_public?
-    radio:         radio_instrument?
+    highlight?:    pair<designator, non_empty_text>
+    published?:    instrument_public
+    radio?:        radio_instrument
     @doc:"A scoped position: the value names its own type, resolved in this schema."
     spotlight:     declared
     telemetry:     telemetry
@@ -542,7 +561,7 @@
 
   const PEOPLE: SchemaSpec = { id: 'https://example.com/people.tn', body: PEOPLE_BODY };
   const OBSERVATORY: SchemaSpec = {
-    id: 'https://tson.io/2026/35/examples/observatory.tn',
+    id: 'https://tson.io/2026/36/examples/observatory.tn',
     body: OBSERVATORY_BODY,
   };
 
@@ -657,14 +676,15 @@
     {
       // The whole schema language in one document: atom refinements, enums, templates and
       // partial application, field groups, maps, sets, tuples, composition, refinement,
-      // subtraction and guarded recursion — and all five field states, labelled in place.
+      // subtraction, guarded recursion and a sealed family — and a field's three
+      // slots (key omission, `_`, value) in their useful combinations, labelled in place.
       id: 'observatory',
       label: '🔭',
       aria: 'observatory — the whole schema language in one document',
       root: 'observatory',
       ok: true,
       schema: OBSERVATORY,
-      data: `!!schema:"https://tson.io/2026/35/examples/observatory.tn?sha256=__PIN__"
+      data: `!!schema:"https://tson.io/2026/36/examples/observatory.tn?sha256=__PIN__"
 
 !observatory {
   id:          "MKA-001"
@@ -714,6 +734,7 @@
       tuning:      { "if_ghz" => 1.42  "lo_ghz" => 8.4 }
       samples:     [0.11 0.12 0.09 0.14]
       notes:       ["baseline drift under 2%"]
+      decommission: _
     }
     {
       id:          "MKA-102"
@@ -728,7 +749,13 @@
       targets:     ["MKA-303"]
       tuning:      {}
       samples:     [1.0 1.0 0.98 1.02]
+      retired_on:  _
     }
+  ]
+
+  mounts: [
+    { kind: "alt-az"      rated_kg: 1200  slew_deg_s: 2.5 }
+    { kind: "equatorial"  rated_kg: 800   polar_offset: 19.82 }
   ]
 
   catalog: {
@@ -756,7 +783,7 @@
 
   telemetry: {
     stream_id:  "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
-    endpoint:   "https://tson.io/2026/35/examples/observatory.tn"
+    endpoint:   "https://tson.io/2026/36/examples/observatory.tn"
     host:       "192.0.2.41"
     heartbeat:  "PT30S"
     checksum:   "3q2+7w=="
@@ -934,7 +961,7 @@
    * core.tn — the useful half of "no entry named X" is what you could have written instead.
    * `origins` records ids without their scheme, so both sides are normalised before comparing.
    *
-   * Resolver-materialised entries are dropped: desugaring `tags: [non_empty_text]?` lifts a
+   * Resolver-materialised entries are dropped: desugaring `tags?: [non_empty_text]` lifts a
    * synthetic `array_non_empty_text_70c48588`, and §8.2 makes those names implementation-chosen
    * and non-normative — offering one as something you could have typed would be a lie. The
    * meta-kernel marks them with a `@synthetic` key annotation, which is what this reads.
