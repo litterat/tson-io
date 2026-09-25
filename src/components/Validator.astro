@@ -8,6 +8,9 @@
  * (github.com/litterat/ltr8-io-tson-typescript), which is where the scenarios and the diagnostics
  * rendering are maintained. Nothing is fetched: `@ltr8/tson/stdlib` carries meta-kernel, meta.tn
  * and core.tn as embedded text, so the whole ladder resolves client-side.
+ *
+ * The JSON tab is this page's own, not the port's demo: the same examples in Part 3's encoding,
+ * read by `@ltr8/tson/json` against the one compiled schema.
  */
 ---
 
@@ -19,15 +22,22 @@
 
   <!-- The pair, editable: data left, schema right — the hero visual this replaces. -->
   <div class="panes main-panes">
+    <!-- The same value in either encoding (Part 3), read against the one schema. Both tabs drive
+         the one editor: switching swaps the document, and each keeps its own edits. -->
     <div class="pane">
-      <div class="pane-head">
-        <span class="pane-title">TSON Data</span>
+      <div class="pane-head tabbed">
+        <span class="tabstrip" role="tablist" aria-label="data encoding">
+          <button type="button" class="tab" id="td-fmt-tson" role="tab" aria-selected="true"
+            aria-controls="td-panel-data">TSON Data</button>
+          <button type="button" class="tab" id="td-fmt-json" role="tab" aria-selected="false"
+            aria-controls="td-panel-data">JSON Data</button>
+        </span>
         <span class="pane-note">
           read against
           <input id="td-root" class="root-input" aria-label="schema entry the root value reads against" />
         </span>
       </div>
-      <div class="editor">
+      <div class="editor" id="td-panel-data" role="tabpanel">
         <div class="gutter" id="td-gutter" aria-hidden="true"></div>
         <textarea id="td-data" spellcheck="false" aria-label="TSON document"></textarea>
       </div>
@@ -363,7 +373,9 @@
     sha256Hex,
     withSha256Pin,
   } from '@ltr8/tson/identity';
+  import { compileJsonSchema, parseJsonCollecting, validateJson } from '@ltr8/tson/json';
   import type { CompiledSchema, Diagnostic, Document } from '@ltr8/tson';
+  import type { JsonCompiledSchema } from '@ltr8/tson/json';
 
   interface SchemaSpec {
     id: string;
@@ -385,7 +397,7 @@
 }
 `;
 
-  const OBSERVATORY_BODY = `@doc:"A tour of the schema language: atom refinements, enums, templates, field groups, maps, sets, tuples, composition, refinement, subtraction, scoped positions and guarded recursion."
+  const OBSERVATORY_BODY = `@doc:"A tour of the schema language: atom refinements, enums, templates, field groups, maps, sets, tuples, composition, refinement, subtraction and guarded recursion."
 {
   @doc:"Three letters, a dash, three digits."
   designator => !text ^ { pattern: "[A-Z]{3}-[0-9]{3}" }
@@ -552,8 +564,6 @@
     highlight?:    pair<designator, non_empty_text>
     published?:    instrument_public
     radio?:        radio_instrument
-    @doc:"A scoped position: the value names its own type, resolved in this schema."
-    spotlight:     declared
     telemetry:     telemetry
   }
 }
@@ -570,6 +580,13 @@
     label: string;
     root: string;
     data: string;
+    /**
+     * The same value in the JSON encoding (Part 3), bound out-of-band: the page supplies schema and
+     * root, the route §3.4 calls the production one, so the document carries no `$schema`. It also
+     * carries no `@` annotations — §4.3 gives them no JSON channel — and no pin, since §3.4 makes
+     * JSON documents not content-addressed.
+     */
+    json: string;
     /** The document is expected to conform — colours the chip green rather than yellow. */
     ok?: boolean;
     /** Also restores the shipped schema, making this chip a full reset to a conforming pair. */
@@ -598,6 +615,16 @@
   tags:    ["founder" "mathematician"]
 }
 `,
+      json: `{
+  "id":      "f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
+  "name":    "Ada Lovelace",
+  "age":     36,
+  "email":   "ada@example.com",
+  "started": "2026-01-15",
+  "active":  true,
+  "tags":    ["founder", "mathematician"]
+}
+`,
     },
     {
       id: 'planted',
@@ -617,6 +644,19 @@
   id:        "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
 }
 `,
+      json: `{
+  "id":        "not-a-uuid",
+  "name":      "",
+  "age":       300,
+  "email":     "ada@@example.com",
+  "started":   "2026-13-45",
+  "active":    "yes",
+  "tags":      { "first": "founder" },
+  "nickname":  "Countess",
+  "salary":    100000,
+  "id":        "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+}
+`,
     },
     {
       // One mistyped field name, two diagnostics: the field nobody declared, and the required one
@@ -634,6 +674,15 @@
   active:  true
 }
 `,
+      json: `{
+  "id":      "f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
+  "name":    "Ada Lovelace",
+  "age":     36,
+  "emai":    "ada@example.com",
+  "started": "2026-01-15",
+  "active":  true
+}
+`,
     },
     {
       id: 'missing',
@@ -643,6 +692,11 @@
 !employee {
   name: "Grace Hopper"
   age:  45
+}
+`,
+      json: `{
+  "name": "Grace Hopper",
+  "age":  45
 }
 `,
     },
@@ -655,6 +709,11 @@
   id:   "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
   name: "Unclosed record
   age:  36
+`,
+      json: `{
+  "id":   "f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
+  "name": "Unclosed record
+  "age":  36
 `,
     },
     {
@@ -670,6 +729,17 @@
   absent:   _
   null:     null
   nested:   { a: [1 2 3,]  b: { c: _ } }
+}
+`,
+      // Part 3 §3.4: JSON has no schemaless reading, so with no root this is RFC 8259 plus §3.1's
+      // profile — the one thing that profile adds to plain JSON is refusing a repeated member.
+      json: `{
+  "reading":  42,
+  "on":       "2026-08-28",
+  "where":    "10.0.0.1",
+  "absent":   null,
+  "nested":   { "a": [1, 2, 3], "b": { "c": null } },
+  "reading":  43
 }
 `,
     },
@@ -779,8 +849,6 @@
 
   highlight: { first: "MKA-777"  second: "brightest radio source in Cygnus" }
 
-  spotlight: !subsystem { name: "cryostat"  state: RETIRED }
-
   telemetry: {
     stream_id:  "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
     endpoint:   "https://tson.io/2026/36/examples/observatory.tn"
@@ -821,6 +889,143 @@
     targets:     ["MKA-909"]
     tuning:      { "if_ghz" => 0.408 }
     samples:     [0.5 0.5 0.5 0.5]
+  }
+}
+`,
+      // The TSON document's @critical, @operator and @calibration have no JSON channel (§4.3), so
+      // they are absent here rather than smuggled in as fields. The tag-free family and the `null`s
+      // standing for `_` are the encoding's own.
+      json: `{
+  "id":          "MKA-001",
+  "name":        "Mauna Kea Array",
+  "recorded_by": "D. Halley",
+  "recorded_at": "2026-08-28T04:12:00Z",
+  "established": "1968-07-20",
+  "site":        [19.8207, -155.4681],
+  "altitude":    4207,
+  "status":      "ACTIVE",
+
+  "tree": {
+    "name":  "array",
+    "state": "ACTIVE",
+    "children": [
+      { "name": "dish-a", "state": "ACTIVE" },
+      {
+        "name":  "dish-b",
+        "state": "DEGRADED",
+        "children": [
+          { "name": "feed-horn", "state": "ACTIVE" },
+          { "name": "cryostat",  "state": "RETIRED", "children": [] }
+        ]
+      }
+    ]
+  },
+
+  "window": ["2026-09-01T00:00:00Z", "2026-09-30T23:59:59Z"],
+
+  "instruments": [
+    {
+      "id":           "MKA-101",
+      "name":         "Wideband Receiver",
+      "recorded_by":  "D. Halley",
+      "recorded_at":  "2026-08-28T04:12:00Z",
+      "band":         "RADIO",
+      "channel":      12,
+      "schema_kind":  "instrument",
+      "serial":       "WB-7741",
+      "calibrated":   true,
+      "aperture_mm":  25000,
+      "cadence":      { "every_n_sec": 30 },
+      "exposure":     { "band": "RADIO", "max_seconds": 600 },
+      "targets":      ["MKA-777", "MKA-303"],
+      "tuning":       { "if_ghz": 1.42, "lo_ghz": 8.4 },
+      "samples":      [0.11, 0.12, 0.09, 0.14],
+      "notes":        ["baseline drift under 2%"],
+      "decommission": null
+    },
+    {
+      "id":          "MKA-102",
+      "name":        "Optical Imager",
+      "recorded_by": "R. Feynman",
+      "recorded_at": "2026-08-28T04:12:00Z",
+      "band":        "OPTICAL",
+      "schema_kind": "instrument",
+      "aperture_mm": 8100,
+      "cadence":     { "continuous": true },
+      "exposure":    { "band": "OPTICAL" },
+      "targets":     ["MKA-303"],
+      "tuning":      {},
+      "samples":     [1.0, 1.0, 0.98, 1.02],
+      "retired_on":  null
+    }
+  ],
+
+  "mounts": [
+    { "kind": "alt-az",     "rated_kg": 1200, "slew_deg_s": 2.5 },
+    { "kind": "equatorial", "rated_kg": 800,  "polar_offset": 19.82 }
+  ],
+
+  "catalog": {
+    "MKA-777": "Cygnus A",
+    "MKA-303": "Crab Nebula"
+  },
+
+  "contacts": {
+    "director":   "director@example.org",
+    "operations": "ops@example.org"
+  },
+
+  "readings": {
+    "seeing_arcsec": 0.42,
+    "humidity_pct":  null
+  },
+
+  "partners": ["IRAM", "ALMA", "NRAO"],
+
+  "sparse_crew": ["A. Cannon", null, "V. Rubin"],
+
+  "highlight": { "first": "MKA-777", "second": "brightest radio source in Cygnus" },
+
+  "telemetry": {
+    "stream_id":  "f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
+    "endpoint":   "https://tson.io/2026/36/examples/observatory.tn",
+    "host":       "192.0.2.41",
+    "heartbeat":  "PT30S",
+    "checksum":   "3q2+7w==",
+    "window_utc": "23:59:59Z",
+    "mac_addr":   "00-1B-44-11-3A-B7"
+  },
+
+  "published": {
+    "id":          "MKA-101",
+    "name":        "Wideband Receiver",
+    "recorded_at": "2026-08-28T04:12:00Z",
+    "band":        "RADIO",
+    "channel":     12,
+    "schema_kind": "instrument",
+    "calibrated":  true,
+    "aperture_mm": 25000,
+    "cadence":     { "on_trigger": "burst-alert" },
+    "exposure":    { "band": "RADIO", "max_frames": 4 },
+    "targets":     ["MKA-777"],
+    "tuning":      { "if_ghz": 1.42 },
+    "samples":     [0.0, 0.0, 0.0, 0.0]
+  },
+
+  "radio": {
+    "id":          "MKA-104",
+    "name":        "Deep Field Dish",
+    "recorded_by": "J. Bell",
+    "recorded_at": "2026-08-28T04:12:00Z",
+    "band":        "RADIO",
+    "channel":     3,
+    "schema_kind": "instrument",
+    "aperture_mm": 25000,
+    "cadence":     { "every_n_sec": 1 },
+    "exposure":    { "band": "RADIO" },
+    "targets":     ["MKA-909"],
+    "tuning":      { "if_ghz": 0.408 },
+    "samples":     [0.5, 0.5, 0.5, 0.5]
   }
 }
 `,
@@ -867,6 +1072,17 @@
   const panelDiags = $<HTMLElement>('td-panel-diags');
   const badgeEl = $<HTMLElement>('td-badge');
   const noteEl = $<HTMLElement>('td-note');
+  const fmtTson = $<HTMLButtonElement>('td-fmt-tson');
+  const fmtJson = $<HTMLButtonElement>('td-fmt-json');
+
+  /**
+   * Which encoding the data pane holds, and the document last seen in each. Both are the same
+   * value against the same schema, so a scenario loads both; switching swaps the textarea and keeps
+   * whatever was typed in the other until the next scenario replaces it.
+   */
+  type Format = 'tson' | 'json';
+  let format: Format = 'tson';
+  const docs: Record<Format, string> = { tson: '', json: '' };
 
   /** Set once the reader picks a tab by hand, so a later fault never yanks the pane out from under
    *  them. Cleared when they load a scenario, which is a fresh start. */
@@ -950,6 +1166,36 @@
       compiled = null;
       compiledFor = null;
       return { compiled: null, error: error as Error };
+    }
+  }
+
+  /**
+   * The JSON encoding's readers over the same linked schema — one schema, two encodings, which is
+   * the point Part 3 makes. Built only when the JSON tab first needs it, and cached against the
+   * compiled schema it was built from so a schema edit rebuilds it.
+   */
+  let jsonCompiled: JsonCompiledSchema | null = null;
+  let jsonCompiledFrom: CompiledSchema | null = null;
+
+  function jsonSchemaOf(schema: CompiledSchema): JsonCompiledSchema {
+    if (jsonCompiledFrom !== schema || !jsonCompiled) {
+      jsonCompiled = compileJsonSchema(schema.linked);
+      jsonCompiledFrom = schema;
+    }
+    return jsonCompiled;
+  }
+
+  /**
+   * JSON with no root: Part 3 §3.4 gives the encoding no schemaless reading, so all there is to
+   * check is RFC 8259 and §3.1's profile. `parseJsonCollecting` still throws for a document that
+   * will not parse, which is folded back into a diagnostic so a syntax error reads like any other.
+   */
+  function checkJsonWellFormed(bytes: Uint8Array): readonly Diagnostic[] {
+    try {
+      return parseJsonCollecting(bytes).diagnostics;
+    } catch (e) {
+      const error = e as Error & { position?: Diagnostic['dataPosition'] };
+      return [{ code: 'VALIDATION_ERROR', message: error.message, dataPosition: error.position }];
     }
   }
 
@@ -1156,20 +1402,27 @@
     const digest = await schemaDigest(schemaEl.value);
 
     // The `!!schema` reference as the document writes it, pin and all. A document that will not
-    // parse has worse problems than its pin, so a failure here just skips the check.
+    // parse has worse problems than its pin, so a failure here just skips the check. JSON has no
+    // pin to check: its binding arrives out-of-band, and §3.4 makes it not content-addressed.
+    const json = format === 'json';
     let doc: Document | null = null;
-    try {
-      doc = parse(bytes).document;
-    } catch {
-      doc = null;
+    if (!json) {
+      try {
+        doc = parse(bytes).document;
+      } catch {
+        doc = null;
+      }
     }
 
     const started = performance.now();
     let diagnostics: readonly Diagnostic[];
 
     if (root === '') {
-      // Class 1: base syntax and the built-in type vocabulary, no schema in scope.
-      diagnostics = validate(bytes).diagnostics;
+      // Class 1: base syntax and the built-in type vocabulary, no schema in scope. JSON has no
+      // Class 1 (Part 3 §3.4), so for it this is well-formedness alone.
+      diagnostics = json ? checkJsonWellFormed(bytes) : validate(bytes).diagnostics;
+      pinnedRef = null;
+      pinDiagCount = 0;
     } else {
       const { compiled: schema, error } = compileSchema(schemaEl.value);
       if (error || !schema) {
@@ -1200,18 +1453,34 @@
         if (!tabPinned) showTab('diags');
         return;
       }
-      diagnostics = validate(bytes, { schema, root }).diagnostics;
-      const pins = checkPins(doc, schemaEl.value, digest);
-      pinDiagCount = pins.length;
-      if (pins.length) diagnostics = [...pins, ...diagnostics];
+      if (json) {
+        diagnostics = validateJson(bytes, { schema: jsonSchemaOf(schema), root }).diagnostics;
+        pinnedRef = null;
+        pinDiagCount = 0;
+      } else {
+        diagnostics = validate(bytes, { schema, root }).diagnostics;
+        const pins = checkPins(doc, schemaEl.value, digest);
+        pinDiagCount = pins.length;
+        if (pins.length) diagnostics = [...pins, ...diagnostics];
+      }
     }
     const elapsed = performance.now() - started;
 
     const [verdict, label] =
       diagnostics.length === 0
-        ? ['ok', 'diagnostics — the document conforms']
+        ? [
+            'ok',
+            json && root === ''
+              ? 'diagnostics — well-formed JSON, and with no schema there is nothing more to read'
+              : 'diagnostics — the document conforms',
+          ]
         : diagnostics.every((d) => isGap(d.code))
-          ? ['warn', 'library gaps — nothing was checked']
+          ? [
+              'warn',
+              diagnostics.length === 1
+                ? 'library gap — not a verdict, and no fault found elsewhere'
+                : 'library gaps — not a verdict, and no fault found elsewhere',
+            ]
           : [
               'bad',
               diagnostics.length === 1 ? 'diagnostic, in one pass' : 'diagnostics, in one pass',
@@ -1245,6 +1514,20 @@
     }
   }
 
+  /** Swaps the data pane to the other encoding, keeping what was typed in the one being left. */
+  function setFormat(next: Format) {
+    if (!dataEl || next === format) return;
+    docs[format] = dataEl.value;
+    format = next;
+    dataEl.value = docs[format];
+    dataEl.setAttribute('aria-label', format === 'json' ? 'JSON document' : 'TSON document');
+    fmtTson?.setAttribute('aria-selected', String(format === 'tson'));
+    fmtJson?.setAttribute('aria-selected', String(format === 'json'));
+    dataEl.scrollTop = 0;
+    if (gutterEl) gutterEl.scrollTop = 0;
+    void safeRun();
+  }
+
   async function loadScenario(scenario: Scenario) {
     if (!dataEl || !rootEl || !schemaEl) return;
 
@@ -1270,7 +1553,9 @@
     // placeholder rather than a baked-in digest, so loading one after a re-pin cannot drag the
     // original digest back in — an example is written against the schema you are holding.
     const digest = await schemaDigest(schemaEl.value);
-    dataEl.value = digest ? scenario.data.replace('__PIN__', digest) : scenario.data;
+    docs.tson = digest ? scenario.data.replace('__PIN__', digest) : scenario.data;
+    docs.json = scenario.json;
+    dataEl.value = docs[format];
     rootEl.value = scenario.root;
     for (const chip of document.querySelectorAll('#tson-demo .chip')) {
       chip.setAttribute('aria-pressed', String((chip as HTMLElement).dataset.id === scenario.id));
@@ -1319,6 +1604,8 @@
       if (gutterEl) gutterEl.scrollTop = dataEl.scrollTop;
     });
     rootEl.addEventListener('input', debounced);
+    fmtTson?.addEventListener('click', () => setFormat('tson'));
+    fmtJson?.addEventListener('click', () => setFormat('json'));
     // Editing the schema pins the tab: the reader is looking at the text they are typing, and a
     // fault in the *data* must not swap the pane out mid-keystroke.
     schemaEl.addEventListener('input', () => {

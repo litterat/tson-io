@@ -353,6 +353,9 @@ const routes = [
       <p class="text-sm text-gray-500 pt-5 max-w-4xl">
         TSON data and schema documents share one lexer, one toolchain, one verification path. Both panes are editable, and everything you see runs in your browser. Every reference in the two headers is pinned by hash: the schema names its own content, its meta-schema and its type library, and the document names the schema. Edit the schema and those pins stop matching — a document's hash covers everything below the line that carries it, which is how it can name itself. That is what a consumer verifies before trusting a byte, and what the <code class="font-mono text-gray-900">re-pin</code> button restores.
       </p>
+      <p class="text-sm text-gray-500 pt-3 max-w-4xl">
+        Switch to <strong class="font-semibold text-gray-700">JSON Data</strong> and the same values are read from plain JSON against the same schema, under the <a href={`/2026/${CURRENT_REVISION}/tson-part3-json`} class="text-teal-700 hover:underline">JSON encoding</a>. The JSON carries no apparatus: the page supplies the schema and the root type, the way an API contract would, and <code class="font-mono text-gray-900">null</code> is TSON's <code class="font-mono text-gray-900">_</code>. JSON has no channel for <code class="font-mono text-gray-900">@</code> annotations, so the observatory's are absent there.
+      </p>
     </div>
 
     <!-- ═══ Current status ═══ -->
