@@ -59,7 +59,8 @@ next one opens.
 directories, so every page, the sitemap, and the revisions index pick a new one up automatically.
 Only two things are declared by hand: `CURRENT_REVISION` (which one is the working draft — the
 home page, `/llms.txt`, `/sitemap.xml`, and `public/_redirects` key off it) and `REVISION_NOTES`
-(an optional one-line summary per revision for the listing).
+(per revision, an optional one-line summary and a short list of notable changes, each with a
+brief why, for the listing).
 
 Routes:
 

@@ -37,6 +37,10 @@ const revisions = [...new Set(specEntries.map(e => revisionOf(e.id)))]
     changelogs: changelogEntries.filter(e => revisionOf(e.id) === revision),
     reportCount: reportEntries.filter(e => revisionOf(e.id) === revision).length,
   }));
+
+/** Splits a note on backticks: odd-indexed segments render as code, the rest as plain text. */
+const segments = (text: string) => text.split('`').map((text, i) => ({ text, code: i % 2 === 1 }));
+const codeClass = 'font-mono text-[0.8125rem] bg-gray-100 rounded px-1';
 ---
 
 <Layout
@@ -80,7 +84,19 @@ const revisions = [...new Set(specEntries.map(e => revisionOf(e.id)))]
             </span>
           </div>
 
-          {note && <p class="text-sm text-gray-600 mt-3 max-w-3xl">{note}</p>}
+          {note && <p class="text-sm text-gray-600 mt-3 max-w-3xl">{segments(note.summary).map(s => s.code ? <code class={codeClass}>{s.text}</code> : s.text)}</p>}
+          {note?.changes && (
+            <ul class="mt-3 max-w-3xl list-disc pl-5 space-y-1 text-sm text-gray-700 marker:text-gray-400">
+              {note.changes.map(({ what, why }) => (
+                <li>
+                  <span class="text-gray-800">{segments(what).map(s => s.code ? <code class={codeClass}>{s.text}</code> : s.text)}</span>
+                  {why && (
+                    <span class="text-gray-500"> — {segments(why).map(s => s.code ? <code class={codeClass}>{s.text}</code> : s.text)}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
 
           <ul class="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
             {documents.map(entry => (
