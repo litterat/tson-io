@@ -14,7 +14,7 @@
 export const SERIES = '2026';
 
 /** Bump when starting a new spec revision. */
-export const CURRENT_REVISION = '36';
+export const CURRENT_REVISION = '37';
 
 /** One notable change: what changed, and briefly why. */
 export interface RevisionChange {
@@ -35,6 +35,7 @@ export interface RevisionNote {
  */
 export const REVISION_NOTES: Record<string, RevisionNote> = {
   // Plain text, except that `backticks` render as code.
+  '37': { summary: 'In progress.' },
   '36': {
     summary: 'Adjudicates the 21-entry spec-feedback register against revision 35.',
     changes: [
