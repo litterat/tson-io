@@ -81,7 +81,7 @@ Routes:
 | `{revision}/tson-guide.md`, any other spec doc | `spec` (no `part`) | "TSON Specification", after the parts |
 | `{revision}/*-changelog.md` | `changelog` | "Reports" → "Change Log" |
 | `{revision}/reports/*.md` | `reports` | "Reports", split by kind |
-| `{revision}/m/*.tn`, `{revision}/fixtures/*.tn` | — (static, see below) | "Schema Source Files", each source with its fixture in parentheses |
+| `{revision}/m/*.tn`, `{revision}/fixtures/*.tn` | — (static, see below) | "Schema Source Files", each source with its fixture (`{name}-resolved.tn`) in parentheses where one exists |
 | `{revision}/skills/{name}/SKILL.md` + its `references/`, `scripts/` | — (static, see below) | "Skills", each with its bundle download |
 
 **Change logs** are matched by the `-changelog.md` filename suffix, and the `spec` glob excludes
@@ -131,7 +131,7 @@ artifacts take `.tn1`.
 rules cover every revision. Each uses one Cloudflare placeholder plus one splat, which is the
 maximum a single rule allows.
 
-The `.tn` files carry **real** sha256 pins (revisions 33–36 all do): the digest is over the file's
+The `.tn` files carry **real** sha256 pins (revisions 33–37 all do): the digest is over the file's
 bytes after its `!!id` line, computed bottom-up — the kernel first, then meta pinning the kernel,
 then core pinning meta — and Part 2 §13.2 repeats the three. Copying a revision forward therefore
 carries the *previous* revision's digests into the new files, which no longer match once the URLs
@@ -153,6 +153,12 @@ source and the build both look correct:
 mkdir -p public/2026/33/m
 cp src/content/2026/33/m/*.tn src/content/2026/33/fixtures/*.tn public/2026/33/m/
 ```
+
+Which sources a revision lists is derived from its `m/` directory by `schemaFilesFor()` in
+`src/lib/spec.ts` — the chain (kernel, meta, core) first, any other source after it — and a source
+is paired with `fixtures/{name}-resolved.tn` only when that file exists, so a new artifact such as
+revision 37's `policy.tn` lists with no edit. Its `/llms.txt` line comes from `SCHEMA_DESCRIPTIONS`
+beside it; a source missing there is listed without one.
 
 **Skills** work the same way, with a packaging step in the middle. The source is the unpacked
 directory `src/content/2026/{revision}/skills/{name}/`; the published artifact is the zip at

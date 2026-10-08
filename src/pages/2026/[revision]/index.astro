@@ -5,7 +5,7 @@ import { getCollection } from 'astro:content';
 import { byReportOrder, reportInfo, reportKind, reportSlug } from '../../../lib/reports';
 import {
   CURRENT_REVISION,
-  SCHEMA_FILES,
+  schemaFilesFor,
   SERIES,
   compareRevisionsDesc,
   isCurrentRevision,
@@ -136,21 +136,25 @@ const specDocs = [
       <h2 id="schema-source-files" class="text-xl font-semibold mb-3 pb-2 border-b border-gray-200 scroll-mt-6">Schema Source Files</h2>
       <p class="text-sm text-gray-600 mb-4 max-w-3xl">
         The normative TSON schema source files in <code class="font-mono bg-gray-100 px-1 rounded">.tn</code>
-        format, each followed in parentheses by its non-normative resolved-output fixture. To check
-        an implementation: parse the source, run the resolver, canonicalise, and compare against
-        the fixture.
+        format, each followed in parentheses by its non-normative resolved-output fixture where one
+        is published. To check an implementation: parse the source, run the resolver, canonicalise,
+        and compare against the fixture.
       </p>
       <ul class="space-y-2 font-mono text-sm">
-        {SCHEMA_FILES.map(file => (
+        {schemaFilesFor(revision).map(file => (
           <li>
             <a href={`/2026/${revision}/m/${file.source}`} class="text-gray-700 hover:text-gray-900 hover:underline">
               {file.source}
             </a>
-            <span class="text-gray-400">{' ('}</span>
-            <a href={`/2026/${revision}/m/${file.resolved}`} class="text-gray-500 hover:text-gray-900 hover:underline">
-              {file.resolved}
-            </a>
-            <span class="text-gray-400">{')'}</span>
+            {file.resolved && (
+              <>
+                <span class="text-gray-400">{' ('}</span>
+                <a href={`/2026/${revision}/m/${file.resolved}`} class="text-gray-500 hover:text-gray-900 hover:underline">
+                  {file.resolved}
+                </a>
+                <span class="text-gray-400">{')'}</span>
+              </>
+            )}
           </li>
         ))}
       </ul>

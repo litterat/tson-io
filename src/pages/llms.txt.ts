@@ -11,7 +11,7 @@
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { resolveBase, specLine } from '../lib/llmsTxt';
-import { CURRENT_REVISION, isCurrentRevision, revisionOf, skillsFor } from '../lib/spec';
+import { CURRENT_REVISION, SCHEMA_DESCRIPTIONS, isCurrentRevision, revisionOf, schemaFilesFor, skillsFor } from '../lib/spec';
 import about from '../lib/llms-about.txt?raw';
 import otherTsons from '../lib/llms-other-tsons.txt?raw';
 
@@ -47,9 +47,10 @@ export const GET: APIRoute = async ({ site }) => {
       : []),
     '## Schema Source Files',
     '',
-    `- [meta-kernel.tn](${base}/2026/${CURRENT_REVISION}/m/meta-kernel.tn): Base kind constructors and the IS-A lattice root`,
-    `- [meta.tn](${base}/2026/${CURRENT_REVISION}/m/meta.tn): Annotation types and schema-level directives`,
-    `- [core.tn](${base}/2026/${CURRENT_REVISION}/m/core.tn): Core type library for data interchange`,
+    ...schemaFilesFor(CURRENT_REVISION).map(({ source }) => {
+      const description = SCHEMA_DESCRIPTIONS[source];
+      return `- [${source}](${base}/2026/${CURRENT_REVISION}/m/${source})${description ? `: ${description}` : ''}`;
+    }),
     '',
     ...(skills.length > 0
       ? [

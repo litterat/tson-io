@@ -303,13 +303,44 @@ export function skillsFor(revision: string): SkillFile[] {
 }
 
 /**
- * The normative schema sources published under `/{series}/{revision}/m/`, each
- * paired with its non-normative resolved-output fixture. Both are served from
- * that same directory, and the listing shows them together so a source and its
- * resolver output are never a scroll apart.
+ * The normative schema sources published under `/{series}/{revision}/m/`, derived
+ * from `src/content/2026/{revision}/m/*.tn`, each paired with its non-normative
+ * resolved-output fixture from `fixtures/{name}-resolved.tn` where one exists.
+ * Both are served from that same directory, and the listing shows them together
+ * so a source and its resolver output are never a scroll apart.
  */
-export const SCHEMA_FILES = [
-  { source: 'meta-kernel.tn', resolved: 'meta-kernel-resolved.tn' },
-  { source: 'meta.tn', resolved: 'meta-resolved.tn' },
-  { source: 'core.tn', resolved: 'core-resolved.tn' },
-];
+const SCHEMA_SOURCES = import.meta.glob('../content/2026/*/m/*.tn', { query: '?raw', import: 'default' });
+const SCHEMA_FIXTURES = import.meta.glob('../content/2026/*/fixtures/*-resolved.tn', { query: '?raw', import: 'default' });
+
+/** The schema chain's own order; any other source follows it, alphabetically. */
+const SCHEMA_ORDER = ['meta-kernel.tn', 'meta.tn', 'core.tn'];
+
+/** One line per schema source, for `/llms.txt`; a source not named here is listed without one. */
+export const SCHEMA_DESCRIPTIONS: Record<string, string> = {
+  'meta-kernel.tn': 'Base kind constructors and the IS-A lattice root',
+  'meta.tn': 'Annotation types and schema-level directives',
+  'core.tn': 'Core type library for data interchange',
+  'policy.tn': 'Processor policy vocabulary: what a processor admits and spends',
+};
+
+export interface SchemaFile {
+  source: string;
+  /** The resolved-output fixture, when the revision publishes one for this source. */
+  resolved?: string;
+}
+
+export function schemaFilesFor(revision: string): SchemaFile[] {
+  const base = `../content/2026/${revision}/`;
+  const rank = (name: string) => {
+    const i = SCHEMA_ORDER.indexOf(name);
+    return i === -1 ? SCHEMA_ORDER.length : i;
+  };
+  return Object.keys(SCHEMA_SOURCES)
+    .filter(path => path.startsWith(`${base}m/`))
+    .map(path => path.slice(`${base}m/`.length))
+    .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
+    .map(source => {
+      const resolved = source.replace(/\.tn$/, '-resolved.tn');
+      return `${base}fixtures/${resolved}` in SCHEMA_FIXTURES ? { source, resolved } : { source };
+    });
+}
