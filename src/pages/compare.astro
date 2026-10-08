@@ -6,6 +6,7 @@ const part1Url = `/2026/${CURRENT_REVISION}/tson-part1-data`;
 const part2Url = `/2026/${CURRENT_REVISION}/tson-part2-schema`;
 const coreUrl = `/2026/${CURRENT_REVISION}/m/core.tn`;
 const guideUrl = `/2026/${CURRENT_REVISION}/tson-guide`;
+const policyUrl = `/2026/${CURRENT_REVISION}/m/policy.tn`;
 
 const chipClass = 'inline-block font-mono text-xs font-semibold rounded-full px-3 py-1 mb-2 bg-gray-100 text-teal-800 hover:underline';
 
@@ -39,12 +40,12 @@ const sections: Section[] = [
       { feature: 'Boolean', cells: [['y', '`boolean`'], ['y', '`boolean`'], ['y', '`boolean`'], ['y', '`bool`'], ['y', '`BOOLEAN`'], ['y', '`bool`']] },
       { feature: 'Arbitrary-precision integer', cells: [['y', '`integer`'], ['y', '`integer`'], ['y', '`integer`'], ['n', '— 64-bit maximum'], ['y', '`INTEGER`'], ['p', '`int`, range left to the implementation']] },
       { feature: 'Fixed-width integers', cells: [['y', '`int8` … `int256`, `uint8` … `uint256`'], ['y', '`byte`, `short`, `int`, `long` and unsigned forms, 8–64 bits'], ['p', 'via `minimum` / `maximum`'], ['y', '`int32`, `int64`, `uint32`, `uint64`, plus `sint` / `fixed` wire variants'], ['p', 'via range constraint, `INTEGER (0..255)`'], ['n', '—']] },
-      { feature: 'Sign-restricted integers', cells: [['y', '`positive_integer`, `non_negative_integer`, …'], ['y', '`positiveInteger`, `nonNegativeInteger`, …'], ['p', 'via `minimum`'], ['p', 'unsigned widths only'], ['p', 'via range constraint'], ['n', '—']] },
+      { feature: 'Sign-restricted integers', cells: [['p', 'a one-line refinement, `!integer ^ { min: 1 }`'], ['y', '`positiveInteger`, `nonNegativeInteger`, …'], ['p', 'via `minimum`'], ['p', 'unsigned widths only'], ['p', 'via range constraint'], ['n', '—']] },
       { feature: 'Exact decimal', cells: [['y', '`number` — exact, no NaN or infinity'], ['y', '`decimal`'], ['p', '`number`; exactness left to the validator'], ['n', '— a string, or `google.type.Decimal`'], ['p', '`REAL` constrained to base 10'], ['n', '— `float` only']] },
       { feature: 'Rational', cells: [['y', '`rational` — `2/4` and `1/2` are one value'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
       { feature: 'Complex', cells: [['y', '`complex`, components selectable'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
       { feature: 'IEEE 754 floating point', cells: [['y', '`float32`, `float64`'], ['y', '`float`, `double`'], ['n', '— one `number` type'], ['y', '`float`, `double`'], ['p', '`REAL` constrained to base 2'], ['y', '`float`, with `.inf` and `.nan`']] },
-      { feature: 'Unicode text', cells: [['y', '`text`'], ['y', '`string`, `token`, `normalizedString`'], ['y', '`string`'], ['y', '`string`'], ['y', '`UTF8String` and a dozen restricted string types'], ['y', '`str`']] },
+      { feature: 'Unicode text', cells: [['y', '`text`, with a `normalization` facet: NFC, NFKC, case folding'], ['y', '`string`, `token`, `normalizedString`'], ['y', '`string`'], ['y', '`string`'], ['y', '`UTF8String` and a dozen restricted string types'], ['y', '`str`']] },
       { feature: 'Binary', cells: [['y', '`bytes` — the value is octets; the alphabet is a spelling'], ['y', '`base64Binary`, `hexBinary` — two distinct types'], ['p', '`contentEncoding`, an annotation'], ['y', '`bytes`'], ['y', '`OCTET STRING`, `BIT STRING`'], ['p', '`!!binary` (YAML 1.1)']] },
       { feature: 'Date', cells: [['y', '`date`'], ['y', '`date`, plus partials `gYear`, `gYearMonth`, …'], ['p', '`format: date`'], ['p', '`google.type.Date`, a common type'], ['y', '`DATE`'], ['p', '`!!timestamp` (YAML 1.1)']] },
       { feature: 'Time of day', cells: [['y', '`time` — offset mandatory, totally ordered'], ['y', '`time` — offset optional, partially ordered'], ['p', '`format: time`'], ['p', '`google.type.TimeOfDay`, a common type'], ['p', '`TIME-OF-DAY` (local), or `TIME` with settings'], ['n', '—']] },
@@ -53,7 +54,7 @@ const sections: Section[] = [
       { feature: 'Elapsed duration', cells: [['y', '`duration` — seconds, totally ordered'], ['y', '`dayTimeDuration`'], ['p', '`format: duration`, months and seconds mixed'], ['y', '`google.protobuf.Duration`'], ['y', '`DURATION`, months and seconds mixed'], ['n', '—']] },
       { feature: 'Calendar period', cells: [['y', '`period` — months, totally ordered'], ['y', '`yearMonthDuration`'], ['p', 'inside `format: duration`'], ['n', '—'], ['p', 'inside `DURATION`'], ['n', '—']] },
       { feature: 'UUID', cells: [['y', '`uuid` (RFC 9562)'], ['n', '— via `pattern`'], ['p', '`format: uuid`'], ['n', '— a string or bytes'], ['n', '— `OCTET STRING (SIZE(16))`'], ['n', '—']] },
-      { feature: 'URI', cells: [['y', '`uri` (RFC 3986)'], ['y', '`anyURI`'], ['p', '`format: uri`, `iri`, `uri-reference`'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'URI', cells: [['y', '`uri`, `uri_reference` (RFC 3986); `iri`, `iri_reference` (RFC 3987)'], ['y', '`anyURI`'], ['p', '`format: uri`, `iri`, `uri-reference`'], ['n', '—'], ['n', '—'], ['n', '—']] },
       { feature: 'Email address', cells: [['y', '`email` — the dot-atom core of RFC 5322'], ['n', '—'], ['p', '`format: email`, `idn-email`'], ['n', '—'], ['n', '—'], ['n', '—']] },
       { feature: 'IP addresses', cells: [['y', '`ipv4`, `ipv6`'], ['n', '—'], ['p', '`format: ipv4`, `ipv6`'], ['n', '—'], ['n', '—'], ['n', '—']] },
       { feature: 'Networks and hardware addresses', cells: [['y', '`cidr4`, `cidr6`, `mac`'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
@@ -77,20 +78,20 @@ const sections: Section[] = [
       { feature: 'Size bounds', cells: [['y', '`[T; 1..10]`, and the same on maps'], ['y', '`minOccurs` / `maxOccurs`, length facets'], ['y', '`minItems` / `maxItems`'], ['n', '—'], ['y', '`SIZE (1..10)`'], ['n', '—']] },
       { feature: 'Tuple', cells: [['y', '`[number, number]`'], ['p', '`sequence` of named elements'], ['y', '`prefixItems` with `items: false`'], ['n', '—'], ['p', '`SEQUENCE` of named components'], ['n', '—']] },
       { feature: 'Set (unordered, unique)', cells: [['y', '`set<T>`, uniqueness by value'], ['p', '`xs:unique` identity constraint'], ['p', '`uniqueItems`; order still significant'], ['n', '—'], ['y', '`SET OF`'], ['p', '`!!set` (YAML 1.1)']] },
-      { feature: 'Enumeration', cells: [['y', '`!enum [A B C]`'], ['y', '`enumeration` facet'], ['y', '`enum`, `const`'], ['y', '`enum`, open in proto3'], ['y', '`ENUMERATED`'], ['n', '—']] },
+      { feature: 'Enumeration', cells: [['y', '`!enum [A B C]` of names; `!text_enum` of any texts'], ['y', '`enumeration` facet'], ['y', '`enum`, `const`'], ['y', '`enum`, open in proto3'], ['y', '`ENUMERATED`'], ['n', '—']] },
       { feature: 'Choice between types', cells: [['y', '`(email | phone)` — tagged only where two variants share a form'], ['p', '`union`, simple types only'], ['p', '`oneOf` / `anyOf` — matched by validation, untagged'], ['n', '— wrap in a `oneof`'], ['p', '`CHOICE` — alternatives are labelled'], ['p', 'node tags']] },
-      { feature: 'Labelled alternatives', cells: [['y', 'field groups, `( a: T | b: U )`'], ['y', '`xs:choice`'], ['p', '`oneOf` with `required`'], ['y', '`oneof`'], ['y', '`CHOICE`'], ['n', '—']] },
+      { feature: 'Labelled alternatives', cells: [['y', 'field groups, `( a: T | b: U  c: V )` — an option may be several fields; `)+` is at least one'], ['y', '`xs:choice`'], ['p', '`oneOf` with `required`'], ['y', '`oneof`'], ['y', '`CHOICE`'], ['n', '—']] },
       { feature: 'Required, optional, default, fixed', cells: [['y', 'three slots: `a?:` may be omitted, `T?` admits `_`, `~ default` / `= fixed`; defaults filled in on read'], ['y', '`minOccurs`, `default`, `fixed`'], ['p', '`required`, `const`; `default` is an annotation'], ['p', '`optional`; defaults are zero values'], ['y', '`OPTIONAL`, `DEFAULT`'], ['n', '—']] },
-      { feature: 'Absence', cells: [['y', 'one spelling, `_`; no `null` in the notation'], ['y', '`minOccurs="0"`, and `xsi:nil`'], ['y', 'omission, and `null`'], ['p', 'tracked only for `optional`; zero is otherwise unset'], ['y', '`OPTIONAL`, and `NULL`'], ['y', 'omission, and `null` / `~`']] },
+      { feature: 'Absence', cells: [['y', 'one spelling, the void sentinel `_`, kept apart from a missing key; no `null`'], ['y', '`minOccurs="0"`, and `xsi:nil`'], ['y', 'omission, and `null`'], ['p', 'tracked only for `optional`; zero is otherwise unset'], ['y', '`OPTIONAL`, and `NULL`'], ['y', 'omission, and `null` / `~`']] },
       { feature: 'Recursive types', cells: [['y', 'yes'], ['y', 'yes'], ['y', 'yes, via `$ref`'], ['y', 'yes'], ['y', 'yes'], ['n', '— anchors reuse values, not types']] },
       { feature: 'Composition (inherit, IS-A)', cells: [['y', '`A & B & { … }` — several parents, no diamonds'], ['y', '`extension`, substitution groups; one parent'], ['p', '`allOf` merges constraints; no IS-A'], ['n', '— nest a message instead'], ['p', '`COMPONENTS OF` copies fields'], ['p', '`<<` merge key (YAML 1.1)']] },
       { feature: 'Sealed hierarchy (abstract, final, discriminator)', cells: [['y', '`abstract { kind: text =? }`; members pin `kind`, placed untagged; `final`'], ['p', '`abstract` and `final` on types; `xsi:type` selects'], ['p', '`oneOf` with `const`; OpenAPI adds `discriminator`'], ['n', '— no inheritance; wrap in a `oneof`'], ['n', '— `CHOICE` only'], ['n', '—']] },
       { feature: 'Refinement (narrow, keep IS-A)', cells: [['y', '`T ^ { … }` — tighten, default or fix fields; never adds or removes one'], ['y', '`restriction`'], ['p', '`allOf` plus keywords; no subtype relation'], ['n', '—'], ['y', 'subtype constraints, `WITH COMPONENTS`'], ['n', '—']] },
       { feature: 'Subtraction (remove fields)', cells: [['y', '`A - { password }` — breaks IS-A, keeps lineage'], ['p', '`restriction` can drop optional parts'], ['n', '— copy the schema'], ['n', '—'], ['p', '`WITH COMPONENTS` can mark optional components `ABSENT`'], ['n', '—']] },
-      { feature: 'Generics', cells: [['y', 'templates over types and values, `vector<T, N>`'], ['n', '—'], ['p', '`$dynamicRef` approximates'], ['n', '—'], ['y', 'parameterized types (X.683)'], ['n', '—']] },
+      { feature: 'Generics', cells: [['y', 'templates over types and values, `vector<T, N>`; typed parameters, bounds such as `<T: text>`, checked at each application'], ['n', '—'], ['p', '`$dynamicRef` approximates'], ['n', '—'], ['y', 'parameterized types (X.683)'], ['n', '—']] },
       { feature: 'Open type (value names its type)', cells: [['y', '`declared`, `extern`, `dynamic` — validated against the named type'], ['y', '`xs:any`, `xsi:type`'], ['p', '`{}` accepts anything, unchecked'], ['y', '`google.protobuf.Any`'], ['y', 'open types, `EMBEDDED PDV`'], ['p', 'tags']] },
       { feature: 'Annotations on data', cells: [['y', '`@name:value` on any value, map key or field; preserved in order'], ['p', 'attributes, where the schema admits them'], ['n', '— JSON has no metadata channel'], ['n', '—'], ['n', '—'], ['p', 'tags and anchors; comments are discarded']] },
-      { feature: 'Typed, validated annotations', cells: [['y', 'every annotation is a type, `deprecated => @annotation text`; an unknown one is an error, and `@disjoint` is checked at load'], ['p', '`xs:appinfo` and foreign attributes, checked only if declared'], ['p', 'annotation keywords; custom ones via `$vocabulary`, unknown ones ignored'], ['y', 'custom options, typed by extending the `*Options` messages'], ['n', '— comments only'], ['n', '—']] },
+      { feature: 'Typed, validated annotations', cells: [['y', 'every annotation is a type, `deprecated => @annotation void`; an unknown one is an error, and `@disjoint` is checked at load'], ['p', '`xs:appinfo` and foreign attributes, checked only if declared'], ['p', 'annotation keywords; custom ones via `$vocabulary`, unknown ones ignored'], ['y', 'custom options, typed by extending the `*Options` messages'], ['n', '— comments only'], ['n', '—']] },
     ],
   },
   {
@@ -126,8 +127,8 @@ const sections: Section[] = [
       { feature: 'Content-hash pinning', cells: [['y', 'SHA-256 on every `!!id`, `!!meta`, `!!import` and `!!schema`'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
       { feature: 'Types in data without a schema', cells: [['y', '`!uuid "…"`, `!ipv4 "…"` — checked with no schema at all'], ['y', '`xsi:type`'], ['n', '—'], ['n', '—'], ['y', 'universal tags in BER and DER'], ['p', 'tags, `!!int`, `!!timestamp`']] },
       { feature: 'Evolution model', cells: [['i', 'immutable: a version is a new hash, so a new required field is safe'], ['i', 'namespaces, versioned by convention'], ['i', '`$id` per version, by convention'], ['i', 'field numbers: never reuse, avoid `required`'], ['i', 'extension markers `...`, version brackets `[[ ]]`'], ['i', '—']] },
-      { feature: 'Encodings', cells: [['i', 'TSON text; JSON, compact and binary planned'], ['i', 'XML, EXI'], ['i', 'JSON; YAML in practice'], ['i', 'binary wire, ProtoJSON, text format'], ['i', 'BER, DER, PER, OER, XER, JER'], ['i', 'YAML']] },
-      { feature: 'Documentation metadata', cells: [['y', '`@doc`, `@title`, `@examples`, `@deprecated`, `@since`'], ['y', '`xs:documentation`, `xs:appinfo`'], ['y', '`title`, `description`, `examples`, `deprecated`'], ['p', 'comments, `deprecated` option'], ['p', 'comments'], ['n', '—']] },
+      { feature: 'Encodings', cells: [['i', 'TSON text and JSON; compact and binary planned'], ['i', 'XML, EXI'], ['i', 'JSON; YAML in practice'], ['i', 'binary wire, ProtoJSON, text format'], ['i', 'BER, DER, PER, OER, XER, JER'], ['i', 'YAML']] },
+      { feature: 'Documentation metadata', cells: [['y', '`@doc` (CommonMark), `@title`, `@examples`, `@deprecated`, `@comment`'], ['y', '`xs:documentation`, `xs:appinfo`'], ['y', '`title`, `description`, `examples`, `deprecated`'], ['p', 'comments, `deprecated` option'], ['p', 'comments'], ['n', '—']] },
       { feature: 'Comments', cells: [['n', '— annotations instead, which survive parsing'], ['y', '`<!-- -->`'], ['p', '`$comment`'], ['y', '`//` in `.proto`'], ['y', '`--`'], ['y', '`#`']] },
       { feature: 'Standing', cells: [['i', '2026 working draft; Java and TypeScript implementations'], ['i', 'W3C Recommendation, 2012'], ['i', 'IETF draft series; the widest tooling'], ['i', 'Google, open since 2008; code generation for most languages'], ['i', 'ITU-T and ISO since 1984; telecoms and PKI'], ['i', 'YAML 1.2.2, 2021']] },
     ],
@@ -137,18 +138,19 @@ const sections: Section[] = [
     eyebrow: 'Security',
     title: 'Names, values and limits',
     intro:
-      'What a processor promises when the document comes from a model, a partner or a stranger. Every conforming TSON processor carries three configurable policies: an identifier policy for names, a token policy for values, and a limits policy. The identifier and limits policies are enforced by default; the token policy starts unrestricted, since values are data. The deployment sets each one in code, never a document or schema, and all three are reported with any refusal. A refusal is not a verdict — the document may be valid, and the next processor may accept it.',
+      'What a processor promises when the document comes from a model, a partner or a stranger. Every conforming TSON processor carries three configurable policies: an identifier policy for names, a token policy for values, and a limits policy. The identifier and limits policies are enforced by default; the token policy starts unrestricted, since values are data. The deployment sets each one, in code or in a policy document written in the `policy.tn` vocabulary, never in the document being read or its schema, and all three are reported with any refusal. A refusal is not a verdict — the document may be valid, and the next processor may accept it.',
     chips: [
       { label: 'Part 1 §8.2 name hygiene', href: `${part1Url}#82-name-hygiene` },
       { label: 'Part 1 §9.1 limits', href: `${part1Url}#91-denial-of-service` },
       { label: 'Part 2 §11.5 schema limits', href: `${part2Url}#115-resource-limits-for-schemas` },
+      { label: 'policy.tn', href: policyUrl },
     ],
     rows: [
-      { feature: 'Look-alike names', cells: [['y', 'identifier policy: refused by default (UTS #39 skeletons)'], ['n', '— any XML name'], ['n', '— any string is a key'], ['p', 'identifiers are ASCII'], ['p', 'identifiers are ASCII'], ['n', '— any string is a key']] },
+      { feature: 'Look-alike names', cells: [['y', 'identifier policy: refused by default (UTS #39 skeletons), in names and identifier-typed values'], ['n', '— any XML name'], ['n', '— any string is a key'], ['p', 'identifiers are ASCII'], ['p', 'identifiers are ASCII'], ['n', '— any string is a key']] },
       { feature: 'Mixed-script and obsolete characters in names', cells: [['y', 'identifier policy: Highly Restrictive by default; level, unit and scripts set in code'], ['n', '—'], ['n', '—'], ['p', 'ASCII only'], ['p', 'ASCII only'], ['n', '—']] },
       { feature: 'Resource limits with specified defaults', cells: [['y', 'limits policy: twelve, each configurable; tight defaults such as depth 64'], ['n', '— parser-specific'], ['n', '— left to implementations'], ['p', 'implementation defaults, such as recursion depth 100'], ['n', '— left to implementations'], ['n', '— parser-specific']] },
       { feature: 'A limit exceeded', cells: [['y', 'a refusal naming the limit; never a crash, never “invalid”'], ['n', '— implementation-defined'], ['n', '— implementation-defined'], ['n', '— implementation-defined'], ['n', '— implementation-defined'], ['n', '— implementation-defined']] },
-      { feature: 'Policy known in advance', cells: [['y', 'all three policies and the Unicode version, reported with refusals and queryable up front'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'Policy known in advance', cells: [['y', 'all three policies and the Unicode version, in the shape `policy.tn` declares; reported with refusals and queryable up front'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
       { feature: 'Screening values', cells: [['y', 'token policy: unrestricted by default; set a restriction level to screen untrusted values'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
       { feature: 'Pattern matching cost', cells: [['y', 'I-Regexp: linear-time by construction'], ['y', 'a regular dialect, no backreferences'], ['n', '— ECMA-262, exposed to catastrophic backtracking'], ['i', 'no patterns'], ['i', 'own `PATTERN` notation'], ['i', 'no patterns']] },
       { feature: 'Expansion attacks', cells: [['y', 'none: no anchors, references or entities'], ['p', 'DTD entities can expand; parsers cap them'], ['y', 'none: JSON data has no references'], ['y', 'none'], ['y', 'none'], ['n', '— aliases can expand (billion laughs)']] },
@@ -233,12 +235,12 @@ const spectrum = [
   {
     title: 'Type',
     body: 'Every type is known and the values are blank. A default, `~`, is a value placed but replaceable.',
-    html: `<span class="tk">config</span> <span class="gain">=&gt;</span> <span class="tp">{</span> <span class="tk">host</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">port</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">~</span> <span class="ts">8080</span> <span class="tp">}</span>`,
+    html: `<span class="tk">config</span> <span class="gain">=&gt;</span> <span class="tp">{</span> <span class="tk">host</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">port</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">~</span> <span class="ts">8080</span> <span class="tp">}</span>`,
   },
   {
     title: 'Refinement',
     body: 'Some values are fixed, `=`, and can no longer change. The result still IS-A the type it refines.',
-    html: `<span class="tk">production</span> <span class="gain">=&gt;</span> <span class="ts">config</span> <span class="gain">^</span> <span class="tp">{</span> <span class="tk">host</span><span class="tp">:</span> <span class="gain">=</span> <span class="ts">"prod.example.com"</span> <span class="tp">}</span>`,
+    html: `<span class="tk">production</span> <span class="gain">=&gt;</span> <span class="ts">config</span> <span class="gain">^</span> <span class="tp">{</span> <span class="tk">host</span><span class="gain">?</span><span class="tp">:</span> <span class="gain">=</span> <span class="ts">"prod.example.com"</span> <span class="tp">}</span>`,
   },
   {
     title: 'Value',
@@ -249,7 +251,7 @@ const spectrum = [
 ];
 
 const spectrumNote =
-  'TSON follows the research in keeping blanks out of data: templates are schema-only, and a data document holds values. It also stops short of two ideas Part 5 floats. Parameters carry no bounds (`<T: text | full_name>`), and a bare template name is never read as the family of its instantiations: every reference binds all its parameters, `pair<text,\u00a0integer>`.';
+  'TSON follows the research in keeping blanks out of data: templates are schema-only, and a data document holds values. It takes Part 5\'s parameter bounds in a simple form: `<T: text>` names one type, and each application must supply that type or one that IS-A it. And a bare template name is read as a family only when the template has a record body, standing as the base of the members a schema declares from it; every other reference binds all its parameters, `pair<text,\u00a0integer>`.';
 
 // Bodies are HTML (the YAML entry links to the guide).
 const further = [

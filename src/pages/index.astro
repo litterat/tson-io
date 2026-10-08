@@ -5,6 +5,8 @@ import { CURRENT_REVISION } from '../lib/spec';
 
 const part1Url = `/2026/${CURRENT_REVISION}/tson-part1-data`;
 const part2Url = `/2026/${CURRENT_REVISION}/tson-part2-schema`;
+const part3Url = `/2026/${CURRENT_REVISION}/tson-part3-json`;
+const policyUrl = `/2026/${CURRENT_REVISION}/m/policy.tn`;
 const guideUrl = `/2026/${CURRENT_REVISION}/tson-guide`;
 const specHubUrl = '/2026'; // redirects to /2026/{CURRENT_REVISION} via public/_redirects
 
@@ -63,7 +65,7 @@ const schemaRows = [
   <span class="tk">comment</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">text</span>
   <span class="tk">timeout</span><span class="tp">:</span>  <span class="ts">duration</span><span class="gain">?</span>
 }` },
-      { tag: 'data (retries injected; timeout written, and deliberately blank)', kind: 'data', html: `<span class="gain">!config</span> { <span class="tk">host</span><span class="tp">:</span> <span class="ts">"prod.db.internal"</span>  <span class="tk">port</span><span class="tp">:</span> <span class="tn">5555</span>  <span class="tk">timeout</span><span class="tp">:</span> <span class="gain">_</span> }` },
+      { tag: 'data (retries injected; timeout written, and deliberately void)', kind: 'data', html: `<span class="gain">!config</span> { <span class="tk">host</span><span class="tp">:</span> <span class="ts">"prod.db.internal"</span>  <span class="tk">port</span><span class="tp">:</span> <span class="tn">5555</span>  <span class="tk">timeout</span><span class="tp">:</span> <span class="gain">_</span> }` },
     ],
   },
   {
@@ -78,23 +80,24 @@ const schemaRows = [
   },
   {
     chip: '§5.3', href: `${part2Url}#53-type-expressions`, title: 'Maps with typed keys',
-    why: 'A record has fixed named fields; a map has variable associations, and its key is a declared type — not every key flattened to a string. Sizes constrain the map, and ? admits an absent value.',
+    why: 'A record has fixed named fields; a map has variable associations, and its key is a declared type — not every key flattened to a string. Sizes constrain the map, and ? admits a void value.',
     snippets: [
       { tag: 'schema', kind: 'schema', html: `<span class="tk">by_id</span>    <span class="gain">=&gt;</span> {<span class="ts">uuid</span> <span class="gain">=&gt;</span> <span class="ts">employee</span>}
 <span class="tk">holidays</span> <span class="gain">=&gt;</span> {<span class="ts">date</span> <span class="gain">=&gt;</span> <span class="ts">text</span><span class="gain">;</span> <span class="tn">1..</span>}
 <span class="tk">readings</span> <span class="gain">=&gt;</span> {<span class="ts">datetime</span> <span class="gain">=&gt;</span> <span class="ts">number</span><span class="gain">?</span>}` },
-      { tag: 'data (a key is a value, and may be absent)', kind: 'data', html: `<span class="gain">!holidays</span> { <span class="tn">2026-01-26</span> <span class="gain">=&gt;</span> <span class="ts">"Australia Day"</span> }\n<span class="gain">!readings</span> { <span class="ts">"2026-07-01T09:00:00Z"</span> <span class="gain">=&gt;</span> <span class="gain">_</span> }` },
+      { tag: 'data (a key is a value; a value may be void)', kind: 'data', html: `<span class="gain">!holidays</span> { <span class="tn">2026-01-26</span> <span class="gain">=&gt;</span> <span class="ts">"Australia Day"</span> }\n<span class="gain">!readings</span> { <span class="ts">"2026-07-01T09:00:00Z"</span> <span class="gain">=&gt;</span> <span class="gain">_</span> }` },
     ],
   },
   {
     chip: '§5.5', href: `${part2Url}#55-constructor-application-and-atom-refinement`, title: 'Atoms and enums',
-    why: 'Refine an atom\'s constraint vocabulary with ^, or mint a fresh atom family with a constructor. A range narrows with min and max, a progression with multiple_of, a sparse set with members. The refinement IS-A its source; the enum is its own family.',
+    why: 'Refine an atom\'s constraint vocabulary with ^, or mint a fresh atom family with a constructor. A range narrows with min and max, a progression with multiple_of, a sparse set with members. The refinement IS-A its source; an enum is its own family, of names with !enum or of any texts with !text_enum.',
     snippets: [
       { tag: 'schema', kind: 'schema', html: `<span class="tk">port</span>   <span class="gain">=&gt;</span> <span class="gain">!integer</span> <span class="gain">^</span> { <span class="tk">min</span><span class="tp">:</span> <span class="tn">1</span>  <span class="tk">max</span><span class="tp">:</span> <span class="tn">65535</span> }
 <span class="tk">sku</span>    <span class="gain">=&gt;</span> <span class="gain">!text</span> <span class="gain">^</span> { <span class="tk">pattern</span><span class="tp">:</span> <span class="ts">"[A-Z]-[0-9]{3}"</span> }
 <span class="tk">status</span> <span class="gain">=&gt;</span> <span class="gain">!integer</span> <span class="gain">^</span> { <span class="tk">members</span><span class="tp">:</span> <span class="tp">[</span><span class="tn">200 404 500</span><span class="tp">]</span> }
-<span class="tk">rank</span>   <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>` },
-      { tag: 'data', kind: 'data', html: `<span class="gain">!port</span> <span class="tn">8080</span>\n<span class="gain">!sku</span> <span class="ts">"A-123"</span>\n<span class="gain">!status</span> <span class="tn">404</span>\n<span class="gain">!rank</span> <span class="tn">L2</span>` },
+<span class="tk">rank</span>   <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>
+<span class="tk">level</span>  <span class="gain">=&gt;</span> <span class="gain">!text_enum</span> <span class="tp">[</span><span class="ts">"lightly active" "very active"</span><span class="tp">]</span>` },
+      { tag: 'data', kind: 'data', html: `<span class="gain">!port</span> <span class="tn">8080</span>\n<span class="gain">!sku</span> <span class="ts">"A-123"</span>\n<span class="gain">!status</span> <span class="tn">404</span>\n<span class="gain">!rank</span> <span class="tn">L2</span>\n<span class="gain">!level</span> <span class="ts">"lightly active"</span>` },
     ],
   },
   {
@@ -154,21 +157,20 @@ const schemaRows = [
   },
   {
     chip: '§5.11', href: `${part2Url}#511-field-groups`, title: 'Field groups',
-    why: 'Exactly-one-of, stated structurally: the data carries one member under its own label, and no synthetic tag is invented.',
+    why: 'Alternatives stated structurally: | separates options of one or more fields, the data writes the option it chooses under its own labels, and )+ asks for at least one. No synthetic tag is invented.',
     snippets: [
-      { tag: 'schema', kind: 'schema', html: `<span class="tk">contact</span> <span class="gain">=&gt;</span> {
-  <span class="tk">name</span><span class="tp">:</span> <span class="ts">text</span>
-  <span class="tp">(</span> <span class="tk">email</span><span class="tp">:</span> <span class="ts">email</span> <span class="gain">|</span> <span class="tk">phone</span><span class="tp">:</span> <span class="ts">text</span> <span class="tp">)</span>
-}` },
-      { tag: 'data (only phone or email is allowed)', kind: 'data', html: `<span class="gain">!contact</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">"Grace Hopper"</span>  <span class="tk">phone</span><span class="tp">:</span> <span class="ts">"555-0142"</span> }` },
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">contact</span>  <span class="gain">=&gt;</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tp">(</span> <span class="tk">email</span><span class="tp">:</span> <span class="ts">email</span> <span class="gain">|</span> <span class="tk">phone</span><span class="tp">:</span> <span class="ts">text</span> <span class="tp">)</span><span class="gain">+</span> }
+<span class="tk">endpoint</span> <span class="gain">=&gt;</span> { <span class="tp">(</span> <span class="tk">host</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">port</span><span class="tp">:</span> <span class="ts">uint16</span> <span class="gain">|</span> <span class="tk">socket</span><span class="tp">:</span> <span class="ts">text</span> <span class="tp">)</span> }` },
+      { tag: 'data (email, phone or both; one whole option)', kind: 'data', html: `<span class="gain">!contact</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">"Grace Hopper"</span>  <span class="tk">phone</span><span class="tp">:</span> <span class="ts">"555-0142"</span> }\n<span class="gain">!endpoint</span> { <span class="tk">host</span><span class="tp">:</span> <span class="ts">"db.internal"</span>  <span class="tk">port</span><span class="tp">:</span> <span class="tn">5432</span> }` },
     ],
   },
   {
     chip: '§5.10', href: `${part2Url}#510-templates-and-parameters`, title: 'Templates',
-    why: 'Definitions with blanks, over type parameters and value parameters both. A declaration naming a fully bound application is that type, under its own name, in the resolved schema.',
+    why: 'Definitions with blanks, over type parameters and value parameters both. Each parameter has a type, derived from where it stands or bounded as <T: text>, and every application is checked against it. A declaration naming a fully bound application is that type, under its own name.',
     snippets: [
-      { tag: 'schema', kind: 'schema', html: `<span class="tk">paged</span>         <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">T</span><span class="gain">&gt;</span> { <span class="tk">items</span><span class="tp">:</span> <span class="tp">[</span><span class="ts">T</span><span class="tp">]</span>  <span class="tk">cursor</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">text</span> }
-<span class="tk">retry_policy</span> <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">N</span><span class="gain">&gt;</span> { <span class="tk">attempts</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">~</span> <span class="ts">N</span> }
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">paged</span>        <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">T</span><span class="gain">&gt;</span> { <span class="tk">items</span><span class="tp">:</span> <span class="tp">[</span><span class="ts">T</span><span class="tp">]</span>  <span class="tk">cursor</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">text</span> }
+<span class="tk">labelled</span>     <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">T</span><span class="tp">:</span> <span class="ts">text</span><span class="gain">&gt;</span> { <span class="tk">label</span><span class="tp">:</span> <span class="ts">T</span>  <span class="tk">note</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">text</span> }
+<span class="tk">retry_policy</span> <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">N</span><span class="gain">&gt;</span> { <span class="tk">attempts</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">~</span> <span class="ts">N</span> }
 <span class="tk">checkout</span>     <span class="gain">=&gt;</span> <span class="ts">retry_policy</span><span class="gain">&lt;</span><span class="tn">5</span><span class="gain">&gt;</span>` },
       { tag: 'data', kind: 'data', html: `<span class="gain">!checkout</span> { <span class="tk">attempts</span><span class="tp">:</span> <span class="tn">10</span> }` },
     ],
@@ -184,7 +186,7 @@ const schemaRows = [
 }` },
       { tag: 'data (each value names its type; the foreign one names its schema too)', kind: 'data', html: `<span class="gain">!event</span> {
   <span class="tk">at</span><span class="tp">:</span>      <span class="ts">"2026-07-01T09:00:00Z"</span>
-  <span class="tk">subject</span><span class="tp">:</span> <span class="gain">!employee</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">"Ada Lovelace"</span> }
+  <span class="tk">subject</span><span class="tp">:</span> <span class="gain">!sku</span> <span class="ts">"A-123"</span>
   <span class="tk">payload</span><span class="tp">:</span>
     <span class="gain">!!schema:</span><span class="ts">"https://example.com/claim.tn?sha256=ac3f2e1a…"</span>
     <span class="gain">!claim</span> { <span class="tk">reference</span><span class="tp">:</span> <span class="ts">"CLM-5678"</span> }
@@ -253,8 +255,8 @@ const ledger = [
     ],
   },
   {
-    chip: '§2.9', href: `${part1Url}#29-the-absent-sentinel`, title: 'Absent is not null',
-    why: 'JSON gives two states — key missing, or null — to do three jobs. TSON has no null at all: the absent sentinel _ says "this position exists and holds no value", and it works in an array, where a missing key cannot.',
+    chip: '§2.9', href: `${part1Url}#29-the-void-sentinel`, title: 'Void is not null',
+    why: 'JSON gives two states — key missing, or null — to do three jobs. TSON has no null at all: the void sentinel _ says "this position exists and holds no value", kept apart from a missing key, and it works in an array, where a missing key cannot.',
     snippets: [
       { tag: 'json (is this unset, unknown, or removed?)', kind: 'json', html: '<span class="tp">"</span><span class="tk">phone</span><span class="tp">":</span> <span class="tn">null</span>' },
       { tag: 'tson', kind: 'tson', html: '<span class="tk">phone</span><span class="tp">:</span> <span class="gain">_</span>   <span class="tk">scores</span><span class="tp">:</span> <span class="tp">[</span><span class="tn">1</span> <span class="gain">_</span> <span class="tn">3</span> <span class="gain">_</span> <span class="tn">5</span><span class="tp">]</span>' },
@@ -282,7 +284,7 @@ const ledger = [
 const safety = [
   {
     title: 'Look-alike names are refused',
-    body: 'Latin admin and a Cyrillic аdmin cannot sit side by side, and mixed-script or obsolete characters stay out of names. A deployment can set the restriction level, apply it per name segment, or permit another script, in code and never by an environment variable.',
+    body: 'Latin admin and a Cyrillic аdmin cannot sit side by side, as field names or as values a schema types as identifiers, and mixed-script or obsolete characters stay out of names. A deployment can set the restriction level, apply it per name segment, or permit another script, in code and never by an environment variable.',
   },
   {
     title: 'Every limit is configurable',
@@ -294,7 +296,7 @@ const safety = [
   },
   {
     title: 'The policy is known in advance',
-    body: 'Every refusal carries the Unicode data version and the identifier, token and limits policies it was judged under, and a processor states them up front, so a generator can write a document that fits.',
+    body: 'Every refusal carries the Unicode data version and the identifier, token and limits policies it was judged under, and a processor states them up front, in the one shape policy.tn declares, so a generator can write a document that fits.',
   },
 ];
 
@@ -535,8 +537,9 @@ const routes = [
           <a href={`${part1Url}#91-denial-of-service`} class="text-teal-400 underline">limits policy</a>.
           The identifier and limits policies are enforced out of the box; the token policy starts
           unrestricted, since values are data, and is there for a service that renders or matches
-          them. The deployment sets all three in its own code, never the document or its schema,
-          which cannot vouch for itself. The rest is closed by design: patterns are I-Regexp, which
+          them. The deployment sets all three, in its own code or a policy document written in the{' '}
+          <a href={policyUrl} class="text-teal-400 underline">policy.tn</a> vocabulary, never in the
+          document or its schema, which cannot vouch for itself. The rest is closed by design: patterns are I-Regexp, which
           matches in linear time; there are no anchors or entities to expand; and a bidirectional
           override cannot hide inside a name.
         </p>
@@ -575,8 +578,9 @@ const routes = [
         <p class="mt-4 text-sm text-gray-400">
           The TSON Schema and its underlying type system are agnostic to the encoding; the same
           architecture as ASN.1, where the schema is the product and formats serve it. The TSON
-          text data format is the first encoding, but won't be the only one. The plan is to develop encoding rules for <span class="text-teal-400">JSON</span>,
-          compact formats like <span class="text-teal-400">TOON</span>, and <span class="text-teal-400">binary</span>, each carrying
+          text data format is the first encoding, and <a href={part3Url} class="text-teal-400 underline">JSON</a>{' '}
+          the second, read and validated against the same schema. Encoding rules for compact formats
+          like <span class="text-teal-400">TOON</span>, and <span class="text-teal-400">binary</span>, come next, each carrying
           the same schema-verified values.
         </p>
       </div>
