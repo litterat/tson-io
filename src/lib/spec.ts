@@ -35,7 +35,55 @@ export interface RevisionNote {
  */
 export const REVISION_NOTES: Record<string, RevisionNote> = {
   // Plain text, except that `backticks` render as code.
-  '37': { summary: 'In progress.' },
+  '37': {
+    summary: 'Adjudicates the 21-entry spec-feedback register against revision 36.',
+    changes: [
+      {
+        what: '`identifier` is a text family, and an enum states which text type its members are',
+        why: 'name checks now follow a value\'s type rather than where it sits, so identifier-typed data and map keys get look-alike protection too',
+      },
+      {
+        what: '`value` and `void` each get a constructor, and `unit` is gone',
+        why: '`unit` was the one type a processor had to recognise by its name',
+      },
+      {
+        what: 'Template parameters carry a type, which a declaration may narrow: `<T: text, N: int8>`',
+        why: 'an argument can be checked where the template is applied, not only once it has been substituted',
+      },
+      {
+        what: 'A field group\'s option may hold several fields, and `( … )+` means at least one',
+        why: 'shapes like "host and port, or a socket" and "email or phone, or both" had no spelling',
+      },
+      {
+        what: '`optional` (the key may be missing) and `voidable` (the value may be `_`) replace the state vocabulary, and `_` is the void sentinel',
+        why: 'one word, "absent", covered both kinds of nothing',
+      },
+      {
+        what: '`ordered` replaces `unordered` and maps state it too; a set may be empty',
+        why: 'every container now says whether order is part of its value, and a set\'s bounds work like an array\'s',
+      },
+      {
+        what: '`uri` requires a scheme and is US-ASCII, beside new `uri_reference`, `iri` and `iri_reference` types',
+        why: 'RFC 3986 gives every URI a scheme, yet `uri` admitted relative references, and identifiers beyond ASCII (RFC 3987) had no type',
+      },
+      {
+        what: '`normalization` is a text facet: a value is its text put into the type\'s form',
+        why: 'whether two spellings of "café" are one value is for the type to say, not the processor',
+      },
+      {
+        what: 'Core drops seven entries, such as the sign-bound integers; meta\'s annotations are trimmed, and `@doc` is CommonMark',
+        why: 'core holds only what a schema cannot do without, and a bound like "non-negative" is a one-line declaration of a schema\'s own',
+      },
+      {
+        what: 'A record family\'s member must be declared, not created by a template application at a use site',
+        why: 'a member with no name cannot be selected or referred to',
+      },
+      {
+        what: 'New `policy.tn` declares the vocabulary of a processor\'s identifier, token and limits policy',
+        why: 'a deployment can write its policy down as data, and a processor can report the policy it judged under in one shape',
+      },
+    ],
+  },
   '36': {
     summary: 'Adjudicates the 21-entry spec-feedback register against revision 35.',
     changes: [
