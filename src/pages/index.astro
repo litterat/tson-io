@@ -650,7 +650,7 @@ const routes = [
     if (ct) ct.textContent = `${nonWs(tsonPane)} chars`;
 
     const baseMsg = 'Same data, both sides.';
-    const diffMsg = `<b class="text-gray-900">${noise} characters</b> of required punctuation removed; a <b class="text-gray-900">typed date</b> and an <b class="text-gray-900">absent sentinel</b> gained.`;
+    const diffMsg = `<b class="text-gray-900">${noise} characters</b> of required punctuation removed; a <b class="text-gray-900">typed date</b> and an <b class="text-gray-900">void sentinel</b> gained.`;
 
     toggle.addEventListener('click', () => {
       const on = root.classList.toggle('diff');

@@ -18,13 +18,15 @@ itself. The name reflects that foundation:
   concrete schemas are derived.
 - **Schema** (noun): an outline of a plan or theory in the form of a model.
 
-The format and its schema layer are defined in two parts:
+The format and its schema layer are defined in three parts:
 
-- **Part 1 — Data Format:** the data model and its text encoding (lexer, data
-  grammar, base type resolution, built-in type vocabulary).
-- **Part 2 — Schemas and the Type System:** the schema layer and type system.
+- **Part 1 — Text Data Format:** the data model and its text encoding (lexer,
+  data grammar, base type resolution, built-in type vocabulary).
+- **Part 2 — Type System and Schema:** the schema layer and type system.
   It is self-hosting — a resolved schema is ordinary data of type
   `map<type_name, type_definition>` in TSON's own model.
+- **Part 3 — JSON Encoding:** how schema-governed TSON values are carried in
+  JSON, read and validated against the same schemas.
 
 On the surface, TSON can look like just another JSON format. It isn't: it rests
 on extensive first-principles research, published as 18 articles on this site.
@@ -38,7 +40,8 @@ validation across many schema versions.
 This site hosts the Specification, background research, developer guides, and the
 SHA-256-pinned schemas: the **meta-kernel** (the self-referencing meta-schema),
 **meta** (the extended meta-schema with the core type constructors), and **core**
-(the common types required for data interchange, based on RFC standards).
+(the common types required for data interchange, based on RFC standards), and
+**policy** (the vocabulary a deployment writes its processor policy in).
 
 The specification is a 2026 working draft, with revisions actively underway. When
 it is ready, it will be pinned as version 1.
@@ -64,7 +67,7 @@ src/
     2026/
       32/                # A revision-scoped draft — see "Revision-scoped paths" below
         *.md             # TSON Part 1/2 and companion docs (tson-guide.md)
-        m/                # .tn schema source files (meta-kernel, meta, core)
+        m/                # .tn schema source files (meta-kernel, meta, core, policy)
         fixtures/          # Non-normative resolved-output fixtures for the schema source files
     research/
       deep-dive-into-json/   # "A Deep Dive into JSON" article series
@@ -95,9 +98,9 @@ public/
 scripts/                 # One-off Python scripts used to migrate/format content
 ```
 
-The TSON specification is split into two parts — **Part 1: Data Format** (the lexer, grammar,
-base type resolution, and built-in type vocabulary) and **Part 2: Schemas and the Type System**
-(the schema layer and type system) — plus companion specifications developed alongside it, currently
+The TSON specification is split into three parts — **Part 1: Text Data Format** (the lexer,
+grammar, base type resolution, and built-in type vocabulary), **Part 2: Type System and Schema**
+(the schema layer and type system) and **Part 3: JSON Encoding** — plus companion specifications developed alongside it, currently
 the **TSON Developer Guide** (`tson-guide.md`), a non-normative collection of design history and
 rationale.
 

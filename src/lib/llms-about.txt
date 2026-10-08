@@ -12,10 +12,11 @@ derived from the physical constraints of serialization itself. The name reflects
 "Proto-" (first, original, primitive — the model from which concrete schemas are derived) and
 "Schema" (an outline of a plan or theory in the form of a model).
 
-The format and its schema layer are defined in two parts: Part 1 — Data Format (the data model and
-its text encoding: lexer, data grammar, base type resolution, built-in type vocabulary) and Part 2
-— Schemas and the Type System (the schema layer and type system, which is self-hosting — a resolved
-schema is ordinary data of type map<type_name, type_definition> in TSON's own model).
+The format and its schema layer are defined in three parts: Part 1 — Text Data Format (the data
+model and its text encoding: lexer, data grammar, base type resolution, built-in type vocabulary),
+Part 2 — Type System and Schema (the schema layer and type system, which is self-hosting — a
+resolved schema is ordinary data of type map<type_name, type_definition> in TSON's own model), and
+Part 3 — JSON Encoding (how schema-governed values are carried in JSON).
 
 On the surface, TSON can look like just another JSON format. It isn't: it rests on extensive
 first-principles research, published as 18 articles on this site. And unlike the recent
@@ -28,5 +29,5 @@ validation across many schema versions.
 This site hosts the specification, background research, a developer guide, and the SHA-256-pinned
 schemas: meta-kernel (the self-referencing meta-schema), meta (the extended meta-schema with the
 core type constructors), and core (the common types required for data interchange, based on RFC
-standards). The specification is a 2026 working draft, with revisions actively underway; when
+standards), plus policy (the vocabulary a deployment writes its processor policy in). The specification is a 2026 working draft, with revisions actively underway; when
 ready, it will be pinned as version 1.
