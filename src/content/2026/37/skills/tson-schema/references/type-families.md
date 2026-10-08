@@ -16,7 +16,7 @@ Bounds are written as **field groups**: per side, either the inclusive form (`mi
 | `multiple_of` | integer | step |
 | `members` | `integer_member_set` | **sparse** value set: `!integer ^ { members: [2 3 5 7] }` |
 
-Core instances: `integer`; `int8 int16 int32 int64 int128 int256`; `uint8 … uint256` (via `size`); `positive_integer` (`min: 1`), `non_negative_integer` (`min: 0`), `negative_integer` (`max: -1`), `non_positive_integer` (`max: 0`). All `@ordered:TOTAL @exact:true`. The **kernel** declares `non_negative_integer` too: every facet that counts — lengths, item counts, digit counts, bit widths, prefix lengths, precision — is typed by it. Data forms: decimal or based integers, optional sign, `_` separators.
+Core instances: `integer`; `int8 int16 int32 int64 int128 int256`; `uint8 … uint256` (via `size`). All `@ordering:TOTAL @exact:true`. Core declares **no** sign-bounded integer: a schema that wants one writes the line itself (`count => !integer ^ { min: 0 }`, `positive => !integer ^ { min: 1 }`). The **kernel** declares `non_negative_integer` for its own use — every facet that counts (lengths, item counts, digit counts, bit widths, prefix lengths, precision) is typed by it — but it is a structure-namespace type, not a field type in a user schema. Data forms: decimal or based integers, optional sign, `_` separators.
 
 ### `decimal_type` → `number` (meta)
 
@@ -63,29 +63,45 @@ One facet, `component: INTEGER | NUMBER | RATIONAL | FLOAT32 | FLOAT64` (default
 
 | Facet | Meaning |
 |---|---|
-| `min_length`, `max_length`, `length` | in code points |
+| `min_length`, `max_length`, `length` | in code points, of the value |
 | `pattern` | I-Regexp (RFC 9485) — the interoperable subset: no back-references, no look-around, no `\d` shorthand outside the defined set; anchored to the whole value. **Settable once**: a refinement may set it where unset or restate it, never change it |
-| `members` | `text_member_set` — the admitted strings outright, still parsed by the family (`!uri ^ { members: ["https://a.example/" "https://b.example/"] }`). Every member must satisfy the other facets, the pattern included. Settable once, like `pattern` |
+| `members` | `text_member_set` — the admitted strings outright, still parsed by the family (`!uri ^ { members: ["https://a.example/" "https://b.example/"] }`). Every member must satisfy the other facets, the pattern included; two members that are one value in the type's form are a duplicate. Settable once, like `pattern` |
+| `normalization` | the form a value is *put into*: `NONE` (default — the text as written), `NFC`, `NFKC`, `NFKC_CASEFOLD` (UAX #31's caseless form; `ß` → `ss`), `ASCII_CASEFOLD` (`A`–`Z` → `a`–`z`, nothing else). **Fixed at construction**: a refinement restates it or leaves it alone, so a folding type is a fresh `!text_type { normalization: ASCII_CASEFOLD }` |
 
-Core instances: `text`, `non_empty_text` (`min_length: 1`).
+**A text value is its token's text put into the type's form**, never refused for not already being in it, and every other facet and every comparison — pins, map keys, set members, enum members — judges the value. No comparison goes below NFC: a composed and a decomposed `É` are one value under every form. A round trip writes the value, so `Content-Type` under a folding type is written back `content-type`.
 
-Spec-bound sub-families compose `text_type & atom_specification`, so they inherit all five facets and add a pinned `spec`:
+Core instance: `text`. There is no `non_empty_text` — declare `title_text => !text ^ { min_length: 1 }`.
 
-| Constructor → instance | Extra facets | Notes |
+Spec-bound sub-families compose `text_type & atom_specification`, so they inherit all six facets and add a pinned `spec`:
+
+| Constructor → instances | Extra facets | Notes |
 |---|---|---|
-| `uri_type` → `uri` | `scheme?: text` | RFC 3986 |
-| `regex_type` → `regex` | — | RFC 9485 I-Regexp |
-| `email_type` → `email` (meta) | — | dot-atom `@` dot-atom only |
+| `uri_type` (meta) → core `uri_reference => !uri_type {}`, `uri => !uri_reference ^ { allow_relative: false }` | `schemes?: scheme_set`, `allow_relative? ~ true`, `allow_fragment? ~ true` | RFC 3986, US-ASCII. `uri` requires a scheme and IS-A `uri_reference`. `normalization` fixed `NONE` |
+| `iri_type` (kernel) → core `iri_reference`, `iri` (also the kernel's `iri`) | the same three | RFC 3987: `ucschar` beyond US-ASCII, judged through the URI it maps to. `uri` is **not** IS-A `iri` |
+| `regex_type` (kernel) → `regex` | — | RFC 9485 I-Regexp; `normalization` fixed `NONE` |
+| `email_type` (meta) → `email` | — | dot-atom `@` dot-atom only; `normalization` fixed `NONE` |
+| `identifier_type` (kernel) → kernel `identifier` | the profile facets (below) | UAX #31; `normalization ~ NFC`. Core declares no `identifier` |
+
+`schemes` is a set of the kernel's `scheme_name`, which folds ASCII case, so `[HTTP http]` is a duplicate and `HTTPS://a.example/` is in `[https]`. `allow_relative` and `allow_fragment` are permissions (true → false only), `schemes` a member set (shrink only). A relative reference under `uri`, a scheme outside `schemes`, or a fragment where withdrawn is a validation error; a character outside the grammar (`ü` under `uri`) is refused by the parser. `allow_relative: false` with `allow_fragment: false` is RFC 3986's absolute-URI.
 
 `spec` is pinned (`spec?: = "…"`) in each constructor; a refinement must not restate it with a different value.
+
+### Identifier families
+
+`identifier_type` states a UAX #31 identifier profile as data: `start` and `continue` (`identifier_base => !enum [XID ID NONE]`, default `XID`), `start_add`, `continue_add`, `medial` and `exclude` (each a text read as a set of code points), plus every text facet. The kernel's `identifier => !identifier_type { continue_add: "-" }` is [TSON-DATA] §7.7's grammar, and its second instance `scheme_name` is a URI scheme.
+
+- **A value typed by an identifier family is a name**: name hygiene reaches it, and the keys of a map keyed by one and the elements of a set of one are look-alike scopes. A `text`-keyed map stays data.
+- **Core does not declare `identifier`**; a schema that wants one writes `identifier => !identifier_type { continue_add: "-" }`, then `{identifier => handler}` or `!identifier ^ { pattern: "[a-z_]+" }`.
+- **Each profile is its own type** and string-class; IS-A between two comes from refinement alone. The profile facets and `normalization` are fixed at construction — a refinement narrows only the text facets (`!identifier ^ { start_add: "_" }` is refused).
+- A profile with an empty Start set, or a `medial` character that is also Start or Continue, is refused at load.
 
 ## Temporal (meta)
 
 | Constructor → instance | Facets | Ordering |
 |---|---|---|
 | `date_type` → `date` | `min`/`exclusive_min`, `max`/`exclusive_max` | TOTAL |
-| `time_type` → `time` | same, `precision` | **TOTAL** — the value is the UTC time of day |
-| `datetime_type` → `datetime` | same, `precision` | **TOTAL** — the value is the instant |
+| `time_type` → `time` | same, `precision` | **TOTAL** — the value is the UTC time of day; second 60 is refused |
+| `datetime_type` → `datetime` | same, `precision` | **TOTAL** — the value is the instant; second 60 (a leap second) is refused |
 | `duration_type` → `duration` | same, `precision`, `multiple_of` | **TOTAL** — signed exact decimal **seconds** |
 | `period_type` → `period` | same, `multiple_of` | **TOTAL** — signed integer **months** |
 
@@ -101,9 +117,11 @@ under both; a span that is genuinely both is a record with a field of each. A mo
 beside a second that has one, which is what makes each totally ordered. A week is 7 days and a day 86400 s,
 so the week form belongs to `duration`. A `duration`'s magnitude is at most 2⁶³ − 1 nanoseconds.
 
-`precision: N` — at most N fractional-second digits on the written token (a validation bound, not
-truncation); `precision: 0` forbids a fraction, and N is at most 9, which falls out of the `"." 1*9DIGIT`
-token rule shared by `time`, `datetime` and `duration`. There is no timezone facet: RFC 3339 already
+`precision: N` — a constraint on the *value*: it admits a whole number of 10⁻ᴺ seconds, so `precision: 3` is
+millisecond resolution and `precision: 0` whole seconds. Reading admits any spelling of an admitted value,
+trailing zeros included (`12:00:00.500` passes `precision: 1`); a writer writes at most N digits. Nothing is
+truncated — a value off the grid is rejected. N is at most 9, from the `"." 1*9DIGIT` fraction shared by
+`time`, `datetime` and `duration`. There is no timezone facet: RFC 3339 already
 mandates the offset. Bound values are written as the atom's own text, quoted where the content needs it:
 `exclusive_min: "2026-01-01T00:00:00Z"`.
 
@@ -126,7 +144,7 @@ CIDR lists are quoted strings: `within: ["10.0.0.0/8" "192.168.0.0/16"]`.
 `bytes_type => atom & { encoding?: bytes_encoding ~ BASE64  length?: non_negative_integer  min_length?: non_negative_integer  max_length?: non_negative_integer }`, with
 `bytes_encoding => !enum [BASE64 BASE64URL BASE32 HEX]`.
 
-Core instance: `bytes => !bytes_type { encoding: BASE64 }` — the one binary type; there is no `base64`,
+Core instance: `bytes => !bytes_type {}` (the `BASE64` default) — the one binary type; there is no `base64`,
 `base64url`, `base32` or `hex`.
 
 **The value is the octets.** Equality, identity, content addressing and the length facets are all over
@@ -137,20 +155,28 @@ the same octets are `"3q2+7w=="`, `"deadbeef"` and `"3WV37Q======"`.
 Another alphabet is another *instance* — `hexdigest => !bytes_type { encoding: HEX }` — because a spelling
 narrows nothing, so `hexdigest ^ bytes` would claim an IS-A that no base64 position could honour.
 
-## Unit atoms (kernel; `unit` constructor)
+## `value` and `void` (kernel)
 
-- `value` — the escape hatch: the token, uninterpreted, read by the type the position hands it to. Its inhabitants are boolean, integer, float and string. Base type resolution never reads it, and a `value` position is **not** a scope. Not narrowable. Used by the meta layer for value-typed facets and available to user schemas for "some scalar".
-- `identifier` — a name (identifier grammar, NFC). Not for data values.
-- `void` — the only value is `_`. Target for bare annotations; a field typed `void` means "no value here". Core re-declares `void` so data documents can reach it.
+Each has a constructor with an empty vocabulary, `value_type => atom & {}` and `void_type => atom & {}`, and a processor recognises both by constructor, never by name. There is no `unit`.
 
-## Enumerations
+- `value => !value_type {}` — the escape hatch: the token, uninterpreted, read by the type the position hands it to. Its inhabitants are boolean, integer, float and string. A `value` position is **not** a scope. Not narrowable. Used by the meta layer for value-typed facets; core declares no `value`, so a user schema wanting "some scalar" declares `scalar => !value_type {}`.
+- `void => !void_type {}` — the only value is `_`. Target for bare annotations; a field typed `void` holds no value (`a?: void?`). Core re-declares `void` so data documents can reach it.
 
-`enum => atom & { members: enum_set  profile?: enum_profile ~ IDENTIFIER }`, `enum_set => !set_type { element_type: text }`, `enum_profile => !enum [IDENTIFIER TEXT]`. Members are unique, at least one, compared as decoded text.
+## Enumerations (kernel)
 
-- **`IDENTIFIER`** (default) — a vocabulary of names: every member matches the identifier grammar, name hygiene applies, host enum generation is guaranteed. Positional form: `!enum [A B C]`. Class: the members' shared class (`[true false]` boolean; `[A B]` string; mixed → none).
-- **`TEXT`** — a value set of arbitrary texts: `!enum { members: ["sedentary" "lightly active"]  profile: TEXT }`. Always string-class, even `["80" "443"]`; only the confusable-pair hygiene check applies; binds to host text.
+```
+enum_type => atom & { type: type_name  members: enum_set }
+enum      => enum_type ^ { type?: = identifier }
+text_enum => enum_type ^ { type?: = text }
+```
 
-Numbers are never enum members under either profile — use `!integer ^ { members: [...] }`. Refinement of an enum may only *shrink* the member set (`open_states => !status ^ { members: [OPEN ACTIVE] }`) and may move `profile` only from `TEXT` to `IDENTIFIER`, once.
+`enum_set => !set_type { element_type: text  min_items: 1 }`. An enum is a closed set of **labels** and the text family they are drawn from:
+
+- **`!enum [A B C]`** — a vocabulary of names (`type` is the kernel's `identifier`, wherever the enum is reached). Every member is an identifier, name hygiene applies to the set, and the class is the members' shared class read off their tokens (`[true false]` boolean; `[A B]` string; mixed → none).
+- **`!text_enum ["sedentary" "lightly active"]`** — a value set of arbitrary texts. Always string-class, even `["80" "443"]`; only the look-alike check applies.
+- **`!enum_type { type: kebab  members: [make-tea drink-tea] }`** — labels of a text family the schema declares (`kebab => !identifier_type { continue_add: "-" }`); `type` must name a text family, and an identifier family brings name hygiene.
+
+Members are values of `type` (a member it refuses is a load error; two that are one value under its form are a duplicate), unique, at least one. `type` is **fixed at construction**: a refinement only shrinks the members (`open_states => !status ^ { members: [OPEN ACTIVE] }`). Numbers are never members — use `!integer ^ { members: [...] }`. Parsing puts the token's text into the label type's form and matches it; `"true"` and `true` are one value at `boolean`. Binding: a host boolean at `boolean`, host text elsewhere, a host enum through a mapping the binder owns.
 
 Core: `boolean => !enum [true false]`.
 
@@ -159,7 +185,7 @@ Core: `boolean => !enum [true false]`.
 | Constructor | Fields | Notes |
 |---|---|---|
 | `choice` (kernel) | `variants: [type_ref]`, `disjoint?: boolean` | sugar `(A \| B)`; two or more; no `void` variant. The resolver derives `disjoint` and writes it in the choice body; it is discarded and recomputed on ingest |
-| `scoped` (meta) | `scope: set<scope_kind>`, `schemas?: {uri => [type_name; 1..]?; 1..}` | open sum: the value names its own type, the instance names where that name resolves. `scope_kind => !enum [LOCAL EXTERN]` |
+| `scoped` (meta) | `scope: scope_set`, `schemas?: {schema_identity => [type_name; 1..]?; 1..}` | open sum: the value names its own type, the instance names where that name resolves. `scope_kind => !enum [LOCAL EXTERN]`; `schema_identity => !iri_type { allow_fragment: false }` |
 
 Core instances of `scoped`:
 `declared => !scoped { scope: [LOCAL] }`, `extern => !scoped { scope: [EXTERN] }`,
@@ -172,27 +198,30 @@ A value naming no type at a scoped position is a validation error.
 
 | Constructor | Fields | Sugar |
 |---|---|---|
-| `record` | `fields: [record_field]`, `groups?: [field_group]`, `extension?: record_extension_type ~ OPEN`, `supertypes?: [type_ref]`, `discriminators?: [field_name]` | `{ … }`; `abstract { … }`, `final { … }`; `=?` on a field |
-| `array` | `element_type: type_ref`, `state?: REQUIRED\|OPTIONAL ~ REQUIRED`, `unordered? ~ false`, `unique_items? ~ false`, `min_items?`, `max_items?` | `[T]`, `[T; N..M]`, `[T?]` |
-| `set_type` (`array ^`) | `state? = REQUIRED`, `unordered? = true`, `unique_items? = true`, `min_items? ~ 1` | `set<T>` — the template meta and core each declare. A set is **non-empty by default** |
-| `map` | `key_type`, `value_type`, `state? ~ REQUIRED`, `min_items?`, `max_items?` | `{K => V}`, `{K => V?; 1..}` |
-| `tuple` | `elements: [{ element_type  state }]` | `[T, U?]` |
+| `record` | `fields: [record_field]`, `groups?: [field_group]`, `extension?: record_extension_type ~ OPEN`, `supertypes?: [type_ref]`, `discriminators?: [field_name; 1..]` | `{ … }`; `abstract { … }`, `final { … }`; `=?` on a field |
+| `array` | `element_type: type_ref`, `voidable? ~ false`, `ordered? ~ true`, `unique_items? ~ false`, `min_items?`, `max_items?` | `[T]`, `[T; N..M]`, `[T?]` |
+| `set_type` (`array ^`) | `voidable? = false`, `ordered? = false`, `unique_items? = true`; bounds as `array`'s | `set<T>` — the template meta and core each declare. **A set may be empty**; say `min_items: 1` for one that may not |
+| `map` | `key_type`, `value_type`, `voidable? ~ false`, `ordered? ~ false`, `min_items?`, `max_items?` | `{K => V}`, `{K => V?; 1..}` |
+| `tuple` | `elements: [{ element_type  voidable? }]` | `[T, U?]`; one position: core's `tuple1<T>`, `voidable_tuple1<T>` |
 
-Explicit constructor applications are legal as declaration bodies (`lookup => !map { key_type: text  value_type: integer }`) and are the way to reach a composite map key type, or a set that may be empty (`!set_type { element_type: T  min_items: 0 }`).
+`ordered` says whether two values differing only in order are one value; it never changes what a document may write, and output keeps the written order. A map whose entry order matters is `!map { key_type: K  value_type: V  ordered: true }` — the sugar has no spelling for it. A container's part is a value or void, never missing, so containers carry `voidable` and no `optional`.
+
+Explicit constructor applications are legal as declaration bodies (`lookup => !map { key_type: text  value_type: integer }`) and are the way to reach a composite map key type, an ordered map, or a bounded set at a field (`tag_set => !set_type { element_type: text  min_items: 1 }`, then `tags: tag_set`).
 
 ## Which core names exist
 
-Numeric: `integer int8 int16 int32 int64 int128 int256 uint8 uint16 uint32 uint64 uint128 uint256 positive_integer non_negative_integer negative_integer non_positive_integer number rational complex float32 float64`.
-Text: `text non_empty_text regex uri email`.
+Numeric: `integer int8 int16 int32 int64 int128 int256 uint8 uint16 uint32 uint64 uint128 uint256 number rational complex float32 float64`.
+Text: `text regex uri_reference uri iri_reference iri email`.
 Binary: `bytes`.
 Temporal: `date time datetime duration period`.
 Identifier/network: `uuid ipv4 ipv6 cidr4 cidr6 mac`.
 Scoped: `declared extern dynamic`, and the templates `extern_of extern_type`.
-Other: `boolean void set`.
-Annotation types for data documents: `annotation documentation doc`.
+Templates: `set tuple1 voidable_tuple1`.
+Other: `boolean void`.
+Annotation type for data documents: `doc`.
 
-Names that do **not** exist in core: `string str int float double bool binary base64 base64url base32 hex timestamp decimal url ip any null unknown list array map record object`. (`bytes`, `period`, `declared`, `extern`, `dynamic`, `extern_of`, `extern_type` and `set` *do* exist.)
+Names that do **not** exist in core: `string str int float double bool binary base64 base64url base32 hex timestamp decimal url ip any null unknown unit list array map record object identifier non_empty_text positive_integer non_negative_integer negative_integer non_positive_integer annotation documentation`. A sign bound, a non-empty text and an `identifier` are one line a schema writes for itself. (`bytes`, `period`, `declared`, `extern`, `dynamic`, `extern_of`, `extern_type`, `set`, `tuple1` and `iri` *do* exist.)
 
 ## Annotation types available to schema documents (from `meta.tn`)
 
-`@doc:"…"` (and `@documentation`), `@title:"…"`, `@examples:[…]`, `@deprecated:"…"`, `@since:"…"`, `@todo:"…"`, `@lang:"en"`, `@ordered:NONE|PARTIAL|TOTAL`, `@bounded:true|false`, `@exact:true|false`, `@numeric` (bare), `@disjoint` (bare, on a choice), `@read_only` / `@write_only` (bare, never both on one field), and `@synthetic` (resolver-attached; do not write it). There is no `@discriminator` or `@rest`: a sealed family is `abstract` plus a `=?` selector, and open-ended data is a map field.
+`@doc:"…"` (CommonMark 0.31.2, no extensions; raw HTML never executed), `@title:"…"` (plain text), `@comment:"…"` (for maintainers; a documentation tool leaves it out), `@examples:["…" "…"]` (a list of *text*, conventionally the value in TSON notation, `"{ x: 1 }"`; nothing parses it), `@deprecated` (bare; a reason belongs in `@doc`), `@ordering:NONE|PARTIAL|TOTAL` (whether the value space has an order relation — not a container's `ordered`), `@bounded:true|false` (whether the value space has a finite least and greatest value: `date`, `datetime`, `duration` and the fixed widths do, `uuid`, `mac` and the CIDR families do not), `@exact:true|false`, `@numeric` (bare), `@disjoint` (bare, on a choice), `@read_only` / `@write_only` (bare, never both on one field), and `@synthetic` (resolver-attached; do not write it). There is no `@since`, `@todo`, `@lang`, `@documentation`, `@discriminator` or `@rest`: a sealed family is `abstract` plus a `=?` selector, and open-ended data is a map field.

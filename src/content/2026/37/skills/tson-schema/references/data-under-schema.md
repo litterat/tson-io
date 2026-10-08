@@ -6,8 +6,8 @@ Part 2 §7, condensed. This is what changes in a data document once `!!schema:"�
 
 - Header form binds the whole document; before a record field value, map entry value, or array element it binds that value alone, then reverts.
 - The referent is a schema *document*, never resolver output.
-- It names a **namespace**, not a root type. The value names its own type: `!task { … }`. An unannotated root is legal but vocabulary-only; a validator asked to validate the document must report it as a validation error — nothing was checked.
-- A nested `!!schema` at a position typed by the outer schema is a resolver error unless that position's type resolves to a `scoped` instance whose `scope` holds `EXTERN` — `extern`, `dynamic`, `extern_of<…>`, `extern_type<…>`, or a container of those (`[extern]`). This is a **derived fact**, not a list to memorise — and `value` is not one of them.
+- It names a **namespace**, not a root type. The value names its own type: `!task { … }`. **Under `!!schema` the root must name its type** — an unannotated root is a validation error in every mode.
+- A nested `!!schema` is admitted exactly where the position's type resolves to a `scoped` instance whose `scope` holds `EXTERN` — `extern`, `dynamic`, `extern_of<…>`, `extern_type<…>`; containers descend, so each element of `[extern]` is such a position. Where it is not admitted, the position decides the category: at a `scoped` position whose `scope` lacks `EXTERN` (`declared`) it is a **validation error**, by the cell rule; at a position whose own type is not `scoped` at all — a record, a choice, a `value`, an atom — it is a **resolver error**. A derived fact, not a list to memorise.
 - **A schemaless outer document opens no schema scope**: a nested `!!schema` in a document with no `!!schema` of its own is a validation error.
 
 ## Type annotations
@@ -28,36 +28,38 @@ Base type resolution **does not apply under a schema at all** — not merely at 
 
 **There is no `null`.** `void` admits `_` alone, and a bare `null` is the string `null` — so it satisfies a `text`-typed position and nothing else.
 
-Enums: the token's decoded text must equal a member, whatever the profile; the form is not consulted, so `"true"` and `true` are one value at `boolean`. `boolean`'s members become host booleans, an `IDENTIFIER` enum's members are host-safe names, and a `TEXT` enum's members (`"lightly active"`) are plain text.
+Enums: the token's decoded text, put into the label type's normalization form, must equal a member; the form is not consulted, so `"true"` and `true` are one value at `boolean`. `boolean`'s members bind to host booleans and every other enum's to host text; a host-language enum is a mapping the binder owns (`in-progress` → `IN_PROGRESS`), since no host guarantees a member is a legal constant.
+
+Text: a value is its token put into the type's `normalization` form, and every facet and comparison judges that value. Under a folding type `Content-Type` and `content-type` are one value — one map key, one set member — and a round trip writes the folded form. A refusal quotes the token as written, then the value it was judged as. A value typed by an identifier family is a name, under name hygiene.
 
 Constraint values typed `value` in the meta layer (`decimal_type.min`, etc.) are converted at schema load, never per validation.
 
 ## Sets
 
-`[ … ]` syntax; set-ness is declared (`set<T>`, enum members). A repeated element is a validation error at the repeated occurrence. **Equality is over the element type's value space, not its lexical space**: two spellings of one value are one element, so `bytes` compares octets whatever the alphabet and `datetime` the instant whatever the offset. For a set of records, arrays, maps or choices, duplicates are whatever the processor's host equality relates (at least textual identity) — key a set by an atom where portable detection matters. Element order carries no meaning in data; resolved output keeps source declaration order. `_` elements are rejected. A `set<T>` is non-empty by default (`set_type.min_items` defaults to 1).
+`[ … ]` syntax; set-ness is declared (`set<T>`, enum members). A repeated element is a validation error at the repeated occurrence. **Equality is over the element type's value space, not its lexical space**: two spellings of one value are one element, so `bytes` compares octets whatever the alphabet and `datetime` the instant whatever the offset. For a set of records, arrays, maps or choices, duplicates are whatever the processor's host equality relates (at least textual identity) — key a set by an atom where portable detection matters. Element order carries no meaning in data; resolved output keeps source declaration order. `_` elements are rejected. **A set may be empty**: `set<T>` admits `[]`, and only a type stating `min_items: 1` refuses it. A set's `ordered` is pinned `false`; an array is `ordered` and a map is not unless it says otherwise, and in every case output keeps the order written.
 
-## The absent sentinel `_`
+## The void sentinel `_`
 
 | Position | `_` permitted? |
 |---|---|
-| array element | only under `[T?]`; occupies a slot and counts toward size |
-| tuple position | only where the position is `T?`; the slot must still appear (`[a, _]` ok; `[a]` is a validation error) |
-| record field | only where the field is **voidable** (`?` on the type: `a: T?`, `a?: T?`, `a?: T? ~ v`); the field is then present with an absent value. Anywhere else a validation error — at `a?: T ~ v`, omit the field to get the default injected |
-| field group member | only at a voidable member (`( a: T? \| b: U )`); `_` then counts as present and selects that alternative |
+| array element | only under `[T?]`; a void element occupies a slot and counts toward size |
+| tuple position | only where the position is voidable, `T?`; the slot must still appear (`[a, _]` ok; `[a]` is a validation error) |
+| record field | only where the field is **voidable** (`?` on the type: `a: T?`, `a?: T?`, `a?: T? ~ v`); the field is then present with a void value. Anywhere else a validation error — at `a?: T ~ v`, omit the field to get the default injected |
+| field group member | only at a voidable member (`( a: T? \| b: U )`); `_` is then present and chooses that member's option |
 | map key | never (resolver error) |
-| map entry value | only under `{K => V?}`; the entry counts toward size |
+| map entry value | only under `{K => V?}`; the entry is present with a void value and counts toward size |
 | type positions in a schema | never (parse error) |
 | field modifier | never — `~ _` and `= _` are refused; write `a?: void?` |
 
 ## Defaults and fixed values on read and write
 
-An omitted field whose name carries `?` and which has a value (`a?: T ~ v`, `a?: T = v`) is **injected** into decoded output; one without a value is absent; an omitted field whose name is unmarked is the missing-field error — including a marker `a: T = v`, which the document must write. Group members are never injected. At `a?: T? ~ v`, `_` means *none* and omission means *the default*. A written value at a FIXED field must equal the fixed value — a decoder must report a contradiction, never overwrite it.
+An omitted field whose name carries `?` and which has a value (`a?: T ~ v`, `a?: T = v`) is **injected** into decoded output; one without a value stays missing; an omitted field whose name is unmarked is the missing-field error — including a marker `a: T = v`, which the document must write. Group members are never injected. At `a?: T? ~ v`, `_` is void and a missing key is *the default*. A written value at a FIXED field must equal the fixed value — a decoder must report a contradiction, never overwrite it.
 
-Encoders should write defaults out; omitting a field equal to its default is a lossless size optimisation. An encoder holding the schema **must** write an absent value as `_` at `a: T?` and at `a?: T? ~ v`; one without the schema omits it, which is right everywhere else.
+Encoders should write defaults out; omitting a field equal to its default is a lossless size optimisation. An encoder holding the schema **must** write a void value as `_` at `a: T?` and at `a?: T? ~ v`; one without the schema omits the field, which is right everywhere else.
 
 ## Typed key equality and empty braces
 
-Map keys are decoded by the declared key type, so keys equal under an atom key type are duplicates (`1` and `1.0` under a `number` key → validation error at the second); under a compound key type, host equality decides. `{}` at a record- or map-typed position is the empty record or map (then the map's `min_items` applies); at an array, tuple, atom, or non-brace choice position it is a validation error (wrong form — arrays are `[]`).
+Map keys are decoded by the declared key type, so keys equal under an atom key type are duplicates (`1` and `1.0` under a `number` key, `Content-Type` and `content-type` under a case-folding text key → validation error at the second); under a compound key type, host equality decides. The keys of a map keyed by an identifier family are names, and a look-alike scope. `{}` at a record- or map-typed position is the empty record or map (then the map's `min_items` applies); at an array, tuple, atom, or non-brace choice position it is a validation error (wrong form — arrays are `[]`).
 
 ## Choices in data
 
@@ -96,13 +98,15 @@ attachments: [
 
 The directive binds to the one element it prefixes; put each directive-carrying element on its own line,
 and the `!type` is mandatory there. `extern_of` and `extern_type` are ordinary partial applications, so a
-field writes them inline and declares nothing; `S` stands in a `uri`-typed key and `T` inside `[type_name]`,
-both value parameters, so each application reaches one schema (and one type). An application's identity is
+field writes them inline and declares nothing; `S` stands in a key typed by meta's `schema_identity` (an
+IRI-reference with no fragment) and `T` inside `[type_name]`, both value parameters — recorded as
+`S: schema_identity` and `T: type_name` and checked at the application — so each application reaches one
+schema (and one type). An application's identity is
 the argument **as written**, so a pinned and an unpinned `S` are two applications. For several schemas or
 several types, use the instance form (`!scoped { scope: [EXTERN]  schemas: { … } }`) or a named declaration.
 
 ## Error categories at this layer
 
-- Resolver errors: unresolved type or annotation names, schema load/compile failures (bad facets, invalid defaults, refuted `@disjoint`, incoherent bounds, unproductive recursion, collisions in the import closure, import cycles, hash mismatches), a nested `!!schema` at a position that does not resolve to an `EXTERN`-scoped type, a nested `!!schema` in a schemaless document, a built-in annotation on a container, a failed family check (a member not pinning a selector, colliding pins, composing onto a FINAL record).
-- Validation errors: closed-record violations, constraint violations, missing required fields (an unmarked name omitted), `_` at a non-voidable field, untagged non-disjoint choice values, an untagged value at an ABSTRACT position with no selector, an unmatched selector value, duplicate set members or typed-equal map keys, wrong-form empty braces, a value naming no type at a scoped position, a contradicting fixed value.
+- Resolver errors: unresolved type or annotation names, schema load/compile failures (bad facets, invalid defaults, refuted `@disjoint`, incoherent bounds, unproductive recursion, collisions in the import closure, import cycles, hash mismatches), a nested `!!schema` at a position whose type is not `scoped`, a built-in annotation on a container, a failed family check (a member not pinning a selector, colliding pins anywhere in the closure, composing onto a FINAL record, an undeclared family member), a token an atom's parser refuses (`twelve` at `integer`, a leap second at `time`, `ü` under `uri`).
+- Validation errors: closed-record violations, constraint violations (a relative reference under `uri`, a scheme outside `schemes`), missing required fields (an unmarked name omitted), `_` at a non-voidable field, a field group with no option or two options chosen, or a chosen option missing a member, untagged non-disjoint choice values, an untagged value at an ABSTRACT position with no selector, an unmatched selector value, duplicate set members or typed-equal map keys, wrong-form empty braces, a value naming no type at a scoped position, a nested `!!schema` at a `scoped` position lacking `EXTERN` or in a schemaless document, a contradicting fixed value.
 - **Not judged**, not an error: a schema the processor cannot obtain (not held, fetching not permitted, unreachable…) is reported as *unavailable*, beside the four categories and located at the reference — nothing was read, so nothing is known about conformance. A pin mismatch on a schema that *was* obtained stays a resolver error.

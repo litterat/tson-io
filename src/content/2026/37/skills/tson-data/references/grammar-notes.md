@@ -25,21 +25,29 @@ Condensed from TSON Part 1 §2, §3, §6, §7, §8, §9 (2026 Revision 37). Read
 ## 1. Document shape and directives
 
 ```
-document   = [ id-directive ] ws ( data-doc / schema-doc )
-data-doc   = [ schema-directive ws ] data-value ws
-schema-doc = meta-directive ws *( import-directive ws ) schema-map ws
+document        = [ id-directive ] ws ( data-doc / schema-doc )
+
+data-doc        = [ schema-directive ws ] data-value ws
+schema-doc      = meta-directive ws *( import-directive ws )
+                  schema-map ws
 
 id-directive     = "!!" "id"     ":" single-line-token
 schema-directive = "!!" "schema" ":" single-line-token
 meta-directive   = "!!" "meta"   ":" single-line-token
 import-directive = "!!" "import" ":" single-line-token
+                ; ":" MUST be adjacent to the directive name (§7.5).
+                ; "!!" whose name is not followed by an adjacent ":"
+                ; is a parse error (§1.3). String literals match
+                ; exact characters (§7.3): directive names are
+                ; case-sensitive. Any other directive name is a
+                ; parse error (§3.3).
 ```
 
 Kind dispatch: consume `!!id` if present; if the next token is `!!meta` the document is a schema document, otherwise a data document. A data-format-only processor rejects schema documents with a specific diagnostic.
 
 A data document contains exactly one value. A pure-metadata document is `!!id:"…"` followed by `_`.
 
-Directive arguments are **single-line** quoted tokens — a `"""` argument is a parse error — so every directive sits on one physical line. The `:` must be adjacent to the name. The argument is a URI (RFC 3986). Parsing never dereferences it.
+Directive arguments are **single-line** quoted tokens — a `"""` argument is a parse error — so every directive sits on one physical line. The `:` must be adjacent to the name. The argument is an **IRI-reference** (RFC 3987 §2.2): a URI, a relative or file reference, or either with characters beyond US-ASCII written as themselves rather than percent-encoded. Parsing never dereferences it. Whether a reference *identifies* a document, and the canonical form an identity must take, is §13's question.
 
 Directive placement (each name legal in exactly one kind of position):
 
@@ -52,13 +60,21 @@ Directive placement (each name legal in exactly one kind of position):
 
 Not permitted: before a map key, before a field name, inside an annotation value, or anywhere with another name.
 
-Value rules:
+Value rules (`scoped-value` at field values, map entry values and array elements; `data-value` everywhere a value occurs, map keys included):
 
 ```
-scoped-value = [ schema-directive ws ] data-value     ; field values, map entry values, array elements
-data-value   = *annotation [type-ref] core-value       ; everywhere a value occurs (incl. map keys)
-type-ref     = "!" identifier
-core-value   = record / map / array / empty-brace / absent / token
+data-value      = *annotation [type-ref] core-value
+
+type-ref        = "!" identifier
+                ; identifier — an unquoted token whose text
+                ; matches the identifier grammar (§7.7)
+
+core-value      = record / map / array
+                / empty-brace / void / token
+
+scoped-value    = [ schema-directive ws ] data-value
+
+void            = "_"
 ```
 
 ## 2. The unquoted-token profile and the identifier profile
@@ -71,7 +87,7 @@ Identifier  Start    = XID_Start
             Continue = XID_Continue ∪ { - }
 ```
 
-The **token profile** decides what the lexer accepts as one unquoted token — values and names alike. The **identifier profile** constrains the *decoded text* of a name at every naming position: **field names**, annotation names, type-annotation names, and every name in a schema document. Identifiers never begin with a digit, a sign or a dot; `+` and `.` are not allowed inside them (`.` is reserved as a future separator). Every identifier is a valid unquoted token, so `!name` and `@name` positions admit no quoted form and lose nothing.
+The **token profile** decides what the lexer accepts as one unquoted token — values and names alike. The **identifier profile** constrains the *decoded text* of a name at every naming position: **field names**, annotation names, type-annotation names, and every name in a schema document. The kernel states this profile as data, `identifier => !identifier_type { continue_add: "-" }`; a schema describing another system's names declares another instance, but such a profile types *values*, and every naming position stays on this one. Identifiers never begin with a digit, a sign or a dot; `+` and `.` are not allowed inside them (`.` is reserved as a future separator). Every identifier is a valid unquoted token, so `!name` and `@name` positions admit no quoted form and lose nothing.
 
 Underscore is `XID_Continue` but not `XID_Start`: `my_type` is fine, `_id` is neither a token nor an identifier. So `{ _id: 1 }`, `{ "_id": 1 }` and `{ _: 1 }` are all parse errors — quoting a name relieves the lexical accidents of the unquoted form, never the identifier grammar. Write `{ "_id" => 1 }`.
 
@@ -80,6 +96,8 @@ Format characters (`Cf`) and controls are never in a token: the bidi controls U+
 Non-ASCII letters and digits are ordinary token characters: `名前: 値` needs no quotes.
 
 **A field name is an identifier at every layer**, schemaless or governed. The production admits two spellings — unquoted, or single-line quoted; the multi-line form is not admitted in name position — and they are two spellings of one set of names. The decoded text is NFC-normalised and then matched in full against the identifier grammar, exactly as an annotation name's is; a token in name position whose decoded text is not an identifier is a **parse error**. So `{ "first name": 1 }`, `{ _id: 1 }` and `{ 42x: 2 }` fail, and the remedy is the one the format already has: a record's fields are the named members of a shape, which is what makes them declarable, and *a key that is not a name belongs in a map* — `{ "Content-Type" => "text/plain" }`. Under a schema a field name matches a declared one, and declared names are identifiers by the schema grammar, so nothing further is asked of a governed document.
+
+**Identifier families make values into names.** Under a schema, a value whose declared type is an identifier family — the kernel's `identifier`, or an `!identifier_type` instance the schema declares — is a name by its type's statement, wherever it stands: a map key, a field value, an array element. It is matched against *that family's* profile and meets name hygiene (§11) under the identifier policy, and the keys of one identifier-keyed map, and the elements of one unique array of identifiers, are look-alike scopes. A `text`-typed key stays data. The line between a name and data runs through the type, not the position.
 
 ## 3. Whitespace, line terminators, bidi marks
 
@@ -134,11 +152,11 @@ If the closing `"""` is *less* indented than the content, the prefix is the clos
 - `=` followed by `>` → the map arrow `=>`; otherwise `=` alone is a special token (schema grammar only — a parse error in data).
 - `!` followed by `!` → the directive token `!!`; otherwise `!` is the type prefix.
 - `.` followed by `.` → the range token `..` (schema grammar only). `.` followed by a token character → an unquoted token begins (`.5`, `.inf`). Bare `.` → lexer error. An unquoted token **ends** before two consecutive dots: `1..100` lexes as `1`, `..`, `100`, so content containing `..` must be quoted.
-- `-` or `+` followed by a token character → an unquoted token begins (`-42`, `+0.5`). Bare `-` → special token (schema subtraction; parse error in data). Bare `+` → lexer error. A mid-token hyphen is part of the token: `a-b`, `2026-07-01`, `[1-2]` (one token!).
+- `-` or `+` followed by a token character → an unquoted token begins (`-42`, `+0.5`). Otherwise the sign is emitted alone as a special token — `-` the schema grammar's subtraction operator, `+` its at-least-one field-group mark — and in a data value each is a **parse error**. A mid-token hyphen is part of the token: `a-b`, `2026-07-01`, `[1-2]` (one token!).
 
 ## 7. Reserved special characters and unrecognised characters
 
-Fourteen characters are special tokens: `! @ & < > ? ~ = | ; ( ) ^ -`. In data values only `!` and `@` have a role; each of the other twelve is a **parse error** in a data document (they belong to the schema grammar). Parentheses are not delimiters.
+Fifteen characters are special tokens: `! @ & < > ? ~ = | ; ( ) ^ - +`. In data values only `!` and `@` have a role; each of the other thirteen is a **parse error** in a data document (they belong to the schema grammar; `-` and `+` reach special-token mode only when no token character follows). Parentheses are not delimiters.
 
 Everything else outside a quoted token is an **unrecognised character** and a lexer error: `/ # % * ' \` `` ` ``, `$ € ¥`, control characters, unassigned code points. Content needing them is quoted: `"$19.99"`, `"10%"`, `"2/3"`, `"/usr/bin"`, `"#tag"`.
 
@@ -164,8 +182,8 @@ Annotation values are data values — never type definitions.
 ## 10. Identity rules
 
 - **Field names** in one record must be unique (resolver error otherwise). Identity is the NFC-normalised decoded text: `name` and `"name"` collide; `"café"` decomposed and precomposed collide. Case-sensitive.
-- **Map keys** must be unique. Textual identity is the minimum (`Alice` = `"Alice"`); a processor that decodes values also relates `0xFF` and `255`, `1_000` and `1000`. Annotations and type annotations on a key do not participate in identity (`!text a` = `a`). Under a schema the declared key type can make more keys equal (`1` and `1.0` under an integer-keyed map).
-- Unquoted tokens must already be NFC in the source (lexer error otherwise). Quoted tokens keep their exact content; at naming positions the resolver NFC-normalises them before comparing.
+- **Map keys** must be unique. Textual identity is the minimum — the NFC-normalised string after escape processing (`Alice` = `"Alice"`, and `"cafe\u0301"` = `"caf\u00E9"`); a processor that decodes values also relates `0xFF` and `255`, `1_000` and `1000`. Annotations and type annotations on a key do not participate in identity (`!text a` = `a`). Under a schema the declared key type can make more keys equal, never fewer: `1` and `1.0` under a `number`-keyed map, and `Content-Type` and `content-type` under a text key type whose `normalization` folds case — a duplicate only the declared type relates is a validation error.
+- **NFC.** Unquoted tokens must already be NFC in the source (lexer error otherwise); the lexer never alters token text. Quoted tokens keep their exact content: at naming positions they are NFC-normalised before they are matched and compared, and string *values* stay distinct as written — but wherever two values are compared, they compare in NFC: as map keys, and under a schema in every comparison a text type makes. Under a schema a text type also states the form its values are *put into* — its `normalization`, one of `NONE` (the default), `NFC`, `NFKC`, `NFKC_CASEFOLD`, `ASCII_CASEFOLD` — and facets, comparison and a round trip all see that value; an identifier family's default is `NFC`. No comparison goes below NFC.
 - **Equality is over value spaces, not lexical spaces.** A type denotes a value space; an encoding defines a lexical space and one canonical form per value. Two spellings of one value are one value for map keys, sets, refinement, disjointness and content addressing — so `!bytes` compares octets whatever the alphabet, and `!datetime`/`!time` compare the instant whatever the offset (`+00:00`, `-00:00` and `Z` are one).
 
 ## 11. Error categories and canonical phrasing
@@ -174,10 +192,10 @@ Four categories, one severity (there are no warnings):
 
 - **Lexer error** — bad bytes/encoding, unterminated strings, bad escapes, a character escape denoting no scalar value, unrecognised characters, non-NFC unquoted tokens.
 - **Parse error** — structure: unclosed brackets, adjacency violations, missing separators, a comma that follows nothing or follows a comma, `!!` without adjacent `:`, unknown or misplaced directive, a token at a field-name, annotation-name or type-annotation-name position whose decoded text is not an identifier, reserved special tokens in data.
-- **Resolver error** — `_` as a map key, duplicate field names or map keys, a built-in annotation on a container, a token an atom's contract rejects.
-- **Validation error** — numeric range violations, CIDR prefix/host-bit violations, and (under a schema) every declared constraint.
+- **Resolver error** — `_` as a map key, duplicate field names or map keys, a built-in annotation on a container, a token an atom's contract rejects (among them a leap second, and a character beyond US-ASCII under `!uri`/`!uri_reference`).
+- **Validation error** — numeric range violations, CIDR prefix/host-bit violations, a relative reference where `!uri` or `!iri` requires a scheme, and (under a schema) every declared constraint.
 
-**Not judged is a fifth outcome, not a verdict.** It has two members. A **refusal** — name hygiene (confusable names, restricted scripts) or a resource limit — means *this processor declined*, under its stated policy; a conforming processor may legitimately not refuse at all. An **unavailable schema** means *this processor could not obtain the schema* (not held, fetching not permitted, unreachable…), so nothing is known about conformance. Both are reported in the same report as the four categories, told apart by the rule or the reason, and neither is a claim that the document is invalid — the next processor may accept it unchanged. A processor makes available, with any report carrying a refusal, its identifier policy, token policy, limits policy and the UCD version it judged under, and SHOULD make them reachable with no document in hand.
+**Not judged is a fifth outcome, not a verdict.** It has two members. A **refusal** — name hygiene (confusable names, restricted scripts) or a resource limit — means *this processor declined*, under its stated policy; a conforming processor may legitimately not refuse at all. An **unavailable schema** means *this processor could not obtain the schema* (not held, fetching not permitted, unreachable…), so nothing is known about conformance. Both are reported in the same report as the four categories, told apart by the rule or the reason, and neither is a claim that the document is invalid — the next processor may accept it unchanged. A processor makes available, with any report carrying a refusal, its identifier policy, token policy, limits policy and the UCD version it judged under, and SHOULD make them reachable with no document in hand. The vocabulary a deployment writes its policy in, and a processor states its own in, is `https://tson.io/2026/37/m/policy.tn`; no document may name, import or otherwise select the policy it is judged under.
 
 Every diagnostic carries line, column, and byte offset.
 
@@ -185,7 +203,8 @@ Every diagnostic carries line, column, and byte offset.
 
 **TSON is not a JSON superset.** A JSON document is not a TSON document. JSON is read through a **JSON
 reader** — a second encoding of the same model, whose rules are *TSON Part 3: JSON Encoding* — which maps
-JSON `null` to *absence* and JSON numbers to `number`.
+JSON `null` to *void* (admitted where the position is voidable, exactly as `_` is) and JSON numbers to
+`number`.
 
 Four differences, each of which makes some JSON documents illegal as TSON:
 
@@ -207,7 +226,9 @@ by design.
 
 ## 13. Content addressing and `!!id`
 
-`!!id:"https://host/path.tn"` names a published document. The **canonical identity** is lowercase host plus path — the scheme is dropped (`http` and `https` name the same document) and the query is dropped. The identifying URI must already be canonical: lowercase host, no userinfo, no port, no `.`/`..` segments, no fragment, no percent-encoding of unreserved characters, and a query consisting only of hash parameters.
+`!!id:"https://host/path.tn"` names a published document; its argument is an IRI-reference (§1). The **canonical identity** is lowercase host plus path — the scheme is dropped (`http` and `https` name the same document) and the query is dropped. The identifying reference must already be canonical: lowercase host, no userinfo, no port, no `.`/`..` segments, no fragment, no percent-encoding of unreserved characters, and a query consisting only of hash parameters. Nothing is normalised at comparison time: characters beyond US-ASCII in a host or path are compared as written, and a percent-encoded spelling of the same characters is a *different* identity.
+
+A reference with no host — `/local/orders.tn`, `file:/local/orders.tn`, `file:///local/orders.tn`, all one identity — names a library entry the application supplies and is never fetched. Its path **must be absolute**: a relative `tson.io/2026/37/m/core.tn` would collide with the identity `https://tson.io/2026/37/m/core.tn` reduces to.
 
 A hash pin rides on the reference as `?sha256=<64 lowercase hex>`. The hash input is every byte after the id line's terminator (the id line itself is excluded so a document can carry its own hash). Content-addressed documents must be UTF-8. A truncated or uppercase hash is an error. A consumer holding a pinned reference must verify before use; a mismatch is an error, never a fallback. Two references to one identity with different digests conflict; a pinned and an unpinned reference do not.
 

@@ -74,10 +74,11 @@ Rules that bite:
   then writes `!operation { safe: true }` is refused at load — *"'safe' is fixed on 'operation' and cannot be
   given another value — the schema declares it with '=' (fixed); for a default the data may override, use
   '~'"*. Use this to reserve a field for a later version of the vocabulary.
-- **Parameters.** A constructor's parameters follow the ordinary template rules: an argument is read by the
-  position it lands in, and a parameter with no kind-determining use is a type parameter. Prefer a `type_ref`
-  slot the application fills over a type parameter on the constructor — the slot is what a governed schema
-  writes into — but a type parameter is legal.
+- **Parameters.** A constructor's parameters follow the ordinary template rules: each takes its type from the
+  slot it stands in (a `type_ref` slot makes a type parameter, an atom-typed slot a value parameter), may be
+  narrowed or bounded by a written type (`<T: text>`), and every application is checked against the parameter
+  list. Prefer a `type_ref` slot the application fills over a type parameter on the constructor — the slot is
+  what a governed schema writes into — but a type parameter is legal.
 - **Bodies are closed.** An application whose payload names a field the constructor does not declare is a
   resolver error naming the member and the real fields (§5.5).
 
@@ -141,14 +142,17 @@ arguments: [ { name: order } ] }`, or declare `order_page => page<order>` and na
 
 Annotations resolve one hop against a document's governing target (§6) — for a schema governed by your
 extension, that is *your* namespace: your declarations plus `meta.tn`'s and the kernel's through the import.
-So `@doc`, `@deprecated:"…"`, `@since:"…"` already work in governed schemas, and you add your own the same way
-`meta.tn` does:
+So `@doc`, a bare `@deprecated` and `@comment:"…"` already work in governed schemas, and you add your own the
+same way `meta.tn` does — a lifecycle annotation such as `since => @annotation text`, which meta no longer
+declares, belongs here:
 
 ```
 interface => @annotation identifier
+since     => @annotation text
 ```
 ```
 @interface:orders
+@since:"2.1"
 @doc:"Accept an order and confirm it."
 place_order => !method { request: order  response: order }
 ```

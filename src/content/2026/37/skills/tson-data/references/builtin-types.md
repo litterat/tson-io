@@ -9,7 +9,7 @@ Each atom owns a *parsing contract*: which token texts it accepts, and what host
 - **Resolver error** — the atom's grammar cannot read the token at all (`twelve` under `!int32`, `2025-13-45` under `!date`, an unpadded `!bytes`).
 - **Validation error** — the token parsed, but the value violates the atom's range (`9999999999` under `!int32`, `10.0.0.0/33` under `!cidr4`).
 
-Only the numeric atoms and the CIDR prefix rules have ranges; every other built-in is a pure format check.
+Value rules belong to the numeric atoms' ranges, the CIDR prefix rules, and the scheme `!uri` and `!iri` require; every other built-in is a pure format check.
 
 A built-in annotation on a record, map, or array is a **resolver error**. Annotate elements individually.
 
@@ -17,12 +17,9 @@ A built-in annotation on a record, map, or array is a **resolver error**. Annota
 
 | Annotation | Grammar forms accepted | Constraint | Host value |
 |---|---|---|---|
+| `!integer` | `integer`, `based-integer` | none; arbitrary precision | integer |
 | `!int8` … `!int256` | `integer`, `based-integer` | n-bit two's-complement signed range | n-bit integer |
 | `!uint8` … `!uint256` | `integer`, `based-integer` | `0 … 2^n − 1` | n-bit unsigned |
-| `!positive_integer` | `integer`, `based-integer` | `> 0` | arbitrary-precision integer |
-| `!non_negative_integer` | same | `>= 0` | |
-| `!negative_integer` | same | `< 0` | |
-| `!non_positive_integer` | same | `<= 0` | |
 | `!number` | `integer`, `float` | exact; no `.inf`/`.nan` | exact decimal, digits preserved |
 | `!float32` | `integer`, `float`, `hex-float`, `special-value` | rounded to binary32 (ties-to-even) | 32-bit float |
 | `!float64` | same | rounded to binary64 | 64-bit float |
@@ -31,6 +28,8 @@ A built-in annotation on a record, map, or array is a **resolver error**. Annota
 
 Notes:
 - The integer atoms accept signs and bases uniformly: `!uint32 0xFF00_0000`, `!uint32 +10` are fine; `!uint32 -10` parses and then fails the unsigned range (validation error).
+- `!integer` is the arbitrary-precision integer every width refines. It asserts the integer case where base resolution would not give it — `!integer "42"` is the integer 42, and `!integer 1.5` is a resolver error — and names the family a host-typed read reads by.
+- **A sign bound has no built-in name.** `!positive_integer`, `!non_negative_integer`, `!negative_integer` and `!non_positive_integer` are not in the vocabulary (nor in core): schemaless, each is an uninterpreted marker that checks nothing; under a schema, a bound is a refinement the schema declares for itself (`count => !integer ^ { min: 0 }`).
 - `!number` is the exact tier and the JSON-number mapping. A bare JSON number is a `number`. Use `!float32`/`!float64` only when rounding onto an IEEE grid is intended.
 - The float atoms accept plain integers, signed zeros (sign preserved), subnormals, `.inf`, `-.inf`, `.infinity`, `.nan`. Every NaN is the canonical quiet NaN — payloads are not preserved.
 - `!rational` content always contains `/`, so it is always quoted: `!rational "2/3"`.
@@ -90,11 +89,14 @@ content addressing are over the octets and never over a spelling.
 | `!date` | RFC 3339 `full-date`: `2026-07-01` | no |
 | `!time` | RFC 3339 `full-time`: `14:30:00Z`, `14:30:00.250+08:00` — offset mandatory, `Z` or `±HH:MM` | yes |
 | `!datetime` | RFC 3339 `date-time`: `2026-07-01T14:30:00Z` — the `T` and the offset are mandatory | yes |
-| `!duration` | elapsed time. RFC 3339 App. A `dur-date` / `dur-time` / `dur-week`, with no `Y` and no month `M`; optional leading `-`; fraction on the seconds component only: `PT36H`, `P3DT4H5M6.5S`, `P2W`, `-PT30M` | no (colon forms like `PT12:30:00` need quotes) |
+| `!duration` | elapsed time. RFC 3339 App. A `dur-date` / `dur-time` / `dur-week`, with no `Y` and no month `M`; optional leading `-`; fraction on the seconds component only: `PT36H`, `P3DT4H5M6.5S`, `P2W`, `-PT30M` | no (the colon form `PT12:30:00` is not admitted) |
 | `!period` | calendar span. `P` with a `Y` component, an `M` component, or both, and nothing else; optional leading `-`: `P1Y`, `P18M`, `P1Y2M` | no |
 
-A token that does not match the format is a resolver error. There is no timezone facet and no "local time
-without offset" — RFC 3339 makes the offset mandatory, so `2026-07-01T14:30:00` is rejected.
+A token that does not match the format is a resolver error, and so is a **leap second**: second 60, which
+RFC 3339's grammar admits, is neither a time of day on `[00:00:00, 24:00:00)` nor an instant on the UTC
+timeline, so `!time "23:59:60Z"` and `!datetime "2016-12-31T23:59:60Z"` are refused as hour 25 is. There is no
+timezone facet and no "local time without offset" — RFC 3339 makes the offset mandatory, so
+`2026-07-01T14:30:00` is rejected.
 
 ### `!datetime` and `!time` are instants
 
@@ -139,9 +141,12 @@ overflows with no single component long enough to catch.
 | Annotation | Contract | Quote? |
 |---|---|---|
 | `!boolean` | the tokens `true` and `false`, case-sensitive; any other token is a validation error (an enum-member violation). The form is not consulted: `!boolean "true"` and `!boolean true` are one value. Core's `boolean`, `!enum [true false]` | no |
-| `!text` | any token; host value is the text. Exists to assert the string case (`!text "42"`) and to anchor the `text_type` family | as content requires |
+| `!text` | any token; host value is the text. Exists to assert the string case (`!text "42"`) and to anchor the `text_type` family on which the identifier, URI, IRI, `regex` and `email` families build | as content requires |
 | `!uuid` | RFC 9562, 8-4-4-4-12 hex with hyphens | no |
-| `!uri` | RFC 3986 | yes if it contains `:`, `/`, `?`, `#`, `%`, `@` |
+| `!uri` | RFC 3986 URI (§3): a scheme is **required**; US-ASCII | yes (`:`) |
+| `!uri_reference` | RFC 3986 URI-reference (§4.1): a URI or a relative reference; US-ASCII | yes if it contains `:`, `/`, `?`, `#`, `%`, `@` |
+| `!iri` | RFC 3987 IRI (§2.2): a scheme is required; characters beyond US-ASCII written as themselves | yes (`:`) |
+| `!iri_reference` | RFC 3987 IRI-reference (§2.2): an IRI or a relative reference | as `!uri_reference` |
 | `!email` | RFC 5322 `addr-spec` **restricted to `dot-atom "@" dot-atom`** — no quoted local parts (`"a b"@x.com`), no domain literals (`u@[192.0.2.1]`), no comments | yes (`@`) |
 | `!ipv4` | dotted quad per RFC 3986 `IPv4address` (`192.0.2.1`; no leading-zero octets, no shorthand) | no |
 | `!ipv6` | RFC 4291 §2.2 text form; `::` compression allowed; **no zone id** (`fe80::1%eth0` is rejected) | yes |
@@ -149,8 +154,30 @@ overflows with no single component long enough to catch.
 | `!cidr6` | `addr/prefix`, prefix 0–128; host bits zero | yes |
 | `!mac` | EUI-48: six hex octets, `aa-bb-cc-dd-ee-ff` or `aa:bb:cc:dd:ee:ff` | colon form yes; hyphen form no |
 
-CIDR prefix out of range or nonzero host bits → validation error. Everything else in this table → resolver error on mismatch.
+CIDR prefix out of range or nonzero host bits → validation error. Everything else in this table → resolver error on mismatch, with one more value rule below.
+
+### URIs and IRIs
+
+RFC 3986 names two productions with two value spaces — a URI, which has a scheme, and a URI-reference, which is
+a URI or a relative reference — and RFC 3987 repeats the pair over a wider character set, so there are four
+atoms.
+
+| Token | `!uri` | `!uri_reference` | `!iri` | `!iri_reference` |
+|---|---|---|---|---|
+| `"https://example.com/a?b#c"` | ok | ok | ok | ok |
+| `"docs/a.tn"`, `"#top"`, `"/x"` (relative) | **validation error** | ok | **validation error** | ok |
+| `"https://例え.jp/パス"` (beyond US-ASCII) | **resolver error** | **resolver error** | ok | ok |
+
+- A relative reference under `!uri` or `!iri` is inside the family's lexical space and outside the atom's
+  value space — a **validation error**, as `-1` is under `!uint32`.
+- A URI is US-ASCII (RFC 3986 §2): a character beyond it under `!uri` or `!uri_reference` is outside the
+  grammar — a **resolver error**. Write `!iri`/`!iri_reference`, or percent-encode the UTF-8 octets. An IRI's
+  extra characters are RFC 3987's `ucschar` (and `iprivate` in the query), and an IRI is judged through the URI
+  it maps to: with each such character percent-encoded as UTF-8, the text must be a URI-reference.
+- The value of all four is the text **as written** — nothing is normalised, no case is folded.
+- `uri` IS-A `uri_reference` and `iri` IS-A `iri_reference`; nothing joins the pairs as types, though every
+  URI is an IRI.
 
 ## What does not exist
 
-There is no `!binary`, `!base64`, `!base64url`, `!base32` or `!hex` — the one binary tag is `!bytes`. Nor `!string`, `!str`, `!int`, `!integer` (as a *built-in*; core declares `integer` for schemas), `!float`, `!double`, `!bool`, `!timestamp`, `!decimal`, `!url`, `!ip`, `!json`, `!any`, `!null`, `!void`, `!enum`, `!list`, `!array`, `!map`, `!record`. Under a schemaless document any such name is silently preserved as an uninterpreted marker — a processor will not complain, which is exactly why an author should not rely on one.
+There is no `!binary`, `!base64`, `!base64url`, `!base32` or `!hex` — the one binary tag is `!bytes`. Nor `!string`, `!str`, `!int`, `!positive_integer`, `!non_negative_integer`, `!negative_integer`, `!non_positive_integer`, `!float`, `!double`, `!bool`, `!timestamp`, `!decimal`, `!url`, `!ip`, `!json`, `!any`, `!null`, `!void`, `!enum`, `!list`, `!array`, `!map`, `!record`. Under a schemaless document any such name is silently preserved as an uninterpreted marker — a processor will not complain, which is exactly why an author should not rely on one.
