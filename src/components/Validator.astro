@@ -1301,13 +1301,26 @@
     } catch {
       // An unparseable header is already reported by the compile step.
     }
-    // Only the *consumer* side is reported. A schema's own `!!id` is pinned at publication, not
-    // while it is being written — this repository's own draft `.tn` files spell the digest
-    // `xxhash` for exactly that reason — and `resolveSchema` does not verify a schema against its
-    // own `!!id` either, so flagging it on every keystroke would be this page inventing a check
-    // the implementation does not make. `repin` still updates it, so it is correct once pinned.
+    // The consumer side only: the schema's own `!!id` is checked before compiling, by
+    // `checkSelfPin`, since `resolveSchema` refuses a schema that does not match it.
     const problem = pinProblem(pinnedRef, digest, 'the document\u2019s !!schema');
     return problem ? [problem] : [];
+  }
+
+  /**
+   * The schema against its own `!!id` pin. `resolveSchema` verifies this itself and throws on a
+   * mismatch, so an edit to a pinned schema would otherwise surface as a compile failure the page
+   * cannot help with. Checked first instead, and reported as the pin problem it is, with the fix.
+   */
+  function checkSelfPin(schemaText: string, digest: string | null): Diagnostic | null {
+    selfRef = null;
+    if (!digest) return null;
+    try {
+      selfRef = classifyDocument(encoder.encode(schemaText)).id ?? null;
+    } catch {
+      return null; // an unparseable header is reported by the compile step
+    }
+    return pinProblem(selfRef, digest, 'the schema\u2019s own !!id');
   }
 
   /** One synthetic entry in the diagnostics list, for the problems the library reports by throwing. */
@@ -1446,6 +1459,21 @@
       pinnedRef = null;
       pinDiagCount = 0;
     } else {
+      // A schema edited under its own pin never reaches the compiler, which would refuse it: the
+      // mismatch is reported here, beside the document's (in TSON, which carries one), with re-pin.
+      const selfPin = checkSelfPin(schemaEl.value, digest);
+      if (selfPin) {
+        if (json) pinnedRef = null;
+        const pins = [selfPin, ...(json ? [] : checkPins(doc, schemaEl.value, digest))];
+        pinDiagCount = pins.length;
+        const label = pins.length === 1 ? 'diagnostic, in one pass' : 'diagnostics, in one pass';
+        setVerdict('bad', label, pins.length, '');
+        renderDiagnostics(pins);
+        setBadge('bad', pins.length);
+        gutterEl.textContent = renderGutter(dataText, []);
+        if (!tabPinned) showTab('diags');
+        return;
+      }
       const { compiled: schema, error } = compileSchema(schemaEl.value);
       if (error || !schema) {
         setVerdict('warn', 'the schema itself did not compile', 1, '');
