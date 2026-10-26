@@ -5,6 +5,7 @@ import { CURRENT_REVISION } from '../lib/spec';
 const part1Url = `/2026/${CURRENT_REVISION}/tson-part1-data`;
 const part2Url = `/2026/${CURRENT_REVISION}/tson-part2-schema`;
 const coreUrl = `/2026/${CURRENT_REVISION}/m/core.tn`;
+const netUrl = `/2026/${CURRENT_REVISION}/m/net.tn`;
 const guideUrl = `/2026/${CURRENT_REVISION}/tson-guide`;
 const policyUrl = `/2026/${CURRENT_REVISION}/m/policy.tn`;
 
@@ -34,8 +35,11 @@ const sections: Section[] = [
     eyebrow: 'Built-in types',
     title: 'Scalar types',
     intro:
-      'What each system names for you, before you write a line of your own. TSON\'s atoms live in the core library, each pinned to the RFC that defines it, and each states its value space: equality and ordering are over values, never spellings. The core library is a starting set, not a ceiling: new atom types arrive through meta extensions (below).',
-    chip: { label: 'core.tn', href: coreUrl },
+      'What each system names for you, before you write a line of your own. TSON\'s atoms live in the core library and, for network values, the net library, each pinned to the RFC that defines it, and each states its value space: equality and ordering are over values, never spellings. The libraries are a starting set, not a ceiling: new atom types arrive through meta extensions (below).',
+    chips: [
+      { label: 'core.tn', href: coreUrl },
+      { label: 'net.tn', href: netUrl },
+    ],
     rows: [
       { feature: 'Boolean', cells: [['y', '`boolean`'], ['y', '`boolean`'], ['y', '`boolean`'], ['y', '`bool`'], ['y', '`BOOLEAN`'], ['y', '`bool`']] },
       { feature: 'Arbitrary-precision integer', cells: [['y', '`integer`'], ['y', '`integer`'], ['y', '`integer`'], ['n', '— 64-bit maximum'], ['y', '`INTEGER`'], ['p', '`int`, range left to the implementation']] },
@@ -56,8 +60,10 @@ const sections: Section[] = [
       { feature: 'UUID', cells: [['y', '`uuid` (RFC 9562)'], ['n', '— via `pattern`'], ['p', '`format: uuid`'], ['n', '— a string or bytes'], ['n', '— `OCTET STRING (SIZE(16))`'], ['n', '—']] },
       { feature: 'URI', cells: [['y', '`uri`, `uri_reference` (RFC 3986); `iri`, `iri_reference` (RFC 3987)'], ['y', '`anyURI`'], ['p', '`format: uri`, `iri`, `uri-reference`'], ['n', '—'], ['n', '—'], ['n', '—']] },
       { feature: 'Email address', cells: [['y', '`email` — the dot-atom core of RFC 5322'], ['n', '—'], ['p', '`format: email`, `idn-email`'], ['n', '—'], ['n', '—'], ['n', '—']] },
-      { feature: 'IP addresses', cells: [['y', '`ipv4`, `ipv6`'], ['n', '—'], ['p', '`format: ipv4`, `ipv6`'], ['n', '—'], ['n', '—'], ['n', '—']] },
-      { feature: 'Networks and hardware addresses', cells: [['y', '`cidr4`, `cidr6`, `mac`'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'IP addresses', cells: [['y', '`ipv4`, `ipv6`, in `net.tn`'], ['n', '—'], ['p', '`format: ipv4`, `ipv6`'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'Networks and hardware addresses', cells: [['y', '`cidr4`, `cidr6`, `mac`, in `net.tn`'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'Host names', cells: [['y', '`hostname` — U-labels and A-labels are one value; `host` — a name or an IP address'], ['n', '—'], ['p', '`format: hostname`, `idn-hostname`'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'Media types', cells: [['y', '`media_type` (RFC 6838), parameters admitted only where a type allows them'], ['n', '—'], ['n', '— `contentMediaType` describes content, not a value'], ['n', '—'], ['n', '—'], ['n', '—']] },
       { feature: 'Regular expression', cells: [['y', '`regex` — I-Regexp (RFC 9485)'], ['n', '— a facet, not a type'], ['p', '`format: regex`'], ['n', '—'], ['n', '—'], ['n', '—']] },
       { feature: 'Object identifier', cells: [['n', '— not in core; a meta extension can add it'], ['n', '—'], ['n', '—'], ['n', '—'], ['y', '`OBJECT IDENTIFIER`, `RELATIVE-OID`, `OID-IRI`'], ['n', '—']] },
       { feature: 'Adding new built-in types', cells: [['y', 'meta extensions declare new atom constructors, facets included'], ['p', 'implementation-defined primitives (1.1)'], ['p', 'custom `$vocabulary` keywords and `format` values'], ['n', '— new types are messages'], ['n', '— a fixed set of built-in types'], ['p', 'application tags, `!mytype`']] },
@@ -72,13 +78,14 @@ const sections: Section[] = [
     chip: { label: '§5.3', href: `${part2Url}#53-type-expressions` },
     rows: [
       { feature: 'Record (named fields)', cells: [['y', '`{ name: text }`'], ['y', '`complexType` with `sequence` / `all`'], ['y', '`object` with `properties`'], ['y', '`message`'], ['y', '`SEQUENCE`, `SET`'], ['p', 'mapping, untyped']] },
+      { feature: 'Field names beyond identifiers', cells: [['y', 'a record\'s field names have a type: identifiers by default, `"@id"` or `"$ref"` under a declared one'], ['p', 'XML names'], ['y', 'any string; `propertyNames` constrains them'], ['p', 'identifiers; `json_name` for the JSON form'], ['n', '— identifiers only'], ['y', 'any scalar']] },
       { feature: 'Closed to undeclared fields', cells: [['y', 'closed, with no exception; extras go in a declared map field'], ['y', 'closed unless `xs:any` is declared'], ['n', '— open unless `additionalProperties: false`'], ['n', '— unknown fields are kept and skipped'], ['p', 'closed, or open with an extension marker `...`'], ['n', '—']] },
       { feature: 'Map with typed keys', cells: [['y', '`{K => V}`, any key type'], ['n', '— `key` / `keyref` identity constraints'], ['p', '`additionalProperties` + `propertyNames`; keys are strings'], ['y', '`map<K, V>`, integer or string keys'], ['n', '— `SEQUENCE OF` key/value pairs'], ['y', 'mapping; any node can be a key']] },
       { feature: 'Array', cells: [['y', '`[T]`'], ['y', '`maxOccurs`, list types'], ['y', '`array` with `items`'], ['y', '`repeated`'], ['y', '`SEQUENCE OF`'], ['y', 'sequence']] },
       { feature: 'Size bounds', cells: [['y', '`[T; 1..10]`, and the same on maps'], ['y', '`minOccurs` / `maxOccurs`, length facets'], ['y', '`minItems` / `maxItems`'], ['n', '—'], ['y', '`SIZE (1..10)`'], ['n', '—']] },
       { feature: 'Tuple', cells: [['y', '`[number, number]`'], ['p', '`sequence` of named elements'], ['y', '`prefixItems` with `items: false`'], ['n', '—'], ['p', '`SEQUENCE` of named components'], ['n', '—']] },
       { feature: 'Set (unordered, unique)', cells: [['y', '`set<T>`, uniqueness by value'], ['p', '`xs:unique` identity constraint'], ['p', '`uniqueItems`; order still significant'], ['n', '—'], ['y', '`SET OF`'], ['p', '`!!set` (YAML 1.1)']] },
-      { feature: 'Enumeration', cells: [['y', '`!enum [A B C]` of names; `!text_enum` of any texts'], ['y', '`enumeration` facet'], ['y', '`enum`, `const`'], ['y', '`enum`, open in proto3'], ['y', '`ENUMERATED`'], ['n', '—']] },
+      { feature: 'Enumeration', cells: [['y', '`!enum [A B C]` of names, under a name type you can declare; a closed set of texts is `text`\'s `members`'], ['y', '`enumeration` facet'], ['y', '`enum`, `const`'], ['y', '`enum`, open in proto3'], ['y', '`ENUMERATED`'], ['n', '—']] },
       { feature: 'Choice between types', cells: [['y', '`(email | phone)` — tagged only where two variants share a form'], ['p', '`union`, simple types only'], ['p', '`oneOf` / `anyOf` — matched by validation, untagged'], ['n', '— wrap in a `oneof`'], ['p', '`CHOICE` — alternatives are labelled'], ['p', 'node tags']] },
       { feature: 'Labelled alternatives', cells: [['y', 'field groups, `( a: T | b: U  c: V )` — an option may be several fields; `)+` is at least one'], ['y', '`xs:choice`'], ['p', '`oneOf` with `required`'], ['y', '`oneof`'], ['y', '`CHOICE`'], ['n', '—']] },
       { feature: 'Required, optional, default, fixed', cells: [['y', 'three slots: `a?:` may be omitted, `T?` admits `_`, `~ default` / `= fixed`; defaults filled in on read'], ['y', '`minOccurs`, `default`, `fixed`'], ['p', '`required`, `const`; `default` is an annotation'], ['p', '`optional`; defaults are zero values'], ['y', '`OPTIONAL`, `DEFAULT`'], ['n', '—']] },
@@ -87,7 +94,7 @@ const sections: Section[] = [
       { feature: 'Composition (inherit, IS-A)', cells: [['y', '`A & B & { … }` — several parents, no diamonds'], ['y', '`extension`, substitution groups; one parent'], ['p', '`allOf` merges constraints; no IS-A'], ['n', '— nest a message instead'], ['p', '`COMPONENTS OF` copies fields'], ['p', '`<<` merge key (YAML 1.1)']] },
       { feature: 'Sealed hierarchy (abstract, final, discriminator)', cells: [['y', '`abstract { kind: text =? }`; members pin `kind`, placed untagged; `final`'], ['p', '`abstract` and `final` on types; `xsi:type` selects'], ['p', '`oneOf` with `const`; OpenAPI adds `discriminator`'], ['n', '— no inheritance; wrap in a `oneof`'], ['n', '— `CHOICE` only'], ['n', '—']] },
       { feature: 'Refinement (narrow, keep IS-A)', cells: [['y', '`T ^ { … }` — tighten, default or fix fields; never adds or removes one'], ['y', '`restriction`'], ['p', '`allOf` plus keywords; no subtype relation'], ['n', '—'], ['y', 'subtype constraints, `WITH COMPONENTS`'], ['n', '—']] },
-      { feature: 'Subtraction (remove fields)', cells: [['y', '`A - { password }` — breaks IS-A, keeps lineage'], ['p', '`restriction` can drop optional parts'], ['n', '— copy the schema'], ['n', '—'], ['p', '`WITH COMPONENTS` can mark optional components `ABSENT`'], ['n', '—']] },
+      { feature: 'Subtraction (remove fields)', cells: [['y', '`A - { password }` — breaks IS-A; the result has no supertypes'], ['p', '`restriction` can drop optional parts'], ['n', '— copy the schema'], ['n', '—'], ['p', '`WITH COMPONENTS` can mark optional components `ABSENT`'], ['n', '—']] },
       { feature: 'Generics', cells: [['y', 'templates over types and values, `vector<T, N>`; typed parameters, bounds such as `<T: text>`, checked at each application'], ['n', '—'], ['p', '`$dynamicRef` approximates'], ['n', '—'], ['y', 'parameterized types (X.683)'], ['n', '—']] },
       { feature: 'Open type (value names its type)', cells: [['y', '`declared`, `extern`, `dynamic` — validated against the named type'], ['y', '`xs:any`, `xsi:type`'], ['p', '`{}` accepts anything, unchecked'], ['y', '`google.protobuf.Any`'], ['y', 'open types, `EMBEDDED PDV`'], ['p', 'tags']] },
       { feature: 'Annotations on data', cells: [['y', '`@name:value` on any value, map key or field; preserved in order'], ['p', 'attributes, where the schema admits them'], ['n', '— JSON has no metadata channel'], ['n', '—'], ['n', '—'], ['p', 'tags and anchors; comments are discarded']] },
@@ -125,7 +132,7 @@ const sections: Section[] = [
       { feature: 'Meta-schema that describes itself', cells: [['y', 'the meta-kernel'], ['y', 'the schema for schemas'], ['y', 'the meta-schema'], ['p', '`descriptor.proto`'], ['n', '—'], ['n', '—']] },
       { feature: 'Data names its schema', cells: [['y', '`!!schema`, hash-pinned'], ['p', '`xsi:schemaLocation`, a hint'], ['n', '— by convention only'], ['n', '— except `Any` type URLs'], ['n', '—'], ['n', '—']] },
       { feature: 'Content-hash pinning', cells: [['y', 'SHA-256 on every `!!id`, `!!meta`, `!!import` and `!!schema`'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
-      { feature: 'Types in data without a schema', cells: [['y', '`!uuid "…"`, `!ipv4 "…"` — checked with no schema at all'], ['y', '`xsi:type`'], ['n', '—'], ['n', '—'], ['y', 'universal tags in BER and DER'], ['p', 'tags, `!!int`, `!!timestamp`']] },
+      { feature: 'Types in data without a schema', cells: [['y', '`!uuid "…"`, `!ipv4 "…"` — checked with no schema at all; an unknown `!name` is an error'], ['y', '`xsi:type`'], ['n', '—'], ['n', '—'], ['y', 'universal tags in BER and DER'], ['p', 'tags, `!!int`, `!!timestamp`']] },
       { feature: 'Evolution model', cells: [['i', 'immutable: a version is a new hash, so a new required field is safe'], ['i', 'namespaces, versioned by convention'], ['i', '`$id` per version, by convention'], ['i', 'field numbers: never reuse, avoid `required`'], ['i', 'extension markers `...`, version brackets `[[ ]]`'], ['i', '—']] },
       { feature: 'Encodings', cells: [['i', 'TSON text and JSON; compact and binary planned'], ['i', 'XML, EXI'], ['i', 'JSON; YAML in practice'], ['i', 'binary wire, ProtoJSON, text format'], ['i', 'BER, DER, PER, OER, XER, JER'], ['i', 'YAML']] },
       { feature: 'Documentation metadata', cells: [['y', '`@doc` (CommonMark), `@title`, `@examples`, `@deprecated`, `@comment`'], ['y', '`xs:documentation`, `xs:appinfo`'], ['y', '`title`, `description`, `examples`, `deprecated`'], ['p', 'comments, `deprecated` option'], ['p', 'comments'], ['n', '—']] },

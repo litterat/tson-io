@@ -131,9 +131,9 @@ artifacts take `.tn1`.
 rules cover every revision. Each uses one Cloudflare placeholder plus one splat, which is the
 maximum a single rule allows.
 
-The `.tn` files carry **real** sha256 pins (revisions 33–37 all do): the digest is over the file's
+The `.tn` files carry **real** sha256 pins (revisions 33–38 all do): the digest is over the file's
 bytes after its `!!id` line, computed bottom-up — the kernel first, then meta pinning the kernel,
-then core pinning meta — and Part 2 §13.2 repeats the three. Copying a revision forward therefore
+then core, net and policy pinning meta (policy also pins core) — and Part 2 §13.2 repeats all five. Copying a revision forward therefore
 carries the *previous* revision's digests into the new files, which no longer match once the URLs
 are rewritten; the author re-stamps them when the revision lands, and the change log's artifact
 section names the new ones. Check them against the bytes with

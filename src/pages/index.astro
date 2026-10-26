@@ -90,13 +90,13 @@ const schemaRows = [
   },
   {
     chip: '§5.5', href: `${part2Url}#55-constructor-application-and-atom-refinement`, title: 'Atoms and enums',
-    why: 'Refine an atom\'s constraint vocabulary with ^, or mint a fresh atom family with a constructor. A range narrows with min and max, a progression with multiple_of, a sparse set with members. The refinement IS-A its source; an enum is its own family, of names with !enum or of any texts with !text_enum.',
+    why: 'Refine an atom\'s constraint vocabulary with ^, or mint a fresh atom family with a constructor. A range narrows with min and max, a progression with multiple_of, a sparse set with members. The refinement IS-A its source; an enum is its own family of names, and a closed set of texts is text\'s members facet.',
     snippets: [
       { tag: 'schema', kind: 'schema', html: `<span class="tk">port</span>   <span class="gain">=&gt;</span> <span class="gain">!integer</span> <span class="gain">^</span> { <span class="tk">min</span><span class="tp">:</span> <span class="tn">1</span>  <span class="tk">max</span><span class="tp">:</span> <span class="tn">65535</span> }
 <span class="tk">sku</span>    <span class="gain">=&gt;</span> <span class="gain">!text</span> <span class="gain">^</span> { <span class="tk">pattern</span><span class="tp">:</span> <span class="ts">"[A-Z]-[0-9]{3}"</span> }
 <span class="tk">status</span> <span class="gain">=&gt;</span> <span class="gain">!integer</span> <span class="gain">^</span> { <span class="tk">members</span><span class="tp">:</span> <span class="tp">[</span><span class="tn">200 404 500</span><span class="tp">]</span> }
 <span class="tk">rank</span>   <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>
-<span class="tk">level</span>  <span class="gain">=&gt;</span> <span class="gain">!text_enum</span> <span class="tp">[</span><span class="ts">"lightly active" "very active"</span><span class="tp">]</span>` },
+<span class="tk">level</span>  <span class="gain">=&gt;</span> <span class="gain">!text</span> <span class="gain">^</span> { <span class="tk">members</span><span class="tp">:</span> <span class="tp">[</span><span class="ts">"lightly active" "very active"</span><span class="tp">]</span> }` },
       { tag: 'data', kind: 'data', html: `<span class="gain">!port</span> <span class="tn">8080</span>\n<span class="gain">!sku</span> <span class="ts">"A-123"</span>\n<span class="gain">!status</span> <span class="tn">404</span>\n<span class="gain">!rank</span> <span class="tn">L2</span>\n<span class="gain">!level</span> <span class="ts">"lightly active"</span>` },
     ],
   },
@@ -137,7 +137,7 @@ const schemaRows = [
   },
   {
     chip: '§5.9', href: `${part2Url}#59-subtraction`, title: 'Subtraction',
-    why: 'Removal is allowed, and loud: public is not substitutable for account, and the resolved output records exactly that.',
+    why: 'Removal is allowed, and loud: public is not substitutable for account, and its resolved form names no supertype, so nothing can treat it as one.',
     snippets: [
       { tag: 'schema', kind: 'schema', html: `<span class="tk">account</span> <span class="gain">=&gt;</span> { <span class="tk">user</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">email</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">password</span><span class="tp">:</span> <span class="ts">text</span> }
 <span class="tk">public</span>  <span class="gain">=&gt;</span> <span class="ts">account</span> <span class="gain">-</span> { <span class="tk">password</span> }` },
@@ -303,7 +303,7 @@ const safety = [
 // ── audience routing ─────────────────────────────────────────
 const routes = [
   { label: 'Learn more about TSON?', title: 'The Developer Guide', href: guideUrl, body: 'The chain walked end to end, versioning, worked examples, and the reasoning behind the design.' },
-  { label: 'Delve into the Specifications?', title: 'Draft Specifications', href: specHubUrl, body: 'Text Data Format, Type System and Schema, JSON Encoding, Meta Schemas and Core types.' },
+  { label: 'Delve into the Specifications?', title: 'Draft Specifications', href: specHubUrl, body: 'Text Data Format, Type System and Schema, JSON Encoding, the meta-schemas, and the core and network type libraries.' },
   { label: 'Want the theory?', title: 'The proto-schema research', href: '/research', body: 'The schema model, derived from the physical constraints of serialized data.' },
 ];
 ---

@@ -15,7 +15,7 @@ derived from the physical constraints of serialization itself. The name reflects
 The format and its schema layer are defined in three parts: Part 1 — Text Data Format (the data
 model and its text encoding: lexer, data grammar, base type resolution, built-in type vocabulary),
 Part 2 — Type System and Schema (the schema layer and type system, which is self-hosting — a
-resolved schema is ordinary data of type map<type_name, type_definition> in TSON's own model), and
+resolved schema is ordinary data in TSON's own model, a value of the kernel's schema type mapping each type's name to its definition), and
 Part 3 — JSON Encoding (how schema-governed values are carried in JSON).
 
 On the surface, TSON can look like just another JSON format. It isn't: it rests on extensive
@@ -29,5 +29,6 @@ validation across many schema versions.
 This site hosts the specification, background research, a developer guide, and the SHA-256-pinned
 schemas: meta-kernel (the self-referencing meta-schema), meta (the extended meta-schema with the
 core type constructors), and core (the common types required for data interchange, based on RFC
-standards), plus policy (the vocabulary a deployment writes its processor policy in). The specification is a 2026 working draft, with revisions actively underway; when
+standards), net (the network types: IP addresses, networks, MAC addresses, host names and media
+types), plus policy (the vocabulary a deployment writes its processor policy in). The specification is a 2026 working draft, with revisions actively underway; when
 ready, it will be pinned as version 1.

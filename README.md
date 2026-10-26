@@ -23,8 +23,8 @@ The format and its schema layer are defined in three parts:
 - **Part 1 — Text Data Format:** the data model and its text encoding (lexer,
   data grammar, base type resolution, built-in type vocabulary).
 - **Part 2 — Type System and Schema:** the schema layer and type system.
-  It is self-hosting — a resolved schema is ordinary data of type
-  `map<type_name, type_definition>` in TSON's own model.
+  It is self-hosting — a resolved schema is ordinary data in TSON's own model:
+  a value of the kernel's `schema` type, a map from each type's name to its definition.
 - **Part 3 — JSON Encoding:** how schema-governed TSON values are carried in
   JSON, read and validated against the same schemas.
 
@@ -39,9 +39,10 @@ validation across many schema versions.
 
 This site hosts the Specification, background research, developer guides, and the
 SHA-256-pinned schemas: the **meta-kernel** (the self-referencing meta-schema),
-**meta** (the extended meta-schema with the core type constructors), and **core**
-(the common types required for data interchange, based on RFC standards), and
-**policy** (the vocabulary a deployment writes its processor policy in).
+**meta** (the extended meta-schema with the core type constructors), **core**
+(the common types required for data interchange, based on RFC standards), **net**
+(the network types: IP addresses, networks, MAC addresses, host names and media
+types), and **policy** (the vocabulary a deployment writes its processor policy in).
 
 The specification is a 2026 working draft, with revisions actively underway. When
 it is ready, it will be pinned as version 1.
@@ -67,7 +68,7 @@ src/
     2026/
       32/                # A revision-scoped draft — see "Revision-scoped paths" below
         *.md             # TSON Part 1/2 and companion docs (tson-guide.md)
-        m/                # .tn schema source files (meta-kernel, meta, core, policy)
+        m/                # .tn schema source files (meta-kernel, meta, core, net, policy)
         fixtures/          # Non-normative resolved-output fixtures for the schema source files
     research/
       deep-dive-into-json/   # "A Deep Dive into JSON" article series
