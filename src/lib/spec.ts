@@ -35,7 +35,59 @@ export interface RevisionNote {
  */
 export const REVISION_NOTES: Record<string, RevisionNote> = {
   // Plain text, except that `backticks` render as code.
-  '38': { summary: 'In progress.' },
+  '38': {
+    summary: 'Adjudicates the 25-entry spec-feedback register against revision 37.',
+    changes: [
+      {
+        what: 'A record\'s field names have a type, `name_type`, and a field name may be any single-line token the type admits',
+        why: 'names a JSON vocabulary needs, such as `"@id"` and `"$ref"`, had no spelling in a record',
+      },
+      {
+        what: '`text_enum` is gone, and an enum states its `name_type` where it stated its `type`',
+        why: 'an enum\'s members and a record\'s field names are both names drawn from an identifier family, held to it by the same rules',
+      },
+      {
+        what: '`type_definition` is gone: an entry is its value, and a type carries its own `chain` of parents, supertypes and subtypes',
+        why: 'resolved output now reads as the source with sugar expanded, not as a wrapper around it',
+      },
+      {
+        what: 'A record\'s fields are a map keyed by name',
+        why: 'a field name written twice is the map\'s duplicate key, caught by the layer that can see it',
+      },
+      {
+        what: 'A kernel `type` kind, which `atom`, `product` and `sum` compose; `data` is gone, and the base kinds are abstract',
+        why: 'an entry is a type exactly when it is a `type`, so a namespace, a template or a reference is never mistaken for one',
+      },
+      {
+        what: 'Kinds: `kind<C>` holds the name of a type built with `C`, and every slot naming a value\'s type holds a bare name',
+        why: 'a field holding a type\'s name had no type of its own, so nothing checked that the name it held was the right sort of type',
+      },
+      {
+        what: '`namespace` is a constructor whose values are maps of names, and `ref<T>` holds a qualified name such as `orders.place_order`',
+        why: 'a meta-schema can describe a set of named values, such as an API\'s operations, and refer to one by name',
+      },
+      {
+        what: 'A record template is a `record` with `parameters`, and a parameter is never an operand of `&` or `^`',
+        why: 'a record template is a family base, so it should be a record that a resolver reads directly',
+      },
+      {
+        what: 'The network types move from core to a new `net.tn`, beside new `hostname`, `host` and `media_type` types',
+        why: 'a family most schemas never use belongs in a library outside core, and host names and media types had no type',
+      },
+      {
+        what: 'A schemaless `!name` outside the built-in vocabulary is a resolver error',
+        why: 'the vocabulary does not grow, so an unknown name is a mistake, and every processor now reaches the same verdict on it',
+      },
+      {
+        what: 'An identity\'s host is a `host` value: `!!id` is written in canonical form, and a reference may use any spelling of it',
+        why: 'case, A-labels and percent-encoding gave one document several spellings that compared as different names',
+      },
+      {
+        what: 'A processor\'s fifth outcome splits into refused and undetermined',
+        why: 'declining a document under local policy is a different thing from having nothing to judge it against, and neither is a verdict on validity',
+      },
+    ],
+  },
   '37': {
     summary: 'Adjudicates the 21-entry spec-feedback register against revision 36.',
     changes: [
