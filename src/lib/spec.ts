@@ -369,6 +369,7 @@ export const SCHEMA_DESCRIPTIONS: Record<string, string> = {
   'meta-kernel.tn': 'Base kind constructors and the IS-A lattice root',
   'meta.tn': 'Annotation types and schema-level directives',
   'core.tn': 'Core type library for data interchange',
+  'net.tn': 'Network type library: IP addresses, networks, MAC addresses, host names and media types',
   'policy.tn': 'Processor policy vocabulary: what a processor admits and spends',
 };
 
