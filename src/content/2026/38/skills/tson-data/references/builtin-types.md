@@ -1,6 +1,6 @@
 # Built-in type vocabulary — full contracts
 
-Source: TSON Part 1 §5 and §7.6 (2026 Revision 37). These annotations apply **only in schemaless processing** (a document with no `!!schema`); where a processor reads such a document into a declared host type, an annotation MUST agree with the family that type names. Under a `!!schema`, every `!name` resolves through the schema's namespace; the core type library (`https://tson.io/2026/37/m/core.tn`) declares types with the same names and the same parsing contracts, so a schema that imports core gives its data documents this vocabulary back.
+Source: TSON Part 1 §5 and §7.6 (2026 Revision 38). These annotations apply **only in schemaless processing** (a document with no `!!schema`); where a processor reads such a document into a declared host type, an annotation MUST agree with the family that type names. **Any other `!name` in a schemaless document is a resolver error** — the vocabulary is fixed by the revision, so `!uiid` or `!Date` is caught where it is written. Under a `!!schema`, every `!name` resolves through the schema's namespace. Each built-in name denotes the type its **library** declares under that name — the core type library (`https://tson.io/2026/38/m/core.tn`) for most, the network library (`https://tson.io/2026/38/m/net.tn`) for the network rows below — with the same parsing contract, so a document moving under a schema that imports the library keeps its meaning, and a schema that imports core alone has no `ipv4`.
 
 ## The atom parsing model
 
@@ -9,7 +9,7 @@ Each atom owns a *parsing contract*: which token texts it accepts, and what host
 - **Resolver error** — the atom's grammar cannot read the token at all (`twelve` under `!int32`, `2025-13-45` under `!date`, an unpadded `!bytes`).
 - **Validation error** — the token parsed, but the value violates the atom's range (`9999999999` under `!int32`, `10.0.0.0/33` under `!cidr4`).
 
-Value rules belong to the numeric atoms' ranges, the CIDR prefix rules, and the scheme `!uri` and `!iri` require; every other built-in is a pure format check.
+Value rules belong to the numeric atoms' ranges, the CIDR prefix rules, and the scheme `!uri` and `!iri` require; every other built-in is a pure format check, `!media_type`'s parameters aside (below).
 
 A built-in annotation on a record, map, or array is a **resolver error**. Annotate elements individually.
 
@@ -29,7 +29,7 @@ A built-in annotation on a record, map, or array is a **resolver error**. Annota
 Notes:
 - The integer atoms accept signs and bases uniformly: `!uint32 0xFF00_0000`, `!uint32 +10` are fine; `!uint32 -10` parses and then fails the unsigned range (validation error).
 - `!integer` is the arbitrary-precision integer every width refines. It asserts the integer case where base resolution would not give it — `!integer "42"` is the integer 42, and `!integer 1.5` is a resolver error — and names the family a host-typed read reads by.
-- **A sign bound has no built-in name.** `!positive_integer`, `!non_negative_integer`, `!negative_integer` and `!non_positive_integer` are not in the vocabulary (nor in core): schemaless, each is an uninterpreted marker that checks nothing; under a schema, a bound is a refinement the schema declares for itself (`count => !integer ^ { min: 0 }`).
+- **A sign bound has no built-in name.** `!positive_integer`, `!non_negative_integer`, `!negative_integer` and `!non_positive_integer` are not in the vocabulary (nor in core): schemaless, each is a resolver error, as any name outside the vocabulary is; under a schema, a bound is a refinement the schema declares for itself (`count => !integer ^ { min: 0 }`).
 - `!number` is the exact tier and the JSON-number mapping. A bare JSON number is a `number`. Use `!float32`/`!float64` only when rounding onto an IEEE grid is intended.
 - The float atoms accept plain integers, signed zeros (sign preserved), subnormals, `.inf`, `-.inf`, `.infinity`, `.nan`. Every NaN is the canonical quiet NaN — payloads are not preserved.
 - `!rational` content always contains `/`, so it is always quoted: `!rational "2/3"`.
@@ -94,7 +94,7 @@ content addressing are over the octets and never over a spelling.
 
 A token that does not match the format is a resolver error, and so is a **leap second**: second 60, which
 RFC 3339's grammar admits, is neither a time of day on `[00:00:00, 24:00:00)` nor an instant on the UTC
-timeline, so `!time "23:59:60Z"` and `!datetime "2016-12-31T23:59:60Z"` are refused as hour 25 is. There is no
+timeline, so `!time "23:59:60Z"` and `!datetime "2016-12-31T23:59:60Z"` are rejected as hour 25 is. There is no
 timezone facet and no "local time without offset" — RFC 3339 makes the offset mandatory, so
 `2026-07-01T14:30:00` is rejected.
 
@@ -138,23 +138,30 @@ overflows with no single component long enough to catch.
 
 ## Text, identifier and network atoms
 
-| Annotation | Contract | Quote? |
-|---|---|---|
-| `!boolean` | the tokens `true` and `false`, case-sensitive; any other token is a validation error (an enum-member violation). The form is not consulted: `!boolean "true"` and `!boolean true` are one value. Core's `boolean`, `!enum [true false]` | no |
-| `!text` | any token; host value is the text. Exists to assert the string case (`!text "42"`) and to anchor the `text_type` family on which the identifier, URI, IRI, `regex` and `email` families build | as content requires |
-| `!uuid` | RFC 9562, 8-4-4-4-12 hex with hyphens | no |
-| `!uri` | RFC 3986 URI (§3): a scheme is **required**; US-ASCII | yes (`:`) |
-| `!uri_reference` | RFC 3986 URI-reference (§4.1): a URI or a relative reference; US-ASCII | yes if it contains `:`, `/`, `?`, `#`, `%`, `@` |
-| `!iri` | RFC 3987 IRI (§2.2): a scheme is required; characters beyond US-ASCII written as themselves | yes (`:`) |
-| `!iri_reference` | RFC 3987 IRI-reference (§2.2): an IRI or a relative reference | as `!uri_reference` |
-| `!email` | RFC 5322 `addr-spec` **restricted to `dot-atom "@" dot-atom`** — no quoted local parts (`"a b"@x.com`), no domain literals (`u@[192.0.2.1]`), no comments | yes (`@`) |
-| `!ipv4` | dotted quad per RFC 3986 `IPv4address` (`192.0.2.1`; no leading-zero octets, no shorthand) | no |
-| `!ipv6` | RFC 4291 §2.2 text form; `::` compression allowed; **no zone id** (`fe80::1%eth0` is rejected) | yes |
-| `!cidr4` | `addr/prefix`, prefix 0–32; **host bits must be zero** (`10.0.0.1/8` is a validation error) | yes |
-| `!cidr6` | `addr/prefix`, prefix 0–128; host bits zero | yes |
-| `!mac` | EUI-48: six hex octets, `aa-bb-cc-dd-ee-ff` or `aa:bb:cc:dd:ee:ff` | colon form yes; hyphen form no |
+The **Library** column names the companion artifact whose type the annotation denotes: `core` or `net` (`net.tn`).
 
-CIDR prefix out of range or nonzero host bits → validation error. Everything else in this table → resolver error on mismatch, with one more value rule below.
+| Annotation | Library | Contract | Quote? |
+|---|---|---|---|
+| `!boolean` | core | the tokens `true` and `false`, case-sensitive; any other token is a validation error (an enum-member violation). The form is not consulted: `!boolean "true"` and `!boolean true` are one value. Core's `boolean`, `!enum [true false]` | no |
+| `!text` | core | any token; host value is the text. Exists to assert the string case (`!text "42"`) and to anchor the `text_type` family on which the identifier, URI, IRI, `regex` and `email` families build | as content requires |
+| `!uuid` | core | RFC 9562, 8-4-4-4-12 hex with hyphens | no |
+| `!uri` | core | RFC 3986 URI (§3): a scheme is **required**; US-ASCII | yes (`:`) |
+| `!uri_reference` | core | RFC 3986 URI-reference (§4.1): a URI or a relative reference; US-ASCII | yes if it contains `:`, `/`, `?`, `#`, `%`, `@` |
+| `!iri` | core | RFC 3987 IRI (§2.2): a scheme is required; characters beyond US-ASCII written as themselves | yes (`:`) |
+| `!iri_reference` | core | RFC 3987 IRI-reference (§2.2): an IRI or a relative reference | as `!uri_reference` |
+| `!email` | core | RFC 5322 `addr-spec` **restricted to `dot-atom "@" dot-atom`** — no quoted local parts (`"a b"@x.com`), no domain literals (`u@[192.0.2.1]`), no comments | yes (`@`) |
+| `!ipv4` | net | dotted quad per RFC 3986 `IPv4address` (`192.0.2.1`; no leading-zero octets, no shorthand) | no |
+| `!ipv6` | net | RFC 4291 §2.2 text form; `::` compression allowed; **no zone id** (`fe80::1%eth0` is rejected); no brackets (`[::1]` is a `!host` spelling) | yes |
+| `!cidr4` | net | `addr/prefix`, prefix 0–32; **host bits must be zero** (`10.0.0.1/8` is a validation error) | yes |
+| `!cidr6` | net | `addr/prefix`, prefix 0–128; host bits zero | yes |
+| `!mac` | net | EUI-48: six hex octets, `aa-bb-cc-dd-ee-ff` or `aa:bb:cc:dd:ee:ff` | colon form yes; hyphen form no |
+| `!hostname` | net | a domain name (RFC 5890): LDH labels, A-labels or U-labels, in any mix; ASCII letters in either case; no uppercase beyond ASCII; no trailing dot; the last label not beginning with a digit; each label ≤ 63 octets, the name ≤ 253 in A-label form | no (ASCII and U-label names alike) |
+| `!host` | net | a host name, an IPv4 address, or an IPv6 address with or without brackets (RFC 3987 `ihost`, DNS names only); no zone id, no percent-encoding | IPv6 yes |
+| `!media_type` | net | an RFC 6838 media type, `type/subtype`, each a `restricted-name` (≤ 127 characters: letters, digits, `! # $ & - ^ _ . +`, starting with a letter or digit); US-ASCII; **no parameters**; no media range (`*/*`, `text/*`) | yes (`/`) |
+
+CIDR prefix out of range or nonzero host bits → validation error. Everything else in this table → resolver error on mismatch, with two more value rules below (a relative reference under `!uri`/`!iri`; parameters under `!media_type`).
+
+Every atom here but `!boolean` is **string-class**: a bare token schemaless is a string, and only the annotation says which atom it is. The same overlap is why, under a schema, `( hostname | ipv4 | ipv6 )` would need a tag on every value — and why `host` is one atom instead.
 
 ### URIs and IRIs
 
@@ -178,6 +185,39 @@ atoms.
 - `uri` IS-A `uri_reference` and `iri` IS-A `iri_reference`; nothing joins the pairs as types, though every
   URI is an IRI.
 
+### Host names, hosts and media types
+
+**`!hostname`** is a domain name. Labels are LDH labels, A-labels or U-labels, in any mix; a U-label is NFC
+and IDNA2008-valid (RFC 5892, RFC 5893's bidi rule). The **value is the name**: `Example.COM` and `example.com`
+are one value, and so are `xn--bcher-kva.example` and `bücher.example`. The canonical text — what a writer
+emits, and the form an identity's host takes — is the lowercase U-label form. Four boundaries, each a resolver
+error:
+
+- **uppercase beyond ASCII**: `EXAMPLE.com` is a host name, `BÜCHER.example` is not — write `bücher.example`;
+- **a trailing dot**: `example.com.` is rejected;
+- **a last label beginning with a digit**: so `10.0.0.1` is never a host name, and `!hostname` and `!ipv4` share
+  no value;
+- **percent-encoding**, which is URI syntax, not a host name. So is `_` (`a_b.example`): DNS allows it, a host
+  name does not.
+
+Under a schema the type carries `allow_idn` (default true); a schema that withdraws it admits only names with no
+internationalised label, in either spelling. Look-alike host names (`schemаs.example.com` with a Cyrillic `а`)
+are valid: a deployment's allowlist, comparing by name, is what stops them.
+
+**`!host`** is a host name *or* an IP address — RFC 3987's `ihost` profiled to DNS: `!hostname`'s lexical space,
+`!ipv4`'s, `!ipv6`'s, plus an IPv6 address in brackets. `"[::1]"` and `"::1"` are one value (the canonical text
+is unbracketed); `!ipv6` itself still rejects the brackets. Each member keeps its own equality: a name by name,
+an address numerically (`"::1"` = `"0:0:0:0:0:0:0:1"`), and a name never equals an address, nor an IPv4
+address its IPv4-mapped IPv6 form. Zone identifiers (`fe80::1%eth0`) and percent-encoding are resolver errors.
+
+**`!media_type`** is an RFC 6838 media type, `type/subtype`, US-ASCII, compared without ASCII case
+(`Text/HTML` = `text/html`). The schemaless atom names a media type proper and **admits no parameters** — a
+`Content-Type` value such as `"text/html; charset=utf-8"` is rejected (Part 2 §5.5 classes it as the withheld
+`allow_parameters` permission, a validation error). A schema position that takes parameters
+declares its own instance (`content_type => !media_type_type { allow_parameters: true }`), where parameters
+follow RFC 9110 §8.3.1 and the canonical text is `text/html;charset=utf-8`. A media range (`*/*`, `text/*`) is
+`Accept`'s pattern, not a media type, and is a resolver error. Media types contain `/` and are always quoted.
+
 ## What does not exist
 
-There is no `!binary`, `!base64`, `!base64url`, `!base32` or `!hex` — the one binary tag is `!bytes`. Nor `!string`, `!str`, `!int`, `!positive_integer`, `!non_negative_integer`, `!negative_integer`, `!non_positive_integer`, `!float`, `!double`, `!bool`, `!timestamp`, `!decimal`, `!url`, `!ip`, `!json`, `!any`, `!null`, `!void`, `!enum`, `!list`, `!array`, `!map`, `!record`. Under a schemaless document any such name is silently preserved as an uninterpreted marker — a processor will not complain, which is exactly why an author should not rely on one.
+There is no `!binary`, `!base64`, `!base64url`, `!base32` or `!hex` — the one binary tag is `!bytes`. Nor `!string`, `!str`, `!int`, `!positive_integer`, `!non_negative_integer`, `!negative_integer`, `!non_positive_integer`, `!float`, `!double`, `!bool`, `!timestamp`, `!decimal`, `!url`, `!ip`, `!domain`, `!mime`, `!content_type`, `!json`, `!any`, `!null`, `!void`, `!enum`, `!list`, `!array`, `!map`, `!record`. In a schemaless document each is a **resolver error** (Part 1 §3.2): the vocabulary is a property of the revision, not of the deployment, so the rejection is portable, and a diagnostic names the nearest built-in where there is one. A host type a reading application happens to bind is no exception.

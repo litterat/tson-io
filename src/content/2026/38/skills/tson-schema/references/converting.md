@@ -11,9 +11,10 @@ definition rather than from a domain.
 | `minItems`/`maxItems`/`uniqueItems` | `[T; N..M]`; unique → `set<T>`, which admits `[]`; unique with `minItems: 1` → a named `!set_type { element_type: T  min_items: 1 }` |
 | `prefixItems` (fixed tuple) | `[T, U]`; one item → `tuple1<T>` (`[T]` is an array) |
 | `number` / `integer` | `number` / `integer` (JSON numbers are exact; use `float64` only when rounding is intended) |
-| `format: uuid/date-time/email/ipv4` | `uuid`, `datetime`, `email`, `ipv4` from core |
+| `format: uuid/date-time/email` | `uuid`, `datetime`, `email` from core |
+| `format: ipv4/ipv6/hostname`; a host or an IP; a MAC; a media type (`contentMediaType`, OpenAPI's content keys) | `ipv4`, `ipv6`, `hostname`, `host`, `mac`, `media_type` from `net.tn` — import it beside core. A `Content-Type` with parameters is your own `!media_type_type { allow_parameters: true }` |
 | `format: uri` / `uri-reference` / `iri` / `iri-reference` | `uri` (scheme required, US-ASCII) / `uri_reference` (relative admitted) / `iri` / `iri_reference`; an allowed-schemes list → `!uri ^ { schemes: [https] }` |
-| `enum: ["a","b"]` | `!enum [a b]` if members are identifiers (a vocabulary of names); otherwise `!text_enum ["lightly active" …]`; numeric enums → `!integer ^ { members: [ … ] }`; mixed → a choice of the two |
+| `enum: ["a","b"]` | `!enum [a b]` if members are identifiers (a vocabulary of names); names with spaces → `!enum_type { name_type: words  members: ["lightly active" …] }` over `words => !identifier_type { medial: " " }`; arbitrary strings → `!text ^ { members: ["80" "443"] }`; numeric enums → `!integer ^ { members: [ … ] }`; mixed → a choice of an enum and a member-set integer |
 | `const`, `default` | `const` on a required property → `a: T = v` (a marker the document writes); on an optional one → `a?: T = v`; `default` → `a?: T ~ v` |
 | `nullable` / `T \| null` | `?` on the **type**: required + nullable → `a: T?`; optional + nullable → `a?: T?`; nullable with a default → `a?: T? ~ v` (omitted → default, `_`/`null` → void). TSON has no `null`; `_` is the void sentinel |
 | TypeScript `a?: T`, `a: T \| null`, `a?: T \| null` | `a?: T`, `a: T?`, `a?: T?` — the same three characters |
@@ -23,13 +24,16 @@ definition rather than from a domain.
 | `anyOf` of `required` sets, `dependentRequired` | field groups: at least one of → `( email: E \| phone: P )+`; `oneOf: [{required: [host, port]}, {required: [socket]}]` → `( host: H  port: P \| socket: S )`; `a` requires `b` → `( b: B  a?: A )?` |
 | `allOf` | `a & b & { … }` (fields must not overlap) |
 | `$ref` | a named declaration |
+| property names that are no identifiers — JSON-LD's `@context`/`@id`/`@type`, `$ref`, `$id` | a name type on a fieldless abstract base, composed into each record: `json_name => !identifier_type { start_add: "@$" }`, `json_record => !record { name_type: json_name  extension: ABSTRACT  fields: {} }`, `node => json_record & { "@id": iri  "@type": text  name: text }`. Every record composed with one must share the name type. A key that no profile can state (`""`, a leading space) is data: a map |
+| property names compared without case (HTTP headers) | a name type with `normalization: ASCII_CASEFOLD` over the `ASCII` base (`declaration-forms.md` §2) |
 | TypeScript `Pick`/`Omit` | `^` (fix/narrow) / `-` removal |
 | generics `Box<T>`, `Result<T, E>`; `T extends string` | templates; a constraint → a bound, `<T: text>` (by IS-A only: the argument must refine `text`) |
 | OpenAPI `components/schemas` | ordinary declarations, in a schema the description imports |
-| OpenAPI `paths` / operations | not expressible in a user schema: an operation is not a type. Write (or use) an extension meta-schema declaring `operation => data & { … }` with `type_ref` slots, and a description schema governed by it — `extension-meta-schemas.md` |
+| OpenAPI `paths` / operations | not expressible in a user schema: an operation is not a type. Write (or use) an extension meta-schema with a namespace type holding the operations (`interface => namespace & { key_type: = identifier  value_type: = method }`, `method => { request?: kind<record> … }`), and a description schema governed by it holding `orders => !interface { … }` — `extension-meta-schemas.md` |
 | `operationId`, `description`, `deprecated`, `$comment`, `examples` | the entry's name; `@doc:"…"` (CommonMark) before the entry; bare `@deprecated` (a reason goes in `@doc`); `@comment:"…"`; `@examples:["…"]` as text |
-| `requestBody` / `responses.<status>.content.schema` | `type_ref` slots on the operation, naming declared types; a status is a value slot (`status_code => !integer ^ { min: 100  max: 599 }`) or a fixed field on the error type (`sku_not_found => problem & { status: = 404 … }`) |
-| `parameters` (path/query/header) | a record of `name`, location enum, `type: type_ref`, `required` — scalars only, and nothing enforces that |
+| `requestBody` / `responses.<status>.content.schema` | kind-typed slots on the method record (`request?: kind<record>`, `response?: type_kind`), naming declared types; a status is a value slot (`status_code => !integer ^ { min: 100  max: 599 }`) or a fixed field on the error type (`sku_not_found => problem & { status: = 404 … }`) |
+| an operation naming another (a link, a binding to a method) | a `ref<method>` slot in the meta-schema, written `orders.place_order` |
+| `parameters` (path/query/header) | a record of `name`, location enum, `type: atom_kind`, `required` — `atom_kind` admits only atom types |
 | Protobuf `repeated`, `map<K,V>`, `oneof`, `optional` | `[T]`, `{K => V}`, field group, `?` on the name; `int32/uint64/bytes` → `int32`/`uint64`/`bytes` |
 | an object whose key order matters | `!map { key_type: text  value_type: V  ordered: true }` — a map is unordered by default |
 

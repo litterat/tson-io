@@ -1,6 +1,6 @@
 # Schema grammar reference
 
-Verbatim excerpts from TSON Part 2 §12 (2026 Revision 37): the section's opening, the schema-body ABNF, the disambiguation summary, and the adjacency rules; followed by condensed notes on error categories, name hygiene, and the schema-side resource limits. The header (`!!id`, `!!meta`, `!!import`) is Part 1 grammar; see the tson-data skill's grammar notes.
+Verbatim excerpts from TSON Part 2 §12 (2026 Revision 38): the section's opening, the schema-body ABNF, the disambiguation summary, and the adjacency rules; followed by condensed notes on error categories, name hygiene, and the schema-side resource limits. The header (`!!id`, `!!meta`, `!!import`) is Part 1 grammar; see the tson-data skill's grammar notes.
 
 This section defines the schema grammar — the schema document's body grammar, the second of the two body grammars behind the shared document header ([TSON-DATA] §2.2, §7.4). This grammar adds no token of its own ([TSON-DATA] §7.3): the productions below consume the same token stream, and the reserved special tokens of [TSON-DATA] §7.2.5 receive their meaning here — `+`, which that section emits as a special token from Revision 37, among them.
 
@@ -82,13 +82,15 @@ atom-refinement = "!" type-name ws "^" ws ( record / empty-brace )
 
 instance     = [type-params ws] "!" type-name ws core-value
              ; constructor application (§5.5): the target MUST
-             ; resolve to an entry that IS-A `top` (§3.3.1), the
-             ; kernel's `reference` included (§5.10). The payload
-             ; is a core value — braced bindings or the positional
-             ; form (§5.6) — never annotations or directives. With a
-             ; parameter list the body is held unread until
-             ; materialisation (§5.10); open and closed share one
-             ; production and one payload grammar. What no payload
+             ; resolve to `top` or an entry that IS-A it (§3.3.1),
+             ; the kernel's `reference` included (§5.10). The
+             ; payload is a core value — braced bindings or the
+             ; positional form (§5.6) — never annotations or
+             ; directives. With a parameter list the body is held
+             ; unread until materialisation (§5.10), except a
+             ; `!record` body, which is a record template read as
+             ; vocabulary at its declaration; open and closed share
+             ; one production and one payload grammar. What no payload
              ; can spell is an application: `box<text>` is schema
              ; grammar, and inside a `!C` payload an application is
              ; written in `type_ref`'s own record form,
@@ -196,13 +198,15 @@ type-name  = identifier
            ; (param-name shares the rule, as do every referenced
            ; name and every `!` head). A token in name position
            ; that fails the grammar is a parse error. field-name
-           ; is an identifier position at every layer ([TSON-DATA]
-           ; §2.5): it admits a quoted spelling, and its decoded,
-           ; NFC-normalised text — in field-def, group-member and
-           ; removal-set as in data — MUST match identifier; failure
-           ; is a parse error. The schema grammar and the data
-           ; grammar share the production and the rule.
-           ; Resolver-materialised instantiation and synthetic
+           ; is any unquoted or single-line token ([TSON-DATA]
+           ; §2.5, §7.4) — in field-def, group-member and
+           ; removal-set as in data — and is judged not by this
+           ; grammar but at link, by the record's name type
+           ; (§5.2): a name that is no value of it is a resolver
+           ; error, and under the default name type that is the
+           ; identifier grammar. The schema grammar and the data
+           ; grammar share the production.
+           ; Resolver-materialised synthetic and instantiation
            ; entries (§8.2) carry internal names in this same
            ; class; the resolver keeps them disjoint from
            ; declared names by construction (freshness, §8.2),
@@ -212,8 +216,8 @@ type-name  = identifier
 
 Notes:
 
-- The `type-params` slot declares type parameters (§5.10), each optionally followed by `:` and a type-ref — a written type, decided on the one token after the name; parameters take precedence over schema-namespace lookup, and references to a parameterized type MUST supply matching type arguments — except that a record-bodied template may be named bare at a type position as a family base (§5.10).
-- `definition-mark` is read unconditionally: `pet => abstract base & { … }` is a marked composition, and a type named `abstract` cannot stand alone as a declaration's whole body, which is the sole reservation the two words carry (§5.2, [TSON-DATA] §7.7).
+- The `type-params` slot declares type parameters (§5.10), each optionally followed by `:` and a type-ref — a written type, decided on the one token after the name; parameters take precedence over schema-namespace lookup, and references to a parameterized type MUST supply matching type arguments — except that a record template may be named bare at a type position as a family base (§5.10), never at an operand of `&` or `^` (§5.8).
+- `definition-mark` is read unconditionally: `pet => abstract base & { … }` is a marked composition, and a type named `abstract` cannot stand alone as a declaration's whole body, which is the sole reservation the two words carry (§5.2, [TSON-DATA] §7.7). ABSTRACT's rule — no direct instances, a value at a position typed by it a value of some subtype, a tag naming the base itself refused — is the rule the kernel's own `top`, `type`, `atom`, `product`, `sum` and `namespace` are read by, each marked `abstract` (§4.1), so a direct application of one is refused as any abstract record's is.
 - `=?` is two tokens the lexer already emits — `=` then `?` — admitted by `field-modifier` only with no value; `a: T =? v` is a parse error. It is refused by the resolver on a name carrying `?`, on a voidable type, on a group member, and on a type that is not an atom-family instance or an enum (§5.2).
 - `paren-type` produces choice types; choices require at least two variants — `(T)` is a parse error.
 - `group-def` produces field groups (§5.11): one or more options separated by `|`, each one or more members. That a group has at least two members, and the rules giving each presence rule one spelling, are the resolver's (§5.11). Inside a record body, `(` at entry position (after any leading annotations) opens a group; `(` after a `field-name ":"` opens a `paren-type`. The two never collide — a group is an entry, a choice is a type-ref. A `?` or a `+` after the closing `)` marks the group; member positions reject modifiers by grammar.
@@ -371,11 +375,11 @@ The whitespace requirement before removal `-` is a lexer fact restated as a rule
 
 ## Error categories at the schema layer (Part 2 §1.3, Part 1 §8.1)
 
-Everything that makes a schema fail to load is a **resolver error**, however value-like the rule: unresolved names, unknown facet members, incoherent bounds, invalid defaults, refuted `@disjoint`, unproductive recursion, unused or shadowing parameters, a parameter whose uses disagree or whose written type does not IS-A what they derive, an argument refused by its parameter's type or bound, an entry that IS-A `top` declared by a schema whose `!!meta` is not the meta-kernel, a refused field spelling (a default on an unmarked name, a parametric one included, a pin on a voidable type, `=?` where a selector cannot stand), a field group that restates plain fields or another group, a failed family check (a member not pinning a selector, colliding pins anywhere in the closure, composing onto or refining a FINAL record, a use-site application that composes onto a record and so would mint an undeclared family member), import collisions or cycles, hash mismatches. A schema the processor cannot obtain is not an error but **not judged** — reported as unavailable, beside the categories. **Validation errors** are reserved for data checked against a schema that loaded. Parse errors are grammar-level (`name {` without an operator, `(T)` one-variant choice, `_` at a type position, a modifier on a group member, `a: T =? v`, two definition marks, `T ^ { } - { }`, `<…> !I ^ { … }`). There are no warnings.
+Everything that makes a schema fail to load is a **resolver error**, however value-like the rule: unresolved names, unknown facet members, incoherent bounds, invalid defaults, refuted `@disjoint`, unproductive recursion, unused or shadowing parameters, a parameter whose uses disagree or whose written type does not IS-A what they derive, an argument refused by its parameter's type or bound, an entry that IS-A `top` (a namespace type included) or a `ref<T>` declared by a schema whose `!!meta` is not the meta-kernel, an import across governing levels (a user schema importing `meta.tn`, a meta-schema importing core), a declared field name or enum member that is no value of its name type (`{ "first name": text }` under the default), supertypes with different name types, a name type whose form does not imply NFC, a parameter as an operand of `&`/`^` or anywhere in a record template but a field's type, value or an argument, a record template named bare at an operand, `chain` or `@application` written in source, a name at a kind-typed slot that is no member, a refused field spelling (a default on an unmarked name, a parametric one included, a pin on a voidable type, `=?` where a selector cannot stand), a field group that restates plain fields or another group, a failed family check (a member not pinning a selector, colliding pins anywhere in the closure, composing onto or refining a FINAL record, a use-site application that composes onto a record and so would mint an undeclared family member), import collisions or cycles, hash mismatches. Two outcomes sit beside the categories and are no verdict on validity: **refused** — this processor will not supply the schema (not held and not fetched, off its allowlist, a required pin missing, too large) or declined the document under its hygiene policy or limits — and **undetermined** — it could not obtain the schema (nothing at the reference, no answer), so nothing was judged. **Validation errors** are reserved for data checked against a schema that loaded. Parse errors are grammar-level (`name {` without an operator, `(T)` one-variant choice, `_` at a type position, a modifier on a group member, `a: T =? v`, two definition marks, `T ^ { } - { }`, `<…> !I ^ { … }`). There are no warnings.
 
 ## Name hygiene at the schema layer (Part 2 §11.4, Part 1 §8.2)
 
-Beyond the identifier grammar, conforming processors enforce by default (as *policy refusals*, not validity errors): skeleton distinctness (no two names in one scope may be visually confusable — `admin` vs Cyrillic `аdmin`, also pure-ASCII `comer`/`corner`), `Identifier_Status=Allowed` characters only, and a UTS #39 restriction level (default Highly Restrictive over the whole name; per-segment relaxation admits `id_пользователя`). Scopes at this layer: the members of one enum (all three mechanisms where its `type` is an identifier family, as `enum`'s is; the look-alike check alone for a `text_enum`, whose members are texts), the field names of one record, the declared names of one schema, and the merged namespace at each `!!import`. A value typed by an identifier family is a name wherever it stands, so data gains two scopes: the keys of one map keyed by an identifier family, and the elements of one set of one. A `text`-keyed map stays data. A deployment states its identifier and token policies and its limits in the vocabulary `https://tson.io/2026/37/m/policy.tn` declares; no document selects the policy it is judged under. Practical advice for an author: keep names single-script or separate scripts with `_`, and avoid pairs that differ only by `l`/`I`, `O`/`0`, `rn`/`m`.
+Beyond the identifier grammar, conforming processors enforce by default (as *policy refusals*, not validity errors): skeleton distinctness (no two names in one scope may be visually confusable — `admin` vs Cyrillic `аdmin`, also pure-ASCII `comer`/`corner`), `Identifier_Status=Allowed` characters only, and a UTS #39 restriction level (default Highly Restrictive over the whole name; per-segment relaxation admits `id_пользователя`). Scopes at this layer: the members of one enum and the field names of one record (group labels included), each under its `name_type`'s profile — a profile's own added characters (`json_name`'s `@` and `$`, a medial space) are exempt from the `Identifier_Status` check and still read by the look-alike and script rules — the declared names of one schema, and the merged namespace at each `!!import`. A schema's own identifier-typed values are judged too: a field's default or fixed value, the keys of a namespace entry's map, a qualified name's segments. A value typed by an identifier family is a name wherever it stands, so data gains two scopes: the keys of one map keyed by an identifier family, and the elements of one set of one. A `text`-keyed map stays data. A deployment states its identifier and token policies and its limits in the vocabulary `https://tson.io/2026/38/m/policy.tn` declares; no document selects the policy it is judged under. Practical advice for an author: keep names single-script or separate scripts with `_`, and avoid pairs that differ only by `l`/`I`, `O`/`0`, `rn`/`m`.
 
 ## Resource limits for schemas (Part 2 §11.5)
 

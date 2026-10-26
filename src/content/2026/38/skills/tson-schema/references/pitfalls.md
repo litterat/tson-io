@@ -4,7 +4,10 @@ Every mistake this skill has seen, with the fix. Read this before handing over a
 
 | You wrote | Problem | Write instead |
 |---|---|---|
-| no `!!import` of core, then `name: text` | `text` unresolved — kernel types are not field types | add `!!import:"https://tson.io/2026/37/m/core.tn"` |
+| no `!!import` of core, then `name: text` | `text` unresolved — kernel types are not field types | add `!!import:"https://tson.io/2026/38/m/core.tn"` |
+| core only, then `ip: ipv4`, `m: mac`, `h: hostname`, `ct: media_type` | the network types are in `net.tn`, not core | add `!!import:"https://tson.io/2026/38/m/net.tn"` |
+| `!!import:"…/m/meta.tn"` or `…/m/meta-kernel.tn` in a user schema | an import stands at the importer's level | drop it; `!!meta` already supplies the constructors |
+| `kind => !enum [ … ]`, `kind => { … }` beside a core import | core declares `kind` (and a name the closure binds cannot be redeclared) | another name: `pet_kind`, `category` |
 | `!!schema:"…"` in a schema file | schemas are governed by `!!meta` | `!!meta:"…"` |
 | `!!meta` after `!!import` | order is fixed | `!!id`, `!!meta`, `!!import…` |
 | `person: { name: text }` inline, `age: !integer ^ { min: 0 }` inline | bare records and atom refinements must be named | declare `person`, `age`, reference by name |
@@ -13,7 +16,14 @@ Every mistake this skill has seen, with the fix. Read this before handing over a
 | `!integer ^ { minimum: 0 }`, `{ maxLength: 5 }` | JSON Schema spellings are unknown facets | `min`, `max_length` |
 | `!float64 ^ { multiple_of: 0.05 }` | floats have no `multiple_of` | `!number ^ { multiple_of: 0.05 }` |
 | `!enum [1 2 3]` | numbers are never enum members | `!integer ^ { min: 1  max: 3 }` or `!integer ^ { members: [1 2 3] }` |
-| `!enum ["Not Started"]`, `!enum { members: [ … ]  profile: TEXT }` | `enum` members are names; there is no `profile` | `!text_enum ["Not Started"]`, or the identifier `not_started` |
+| `!enum ["Not Started"]`, `!enum { members: [ … ]  profile: TEXT }` | `enum` members are identifiers; there is no `profile` | `!text ^ { members: ["Not Started"] }`, the identifier `not_started`, or an enum over a words type (next row) |
+| `!text_enum ["sedentary" "lightly active"]` | `text_enum` is withdrawn | a closed text set, `!text ^ { members: [ … ] }`; or names with spaces, `words => !identifier_type { medial: " " }` then `!enum_type { name_type: words  members: [ … ] }` |
+| `!enum_type { type: kebab  members: [ … ] }` | the slot is `name_type` | `!enum_type { name_type: kebab  members: [ … ] }` |
+| `!enum_type { name_type: text  … }` | `name_type` must be an identifier family | declare one (`words`, `kebab`), or use `!text ^ { members: [ … ] }` |
+| `person => { "first name": text }`, `{ "@id": text }` | a field name is a value of the record's name type, an identifier by default (a resolver error, not a parse error) | `first_name`; for a JSON vocabulary, a name type on a fieldless abstract base — `declaration-forms.md` §2 |
+| `json_record & address` (`address` declared plainly) | supertypes with different name types do not compose | declare `address => json_record & { … }` |
+| a name type with `normalization: NONE`, or `ASCII_CASEFOLD` over a non-ASCII profile | a name type's form must imply NFC | `NFC` (the default), `NFKC_CASEFOLD`, or an `ASCII`-based profile with `ASCII_CASEFOLD` |
+| `continue_add: "\u{AD}"` (soft hyphen), a control, a non-U+0020 space in a profile | the profile floor | only visible characters; `medial: " "` for words |
 | `( identifier \| text )` expected to be tag-free | both are string-class text families | tag every value, or use a field group |
 | `status: !enum [A B]` at a field | constructor application at a field position | declare `status => !enum [A B]` |
 | `xs: list<text>`, `m: map<text, int>`, `[text]?` meaning voidable elements | no `list`/`map` generics; `?` placement | `[text]`, `{text => integer}`, `[text?]` |
@@ -34,13 +44,20 @@ Every mistake this skill has seen, with the fix. Read this before handing over a
 | `vector` (a non-record template) used bare; `<T> { v: text }` | missing args; unused parameter | `vector<text, 3>`; drop `<T>` |
 | `<N> !integer ^ { min: N }` | parameterised atom refinement is not a form | `<N> !integer_type { min: N }` |
 | `<T> { a: T  b?: int32 ~ T }` | one parameter in a type and a value position | two parameters |
+| `named => <T> T & { name: text }`, `<T> T ^ { … }` | a parameter is never an operand | compose a concrete parent, or put `T` in a field: `<T> { value: T  name: text }` |
+| `t => box & { … }`, `t => box ^ { … }` (`box` a record template) | a record template named bare is a family base, never an operand | apply it: `box<text> & { … }`, or re-declare: `<T> box<T> & { … }` |
+| `badge => <M, N> { kind: capped<M> = N … }` | a selector's type may mention no parameter, value ones included | fix the selector's type: `kind: capped<9> = N` |
 | `<T: text_type> { a: T }` | a bound names a type, never a constructor | `<T: text>`, and refine into the family (`!text ^ { … }`) for an argument that must pass |
 | `<N: int8> !array { element_type: text  min_items: N }` | a constructor template's value parameters are the meta's types | leave `N` unwritten: it is read as the meta's `non_negative_integer` |
 | `k: dog_of<text>` where `dog_of => <T> pet & { … }` | a use-site application composing onto a record would be an undeclared family member | `dogs => dog_of<text>`, then `k: dogs` |
 | `item => { inner: item }` | no finite value | `inner?: item` |
 | `~array & { … }` in a user schema | there is no constructor marker; a constructor is an entry that IS-A `top`, declarable only under the meta-kernel | refine or apply instead (or write a meta-schema — `extension-meta-schemas.md`) |
 | `op => vector<order, 3> & { … }`, `op => {text => order} ^ { … }` | a constructor application closes to a binding record with no fields | compose onto a *record* — a record template's application (`box<order> & { … }`) is fine |
-| `x => { s: some_operation }` where `some_operation` is a `data`-kinded instance | a DATA entry is declared and applied, never named as a type | name the payload's types; see `extension-meta-schemas.md` |
+| `operation => data & { … }` | there is no `data` kind | a meta-schema's namespace type; see `extension-meta-schemas.md` |
+| `x => { s: orders }` where `orders => !interface { … }` | a namespace entry is a value, never a type | name the payload's types; see `extension-meta-schemas.md` |
+| `to: ref<person>` in a user schema | `ref` is kernel vocabulary; core declares none | a field typed `person` holds the value inline; a name of a *type* is `kind<record>` |
+| `handler: kind<person>` | `kind<C>` names a constructor (`record`, `uuid_type`), never your type | `kind<record>`, or a choice over the types you mean |
+| `!record { chain: { supertypes: [ … ] } … }`, `@application:…` in source | `chain` and `@application` are the resolver's | compose with `&` or refine with `^`; never write either |
 | `@discriminator:type` on a choice of records | retired; a choice has no discriminator | `pet => abstract { type: text =?  … }` with each member pinning `type: = "dog"`, and the position typed `pet` |
 | `@rest` on a map field, `additionalProperties` | retired; records are closed with no exception | a map-typed field, `extras?: {text => dynamic}` |
 | `pet => { type: text = "pet" … }` as a discriminated base | a pin never changes, so no member could pin its own | `type: text =?` on the base (implies `abstract`) |

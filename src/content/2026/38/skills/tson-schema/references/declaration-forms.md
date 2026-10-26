@@ -21,28 +21,30 @@ Part 2 §4–§5 and §6, condensed. The SKILL.md decision table picks the form;
 
 ## 1. Canonical form
 
-Every closed declaration resolves to a `type_definition` whose body is `!C { bindings }` — a constructor applied to a record of its own fields. (An *open* one — a template — has a `!template { parameters  template }` body instead; see `templates.md`.) A `type_definition` carries `source`, `supertypes`, `subtypes` and `body`, and nothing else: a kind is derived from the body, not recorded. Sugar desugars:
+**An entry is its value.** Every closed declaration resolves to `!C { bindings }` — a constructor applied to a record of its own fields — with no wrapper around it: `person => !record { fields: { … } }`, `id => !reference { target: uuid }`. A type's value carries `chain: { parents? supertypes? subtypes? }`, its IS-A order, computed by the resolver and never written by a declaration (`!record { chain: … }` in source is a resolver error); an empty chain is omitted. A kind is derived from the value's tag and chain, never recorded. (An *open* entry is a `!record` with `parameters` or a `!template`; see `templates.md`.) Sugar desugars:
 
 | Source | Canonical |
 |---|---|
-| `{ a: text }` | `!record { fields: [ { name: a  type: text } ] }` |
+| `{ a: text }` | `!record { fields: { a => !record_field { type: text } } }` — `fields` is a map from name to field |
 | `[T]` | `!array { element_type: T }` |
 | `[T; N]` | `!array { element_type: T  min_items: N  max_items: N }` |
 | `[T; N..M]`, `[T; N..]`, `[T; ..M]` | `min_items`/`max_items` as given |
 | `[T?]` | `voidable: true` on the array |
-| `(A \| B)` | `!choice { variants: [A B] }` |
+| `(A \| B)` | `!choice { variants: [A B]  disjoint: … }` — the resolver always writes `disjoint` |
 | `{K => V}` | `!map { key_type: K  value_type: V }` |
 | `[T, U?]` | `!tuple { elements: [ { element_type: T } { element_type: U  voidable: true } ] }` |
-| `!enum [a b]` | `!enum { members: [a b] }` — `type` pinned to `identifier` by the constructor |
-| `!text_enum ["a b"]` | `!text_enum { members: ["a b"] }` — `type` pinned to `text` |
-| `!integer ^ { min: 0 }` | `!integer_type { min: 0 }`, `supertypes: [integer]` |
-| `!int8 ^ { min: 0 }` | `!integer_type { size: { bits: 8  signed: true }  min: 0 }` — inherited facets survive |
+| `!enum [a b]` | `!enum { members: [a b] }` — `name_type` pinned to `identifier` by the constructor |
+| `!integer ^ { min: 0 }` | `!integer_type { chain: { supertypes: [integer] }  min: 0 }` |
+| `employee => person & { dept: text }` | `!record { chain: { supertypes: [person] }  fields: { name => … dept => … } }` — flattened |
+| `!int8 ^ { min: 0 }` | `!integer_type { chain: { supertypes: [int8 integer] }  size: { bits: 8  signed: true }  min: 0 }` — inherited facets survive |
 
-**Positional form.** When a constructor has exactly one field whose *name is unmarked* (whatever its modifier), the value after `!C` fills it directly: `!enum [true false]`, `!array text`. Fields whose name carries `?` never count — `bytes_type.encoding?` is *not* a positional slot, so write `!bytes_type { encoding: HEX }`. `enum` and `text_enum` pin `type?: = …`, which leaves `members` the one unmarked field; the general `!enum_type { type: kebab  members: [...] }` has two and needs braces.
+**Positional form.** When a constructor has exactly one field whose *name is unmarked* (whatever its modifier), the value after `!C` fills it directly: `!enum [true false]`, `!array text`. Fields whose name carries `?` never count — `bytes_type.encoding?` is *not* a positional slot, so write `!bytes_type { encoding: HEX }`. `enum` pins `name_type?: = identifier`, which leaves `members` the one unmarked field; the general `!enum_type { name_type: kebab  members: [...] }` has two and needs braces. `record_field` has one (`type`), so the explicit record form may write `fields: { x => text }` for `fields: { x => { type: text } }`.
 
 **Bodies are closed.** Every member of a construction or refinement body must be a field the constructor declares; an unknown member is a resolver error. This is why `!integer ^ { minimum: 1 }` is refused rather than silently ignored.
 
 **Top-level constructor applications are constructions**: `lookup => {text => integer}` and `lookup => !map { … }` are the same thing — a finished type with no supertypes, which cannot be refined further.
+
+**The explicit record form** is the brace form spelled out: `person => !record { fields: { name => { type: text }  nick => { type: text  optional: true } } }` is `{ name: text  nick?: text }`. It is rarely worth writing, except to state a record's `name_type` (§2).
 
 ## 2. Records and field slots
 
@@ -68,7 +70,7 @@ A field answers three independent questions, one slot each — `name?: type? ~ d
 
 Refused, as rules: a default on an unmarked name (`a: T ~ v` — only omission reaches a default; write `a?: T ~ v`); a pin on a voidable type (`a: T? = v`, `a?: T? = v`); any modifier on a `void` field, and `_` as a modifier value (`~ _`, `= _` — the old `= _` is now `a?: void?`); `a: void` (no document satisfies the record). What a missing key yields is derived, never stored: unmarked → the missing-field error; marked with a value → the value, injected; marked without → nothing, the field stays missing.
 
-Resolved output stores four facts per `record_field`: `optional` (name's `?`), `voidable` (type's `?`), `role` (`FREE`/`DEFAULT`/`FIXED`) and `value`; defaults `false`/`false`/`FREE` are omitted.
+Resolved output keys each field by its name in the record's `fields` map and stores its `type` and four facts per `record_field`: `optional` (name's `?`), `voidable` (type's `?`), `role` (`FREE`/`DEFAULT`/`FIXED`) and `value`; defaults `false`/`false`/`FREE` are omitted.
 
 **Which fields may carry a value:** only fields whose declared type, after following its reference chain, is an atom-family instance or an enum. Value modifiers are single scalar tokens; no arrays/records/maps, never `_`. Values are parsed by the field's type at schema load (eager) — a default that fails its own type is a load error. In a template body the value may be a parameter, and **the name's mark is the author's, as beside a literal**: `a?: T ~ N` is a default, `a?: T = N` an injected pin, `a: T = N` a marker, and `a: T ~ N` is refused.
 
@@ -77,6 +79,22 @@ Resolved output stores four facts per `record_field`: `optional` (name's `?`), `
 **Elided type-refs:** in a `^` or `&` body a tightening entry may omit the type — `port?: = 9090` — inheriting it from the source. Keep the name's `?` when restating an optional field: `port: = 9090` would also move it to required, making it a marker the document must write. In a fresh `{ … }` every field needs a type.
 
 **Encoders** should write defaulted values out (a document that states its defaults reads without its schema); omitting a field equal to its default is a permitted optimisation.
+
+### Field names and the name type
+
+A record's field names are values of its **name type**, `record.name_type` — an identifier family, by default the kernel's `field_name` (`identifier`), the same slot an enum has for its members. A declared field name is any single-line token, quoted where it is no identifier, and is judged when the schema links: under the default `{ "first name": text }` is a resolver error (*field name 'first name' is not an identifier*), not a parse error. A schema translated from JSON-LD, JSON Schema or OpenAPI, whose members are `@id`, `$ref`, `@context`, declares the profile its names need **once, on a fieldless abstract base**, and its records compose it — the brace form has no syntax of its own for a name type:
+
+```
+json_name   => !identifier_type { start_add: "@$" }
+json_record => !record { name_type: json_name  extension: ABSTRACT  fields: {} }
+node        => json_record & { "@id": text  "@type": text  label: text }
+```
+
+- **One name type, inherited.** A record with supertypes takes theirs; supertypes with different name types do not compose — `json_record & address`, where `address` states none and so has `field_name`, is a resolver error. Declare the record over the same type, `address => json_record & { city: text }`. A refinement keeps its source's (`node ^ { "@id": = "n1" }`).
+- **Its form implies NFC.** A document's names are matched in the name type's `normalization`: under `http_name => !identifier_type { start: ASCII  continue: ASCII  medial: "-"  normalization: ASCII_CASEFOLD }`, `Content-Type` in a document is the field `content-type`, and both spellings in one record are a duplicate. `NONE` is refused at load; `ASCII_CASEFOLD` only over a profile whose every character is ASCII.
+- **The schema's own references match exactly.** A group member, a restated or removed field and a `discriminators` entry name a field by its declared spelling, under a folding type too.
+- **A document's names are judged by the record that reads them**: a name it does not declare is an unrecognised field (a validation error), and a record nested in a relaxed one judges its own names. Hygiene runs under the name type's profile.
+- **When to use it**: the names are given by a vocabulary, a protocol or a system of record. Never for keys — a key that is no name (`""`, a leading space) belongs in a map.
 
 **Inline prohibition.** Bare records (`{ name: text }`) and atom refinements (`!integer ^ { … }`) may appear only as a declaration's own body — never at a field type, group member, tuple element, array element, choice variant, type argument, or composition position. Container sugar carries no such restriction.
 
@@ -90,14 +108,14 @@ Maps: `{K => V}`, one entry only; key is a simple name (with optional `<args>`),
 
 Every inline sugar form **lifts** to a resolver-created synthetic entry (structurally keyed, so `[text]` written in ten places is one entry). Only a declaration's own body stays in place. This has one practical consequence: a *use site* never carries arguments in resolved output — `[box<text>]` and `grid<pixel, 3>` resolve to references to entries.
 
-**A declaration naming an application is that application's entry.** `bx => box<text>` resolves to the closed instantiation itself, under `bx` — `source` the application, no minted `box_text_…` beside it, no `!reference` hop — and a use site writing `box<text>` elsewhere in the schema resolves to `bx`. Only an application no declaration names mints an internal entry. Two declarations naming one application are two entries. Minted names are never a consumer's key: bind generated code and configuration to the declared name. **One kind of application must be declared**: an application at a use site whose result composes onto a record would be a member of that record's family, so it is a resolver error (`k: dog_of<text>` over `dog_of => <T> pet & { … }`; declare `dogs => dog_of<text>`). An application of a record-bodied template written at a use site is a type read where it stands, and no member of the template's family.
+**A declaration naming an application is that application's entry.** `bx => box<text>` resolves to the closed instantiation itself, under `bx` — `@application:{ name: box  arguments: [{ name: text }] }` on its key, no minted `box_text_…` beside it, no `!reference` hop — and a use site writing `box<text>` elsewhere in the schema resolves to `bx`. **An application nothing declares is its expansion**: the closed synthetic entry its substituted form lands on, keyed on content, the same entry any other spelling of that form lands on — no instantiation entry is minted (a self-reaching one such as `tree<text>` excepted, `templates.md`). Two declarations naming one application are two entries. Minted names are never a consumer's key: bind generated code and configuration to the declared name. **A minted record is a member of nothing.** An application at a use site whose result would compose onto a *declared* record would be a member of that record's family, so it is a resolver error (`k: dog_of<text>` over `dog_of => <T> pet & { … }`; declare `dogs => dog_of<text>`). A parent application nothing declares gives the minted record no edge at all: `u: labelled<text>` over `labelled => <T> box<T> & { label: text }`, beside `w: box<text>`, loads. An application of a record template written at a use site is a type read where it stands, and no member of the template's family.
 
 ## 4. Constructor application vs atom refinement
 
-- `!C value` — **application**. `C` must be a constructor — an entry that IS-A `top`, resolved through the meta-schema's *structure namespace*: `enum`, `bytes_type`, `array`, `map`, `set_type`, `tuple`, `choice`, `scoped`, `integer_type`, `text_type`, …. Transfers kind only; no IS-A. Founding a new family with an atom constructor is legal but rarely what you want.
+- `!C value` — **application**. `C` must be a constructor — `top` or an entry that IS-A it, not abstract (so not `top`, `type`, `atom`, `product`, `sum` or `namespace`), resolved through the meta-schema's *structure namespace*: `enum`, `bytes_type`, `array`, `map`, `set_type`, `tuple`, `choice`, `scoped`, `integer_type`, `text_type`, …. Transfers kind only; no IS-A. Founding a new family with an atom constructor is legal but rarely what you want.
 - `!I ^ { values }` — **atom refinement**. `I` must be a non-constructor *instance* from the type-name namespace (`integer`, `text`, `int8`, `date`, a user-declared refined atom). Establishes IS-A `I`; facets merge over `I`'s. The body is data (`size: { bits: 8  signed: true }` binds a nested value); a bare value, a second `!`, an annotation, or a map in body position is a parse error.
 
-Kind determination: the constructor's base kind (`atom`, `product`, `sum`, `data`) reached through its supertypes; none → PRODUCT; two → error. `!C {}` inherits it.
+Kind determination: the constructor's base kind (`atom`, `product`, `sum`, or `namespace`) reached through its chain; none → PRODUCT; two → error. `!C {}` inherits it. There is no `data` kind.
 
 Category errors in data mirror this: `!integer_type 42` and `!age { min: 0 }` are both type errors — constructors type constraint records, instances type scalars.
 
@@ -111,7 +129,7 @@ Category errors in data mirror this: `!integer_type 42` and `!age { min: 0 }` ar
 
 ## 5. Refinement `^`
 
-`T ^ { … }` — copy `T`, tighten, keep IS-A. Only existing fields may appear; adding one is an error. The source, after following its reference chain, must be an entry with a `!record` body — a fresh/refined/composed record, an open record template, or (in a meta-schema) a constructor. For an *atom* refinement the source must be an atom-family **instance** — an entry whose body *is* an atom application (`integer` carrying `!integer_type {}`), not the constructor whose body is the vocabulary record describing one (`integer_type` carrying `!record { … }`). The test is on the body and nothing else: both are ATOM-kinded, and neither has supertypes. Not refinable: a top-level constructor application or sugar body (`{text => integer}`, `vector<text, 3>`), an alias to one, a choice, and a **FINAL** record (§8). A *record* template's instantiation closes to a `!record` and refines like any record. No removal clause on a refinement head.
+`T ^ { … }` — copy `T`, tighten, keep IS-A. Only existing fields may appear; adding one is an error. The source, after following its reference chain, must be an entry with a `!record` body — a fresh/refined/composed record, an *applied* record template (`box<text> ^ { … }`; a record template named bare is refused), or (in a meta-schema) a constructor. For an *atom* refinement the source must be an atom-family **instance** — an entry whose body *is* an atom application (`integer` carrying `!integer_type {}`), not the constructor whose body is the vocabulary record describing one (`integer_type` carrying `!record { … }`). The test is on the body and nothing else: both are ATOM-kinded, and IS-A `atom` holds of the constructor and of no instance. Not refinable: a top-level constructor application or sugar body (`{text => integer}`, `vector<text, 3>`), an alias to one, a choice, and a **FINAL** record (§8). A *record* template's instantiation closes to a `!record` and refines like any record. No removal clause on a refinement head.
 
 Field facts move along three orders, and a restatement refines its source exactly when **no question moves backwards**:
 
@@ -127,10 +145,10 @@ Per-facet tightening (applies to record refinement and atom refinement alike):
 |---|---|---|
 | ordered bound | `min`, `max`, `min_length`, `max_items`, `precision`, exclusive bounds | may only move inward |
 | step | `multiple_of` | strictly positive; tightens only to an integer multiple (`15` under `5`) |
-| permission | `allow_nan`, `allow_infinity`, …, `allow_relative`, `allow_fragment` | true → false only |
-| member set | enum `members`, numeric `members`, a URI's or IRI's `schemes`, `within`/`excluding` lists | subset only (for `within`), superset for `excluding` |
+| permission | `allow_nan`, `allow_infinity`, …, `allow_relative`, `allow_fragment`, `allow_idn`; `allow_parameters` (granted only by a fresh instance) | true → false only |
+| member set | enum `members`, numeric `members`, a URI's or IRI's `schemes`, a media type's `types` and `suffixes`, `within`/`excluding` lists | subset only (for `within`), superset for `excluding` |
 | settable once | `text_type.pattern`, `text_type.members` | set where the source left it unset, or restated verbatim; never changed |
-| fixed at construction | `text_type.normalization`, the identifier profile facets (`start`, `continue`, `start_add`, `continue_add`, `medial`, `exclude`), an enum's `type` | pinned where the type is constructed; a refinement restates it or leaves it alone, never sets or moves it — a different one is a fresh `!constructor { … }` |
+| fixed at construction | `text_type.normalization`, the identifier profile facets (`start`, `continue`, `start_add`, `continue_add`, `medial`, `exclude`), an enum's or a record's `name_type` | pinned where the type is constructed; a refinement restates it or leaves it alone, never sets or moves it — a different one is a fresh `!constructor { … }` |
 | selector | `size`, `encoding`, `format`, `component` | may be set where the source left the default; thereafter restated only, never changed (`!int8 ^ { size: { bits: 16 } }` is an error) |
 | fixed value | `= v` | a pin never changes; a written value is compared as a value |
 
@@ -140,11 +158,11 @@ Narrowing a voidable field to `void` — `a?: void?` — is the IS-A-preserving 
 
 ## 6. Composition `&`
 
-`A & B & { body }` — the trailing body is optional. Parents must contribute **disjoint** field names (a field reaching the result through two paths — even from one origin — is an error). Body entries matching an inherited field are tightenings (§5 rules, elided types allowed); others are new fields, appended after all inherited fields. Field order: parents left to right, each in declared order, tightened fields in place. Parents may carry arguments (`ok => <T> result<T> & { note: text }`) — the open parameters must be re-declared, and `record.supertypes` holds the application, so `ok<text>` is IS-A `result<text>`, not `result<int32>`. An application at an operand mints no entry. Operands are named references only; no inline forms before `&`. Composing onto a **FINAL** parent is a resolver error. A restated **group member** stays a member, in its own option; a `?` on its name is the in-option mark, which a restatement may drop and may not add. Constructor-ness is *not* something a body inherits: an entry is a constructor exactly when it IS-A `top`, and only a schema whose own `!!meta` names the meta-kernel may declare one.
+`A & B & { body }` — the trailing body is optional. Parents must contribute **disjoint** field names (a field reaching the result through two paths — even from one origin — is an error). Body entries matching an inherited field are tightenings (§5 rules, elided types allowed); others are new fields, appended after all inherited fields. Field order: parents left to right, each in declared order, tightened fields in place. Parents may carry arguments (`ok => <T> result<T> & { note: text }`) — the open parameters must be re-declared, and the template's `chain.parents` holds the application, so `ok<text>` is IS-A `result<text>`, not `result<int32>`. An application at an operand mints no entry. Operands are named references only; no inline forms before `&`, no parameter (`<T> T & { … }` is a resolver error), and no bare record template. Composing onto a **FINAL** parent is a resolver error, and so is composing parents with different name types (§2). A restated **group member** stays a member, in its own option; a `?` on its name is the in-option mark, which a restatement may drop and may not add. Constructor-ness is *not* something a body inherits: an entry is a constructor exactly when it IS-A `top`, and only a schema whose own `!!meta` names the meta-kernel may declare one.
 
 ## 7. Subtraction `-`
 
-`head - { f1 f2 }` on a construction head (bare source, or `&` chain with or without body). Order: merge supertypes (disjointness still enforced — subtraction cannot mend a diamond), apply body, then remove. Rules: whitespace before `-` is mandatory (`account- {` absorbs the hyphen); removing a nonexistent field is an error; removing a field the same body adds is an error; the body may not tighten a removed field; the removal set is non-empty by grammar; removing a group member takes it out of its option, an emptied option leaves the group, and a group the declaration rules would then refuse is rewritten as the spelling it equals (a lone one-member option dissolves into a plain field taking the group's `optional` as its name's mark). Result: `type_definition.supertypes` empty (not substitutable for the source), lineage kept in the body's `record.supertypes`.
+`head - { f1 f2 }` on a construction head (bare source, or `&` chain with or without body). Order: merge supertypes (disjointness still enforced — subtraction cannot mend a diamond), apply body, then remove. Rules: whitespace before `-` is mandatory (`account- {` absorbs the hyphen); removing a nonexistent field is an error; removing a field the same body adds is an error; the body may not tighten a removed field; the removal set is non-empty by grammar; removing a group member takes it out of its option, an emptied option leaves the group, and a group the declaration rules would then refuse is rewritten as the spelling it equals (a lone one-member option dissolves into a plain field taking the group's `optional` as its name's mark). Result: a record with an empty chain — not substitutable for the source, and nothing records what it was subtracted from. In a meta-schema, a subtraction headed by a constructor is no longer one.
 
 `- { f }` removes; `f?: void?` forbids the value while keeping the contract. Choose by whether substitutability matters. Subtraction is admissible on a **FINAL** record — it mints no IS-A edge, which is all FINAL constrains.
 
@@ -182,7 +200,7 @@ cat => pet & { pet_type: = "cat"  indoor: boolean }
 
 At a position typed `pet`, data is placed by reading `pet_type` and matching the pins; the tag becomes optional and, if written, must agree. A family discriminates one level. The marked fields lower into `record.discriminators`, which is non-empty when present: present means the members are selected by those fields, absent means by the tag. The base cannot pin the field itself — a pin never changes, so no member could then pin its own.
 
-A **record-bodied template** may also stand at a type position as a family base (`payload: result`): it is ABSTRACT by derivation, its members are the applications a declaration names (`bt => box<int32>`, `dog => pet<"dog", dog_details> & { … }`) and no others, and a field pinned to a value parameter is a selector (`pet => <N, T> { type: text = N  pet: T }`); a selector's declared type may not mention a type parameter. `final` on a template is refused. A mark written on a template applies to its *applications*: `result => abstract <T> { payload: T }` makes `result<text>` an abstract base for `ok<text>` and `err<text>`. Reference, container, constructor-application and atom templates are never bases.
+A **record template** may also stand at a type position as a family base (`payload: result`): it is ABSTRACT by construction, its members are the applications a declaration names (`bt => box<int32>`, `dog => pet<"dog", dog_details> & { … }`) and no others, and a field pinned to a value parameter is a selector whatever its name's mark (`pet => <N, T> { type: text = N  pet: T }`); a selector's declared type may mention none of the template's parameters, value ones included. `final` on a template is refused. A mark written on a template applies to its *applications*: `result => abstract <T> { payload: T }` makes `result<text>` an abstract base for `ok<text>` and `err<text>`. Reference, container, constructor-application and atom templates are never bases.
 
 ## 9. Choice types and disjointness
 
@@ -192,11 +210,11 @@ A **record-bodied template** may also stand at a type position as a family base 
 |---|---|
 | boolean | `boolean` |
 | number | every numeric family |
-| string | every text family — `text`, identifier families, `uri`/`uri_reference`, `iri`/`iri_reference`, `regex`, `email` — and `uuid`, temporal, binary, network, and their refinements |
+| string | every text family — `text`, identifier families, `uri`/`uri_reference`, `iri`/`iri_reference`, `regex`, `email` — and `uuid`, temporal, binary, network (`hostname`, `host`, `media_type` included), kinds (`kind<C>`), and their refinements |
 | brace | records, maps |
 | bracket | arrays, tuples |
 
-An enum over an identifier family (`enum`) takes its members' shared class; any other enum (`text_enum`) is string-class. `identifier` is string-class, so `( identifier | int32 )` is disjoint and `( identifier | text )` is not. `rational`, `complex`, `value`, **a float still admitting NaN or infinity** (core's `float32`/`float64` as declared), **a map whose key is not an atom or enum**, nested choices, `scoped` instances (`extern`, `dynamic`, `declared`), unresolved references have **no** class and make the choice non-disjoint. So `( float64 | text )` needs tags unless the float narrows `allow_nan` and `allow_infinity` to false — the same in every encoding. Disjoint iff every variant has a class and none repeats. Value-set separation (disjoint ranges, patterns, enum members) does **not** count.
+An enum takes its members' shared class (`[true false]` boolean, `[A B]` string); a text member set (`!text ^ { members: ["80" "443"] }`) is string-class, so `( ports | integer )` is disjoint. `identifier` is string-class, so `( identifier | int32 )` is disjoint and `( identifier | text )` is not. `rational`, `complex`, `value`, **a float still admitting NaN or infinity** (core's `float32`/`float64` as declared), **a map whose key is not an atom or enum**, nested choices, `scoped` instances (`extern`, `dynamic`, `declared`), unresolved references have **no** class and make the choice non-disjoint. So `( float64 | text )` needs tags unless the float narrows `allow_nan` and `allow_infinity` to false — the same in every encoding. Disjoint iff every variant has a class and none repeats. Value-set separation (disjoint ranges, patterns, enum members) does **not** count.
 
 Data: a variant is selected with `!variant`. Tag optional only when disjoint; otherwise a missing tag is a validation error. Emitter rule: if two variants share a class, tag every value. `@disjoint` on the declaration asserts the derived fact and fails the load if false.
 
@@ -224,7 +242,7 @@ Labelled-sum idiom: a record whose entire body is one required group of one-memb
 
 ## 11. Annotations in schemas
 
-Annotations are types resolved **one hop** against the governing target — for a schema document, its `!!meta` target. Under `meta.tn`: `doc`, `annotation` and `synthetic` (through the kernel import) and `ordering bounded exact numeric disjoint deprecated title comment examples read_only write_only`. `@doc` is CommonMark 0.31.2 (no extensions, raw HTML never executed); `@deprecated` is bare; `@examples` is a list of text. Local declarations and `!!import`s do not contribute to the schema document's own annotation namespace; custom annotations for schema documents require an extended meta-schema (`extension-meta-schemas.md`).
+Annotations are types resolved **one hop** against the governing target — for a schema document, its `!!meta` target. Under `meta.tn`: `doc` and `annotation` (through the kernel import) and `ordering bounded exact numeric disjoint deprecated title comment examples read_only write_only`. `@doc` is CommonMark 0.31.2 (no extensions, raw HTML never executed); `@deprecated` is bare; `@examples` is a list of text. Local declarations and `!!import`s do not contribute to the schema document's own annotation namespace; custom annotations for schema documents require an extended meta-schema (`extension-meta-schemas.md`).
 
 For data documents governed by the schema, annotations resolve against the schema's namespace (locals + imports). Declare them:
 
@@ -237,7 +255,7 @@ Usage in data: `@expires:"2026-12-31"`; `@internal` (bare — shorthand for `@in
 
 Schemas have no comment syntax; `@doc:"…"` is the way to annotate. The `;` used for commentary in the specification's listings is ABNF convention and a parse error in a real schema.
 
-A bare annotation is valid only against a `void`-targeted type; a valued one only against a non-void type. Any type in the namespace can serve as an annotation; the `@annotation` marker is advisory. Placement: before the declaration name → entry metadata; after `=>` → definition metadata; before a field name → field metadata. All preserved in resolver output.
+A bare annotation is valid only against a `void`-targeted type; a valued one only against a non-void type. Any type in the namespace can serve as an annotation; the `@annotation` marker is advisory. An annotation typed by an abstract entry (`@top`, `@type`, `@sum`, an abstract record) is a schema error. `@synthetic` and `@application` are the resolver's, on output keys; writing either is a resolver error. Placement: before the declaration name → entry metadata; after `=>` → definition metadata; before a field name → field metadata. All preserved in resolver output.
 
 ### What an annotation may do
 
@@ -258,6 +276,8 @@ Two namespaces, consulted at different grammar positions:
 
 - **Structure namespace** = the `!!meta` target's full closure (for `meta.tn` that is meta + kernel). Consulted only for `!C` application targets and the sugar desugar targets. This is where `enum`, `bytes_type`, `array`, `map`, `set_type`, `tuple`, `choice`, `scoped`, `integer_type`, `text_type`, … live. They are **not** usable as field types (`f: enum` is unresolved).
 - **Type-name namespace** = parameters of the enclosing definition, then local declarations, then `!!import` entries in order. Consulted for every type reference: field types, arguments, variants, `&`/`^`/`-` operands, refinement sources (`!I ^` looks `I` up here).
+
+**An import stands at the importer's level**: a schema governed by `meta.tn` (or any meta layer) imports only schemas that are not kernel-governed — core, `net.tn`, other user schemas — and never `meta.tn` or the kernel; a meta-schema (`!!meta` the kernel) imports only kernel-governed schemas, never core. The edge is a resolver error naming both `!!meta`s. Core and `net.tn` are separate imports: the network types are `net.tn`'s.
 
 Imports are transitive and the namespace is flat: one name means one thing across the closure; the same schema reached twice unifies; two *different* schemas declaring one name, or a local redeclaring an imported name, fail the load (no shadowing, no aliasing). Import cycles are errors; share types via a third schema or use a `scoped` position (`extern`, `extern_of<…>`).
 
