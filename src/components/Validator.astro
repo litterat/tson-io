@@ -6,8 +6,8 @@
  *
  * Ported from `examples/web-demo` in the TypeScript implementation
  * (github.com/litterat/ltr8-io-tson-typescript), which is where the scenarios and the diagnostics
- * rendering are maintained. Nothing is fetched: `@ltr8/tson/stdlib` carries meta-kernel, meta.tn
- * and core.tn as embedded text, so the whole ladder resolves client-side.
+ * rendering are maintained. Nothing is fetched: `@ltr8/tson/stdlib` carries meta-kernel, meta.tn,
+ * core.tn, net.tn and policy.tn as embedded text, so the whole ladder resolves client-side.
  *
  * The JSON tab is this page's own, not the port's demo: the same examples in Part 3's encoding,
  * read by `@ltr8/tson/json` against the one compiled schema.
@@ -366,7 +366,7 @@
 
 <script>
   import { classifyDocument, parse, validate } from '@ltr8/tson';
-  import { CORE_TN, META_TN, standardLibrary } from '@ltr8/tson/stdlib';
+  import { CORE_TN, META_TN, NET_TN, standardLibrary } from '@ltr8/tson/stdlib';
   import {
     canonicalizeIdentity,
     declaredSha256,
@@ -380,6 +380,8 @@
   interface SchemaSpec {
     id: string;
     body: string;
+    /** Also imports net.tn: core alone declares no network type. */
+    net?: boolean;
   }
 
   const PEOPLE_BODY = `@doc:"The demo schema: an employee record."
@@ -400,7 +402,7 @@
 }
 `;
 
-  const OBSERVATORY_BODY = `@doc:"A tour of the schema language: atom refinements, enums, bounded templates, field groups, maps, sets, tuples, composition, refinement, subtraction and guarded recursion."
+  const OBSERVATORY_BODY = `@doc:"A tour of the schema language: atom refinements, enums over a name type, typed field names, bounded templates, field groups, maps, sets, tuples, composition, refinement, subtraction and guarded recursion."
 {
   @doc:"Three letters, a dash, three digits."
   designator => !text ^ { pattern: "[A-Z]{3}-[0-9]{3}" }
@@ -418,8 +420,14 @@
 
   status => !enum [PLANNED ACTIVE DEGRADED RETIRED]
 
-  @doc:"An enum of names is !enum; a set of arbitrary texts is !text_enum."
-  sky => !text_enum ["clear" "partly cloudy" "overcast"]
+  @doc:"An enum's members are names of its name type. Words admits a single space inside a name, so partly cloudy is a name, judged by hygiene and equal only to itself."
+  words => !identifier_type { medial: " " }
+  sky => !enum_type { name_type: words  members: ["clear" "partly cloudy" "overcast"] }
+
+  @doc:"Field names from a JSON vocabulary: a name type admitting @ and $, set on a fieldless abstract base that records compose."
+  json_name   => !identifier_type { start_add: "@$" }
+  json_record => !record { name_type: json_name  extension: ABSTRACT  fields: {} }
+  linked_id   => json_record & { "@id": iri  "@type": text }
 
   @doc:"A type parameter, used at an element position."
   bag => <T> [T]
@@ -548,11 +556,12 @@
     verified?:  boolean ~ false
   }
 
-  @doc:"Built-in atoms from core, each parsed and constrained by its own grammar. Final: nothing may compose onto it."
+  @doc:"Built-in atoms from core and net, each parsed and constrained by its own grammar: a host is a name or an address, and a media type admits no parameters unless its type allows them. Final: nothing may compose onto it."
   telemetry => final {
     stream_id:  uuid
     endpoint:   uri
-    host:       ipv4
+    host:       host
+    format:     media_type
     heartbeat:  duration
     checksum:   bytes
     window_utc: time
@@ -570,6 +579,7 @@
     status?:       status ~ ACTIVE
     sky?:          sky
     liaison:       liaison
+    link:          linked_id
     tree:          subsystem
     window:        reading_window
     instruments:   [instrument; 1..]
@@ -589,8 +599,9 @@
 
   const PEOPLE: SchemaSpec = { id: 'https://example.com/people.tn', body: PEOPLE_BODY };
   const OBSERVATORY: SchemaSpec = {
-    id: 'https://tson.io/2026/37/examples/observatory.tn',
+    id: 'https://tson.io/2026/38/examples/observatory.tn',
     body: OBSERVATORY_BODY,
+    net: true,
   };
 
   interface Scenario {
@@ -743,7 +754,7 @@
   on:       2026-08-28
   when:     !datetime "2026-08-28T05:14:00Z"
   where:    !ipv4 "10.0.0.1"
-  who:      !nonesuch "unknown to the built-in vocabulary"
+  who:      !nonesuch "not in the built-in vocabulary, so an error"
   void:     _
   null:     null
   nested:   { a: [1 2 3,]  b: { c: _ } }
@@ -772,7 +783,7 @@
       root: 'observatory',
       ok: true,
       schema: OBSERVATORY,
-      data: `!!schema:"https://tson.io/2026/37/examples/observatory.tn?sha256=__PIN__"
+      data: `!!schema:"https://tson.io/2026/38/examples/observatory.tn?sha256=__PIN__"
 
 !observatory {
   id:          "MKA-001"
@@ -785,6 +796,7 @@
   status:      ACTIVE
   sky:         "partly cloudy"
   liaison:     { name: "V. Rubin"  email: "rubin@example.org"  phone: "+1 555 0100" }
+  link:        { "@id": "https://example.org/sites/mauna-kea"  "@type": "Observatory" }
 
   tree: {
     name:  "array"
@@ -871,8 +883,9 @@
 
   telemetry: {
     stream_id:  "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
-    endpoint:   "https://tson.io/2026/37/examples/observatory.tn"
-    host:       "192.0.2.41"
+    endpoint:   "https://tson.io/2026/38/examples/observatory.tn"
+    host:       "relay.mauna-kea.example"
+    format:     "application/cbor"
     heartbeat:  "PT30S"
     checksum:   "3q2+7w=="
     window_utc: "23:59:59Z"
@@ -926,6 +939,7 @@
   "status":      "ACTIVE",
   "sky":         "partly cloudy",
   "liaison":     { "name": "V. Rubin", "email": "rubin@example.org", "phone": "+1 555 0100" },
+  "link":        { "@id": "https://example.org/sites/mauna-kea", "@type": "Observatory" },
 
   "tree": {
     "name":  "array",
@@ -1010,8 +1024,9 @@
 
   "telemetry": {
     "stream_id":  "f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
-    "endpoint":   "https://tson.io/2026/37/examples/observatory.tn",
-    "host":       "192.0.2.41",
+    "endpoint":   "https://tson.io/2026/38/examples/observatory.tn",
+    "host":       "relay.mauna-kea.example",
+    "format":     "application/cbor",
     "heartbeat":  "PT30S",
     "checksum":   "3q2+7w==",
     "window_utc": "23:59:59Z",
@@ -1068,8 +1083,10 @@
   function buildSchema(spec: SchemaSpec, selfPin: string | null): string {
     const metaId = classifyDocument(encoder.encode(META_TN)).id ?? '';
     const coreId = classifyDocument(encoder.encode(CORE_TN)).id ?? '';
+    const netId = classifyDocument(encoder.encode(NET_TN)).id ?? '';
     const id = selfPin ? `${spec.id}?sha256=${selfPin}` : spec.id;
-    return `!!id:"${id}"\n!!meta:"${metaId}"\n!!import:"${coreId}"\n${spec.body}`;
+    const net = spec.net ? `!!import:"${netId}"\n` : '';
+    return `!!id:"${id}"\n!!meta:"${metaId}"\n!!import:"${coreId}"\n${net}${spec.body}`;
   }
 
   /** `spec` carrying its own digest on the `!!id`, the line §7.3 excludes from that digest. */
