@@ -1,0 +1,67 @@
+!!id:"https://tson.io/2026/38/m/policy.tn?sha256=fc9208c720cfc28bacb33b6824b955df0627b4aa217f41f40b582ecd857295f6"
+!!meta:"https://tson.io/2026/38/m/meta.tn?sha256=62dde2f344853848cd0ce4f722a0305d979e5883c0dcd14308959ad6a01bff47"
+!!import:"https://tson.io/2026/38/m/core.tn?sha256=95f66505cf74dd2d64d0b6cffd07538fa45b8c7096c556c87423b56b03423497"
+@doc:"""
+  TSON processor policy — what a processor admits and spends (2026 Revision 38
+  draft).
+
+  A processor's policy is a property of the deployment, never of a schema
+  ([TSON-DATA] §8.2): a schema that declared its own strictness would choose
+  its own check. This document declares the policy's vocabulary, so a
+  processor states the policy it judged under in one shape, and a deployment
+  that writes its policy down writes a data document of type `policy`. Such a
+  document is named at the call site and never resolved by identity, and no
+  document may name, import or otherwise select the policy it is judged under.
+
+  `identifier_policy` and `token_policy` are §8.2's two policies, and `limits`
+  is §9.1's. A script is named by its Unicode Script property value alias
+  (UAX #24), `Latin`, `Cyrillic`, `Han`.
+  """
+{
+  @doc:"UTS #39 §5.2's restriction levels, strictest first."
+  restriction_level => !enum [
+    ASCII_ONLY SINGLE_SCRIPT HIGHLY_RESTRICTIVE MODERATELY_RESTRICTIVE MINIMALLY_RESTRICTIVE UNRESTRICTED
+  ]
+
+  @doc:"""
+    [TSON-DATA] §8.2's token policy: the restriction level over each whole
+    token, and any script combinations admitted over the level (UTS #39 §5.2's
+    own device for Latn+Jpan and its siblings), each entry in `permitting` one
+    such combination.
+    """
+  script_policy => { level: restriction_level  permitting: [[text]] }
+
+  @doc:"""
+    [TSON-DATA] §8.2's identifier policy: the restriction level, whether it
+    applies to each segment of a name rather than to the whole of it, whether
+    no two names in one scope may share a UTS #39 skeleton, and any script
+    combinations admitted over the level, as `script_policy` states them.
+    """
+  identifier_policy => {
+    level: restriction_level
+    per_segment: boolean
+    skeleton_distinctness: boolean
+    permitting: [[text]]
+  }
+
+  @doc:"""
+    [TSON-DATA] §9.1's resource limits: what a processor will spend reading
+    one document, as against what it admits as a name. A limit refusal is not
+    a verdict on the document.
+    """
+  limits => { max_depth: int32 }
+
+  @doc:"""
+    The policy a processor judges a document under: §8.2's identifier and
+    token policies and §9.1's limits. `unicode_data_version` is the UCD release
+    whose tables the §8.2 rules read, which a report states beside the policy
+    (§8.2) and a deployment's own policy document leaves out, the tables being
+    the processor's rather than the deployment's choice.
+    """
+  policy => {
+    identifier_policy: identifier_policy
+    token_policy: script_policy
+    unicode_data_version?: text
+    limits: limits
+  }
+}
