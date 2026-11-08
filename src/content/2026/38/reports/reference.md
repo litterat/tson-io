@@ -19,7 +19,7 @@ id: "CR-reference"
   with the lexer unchanged. The quoted spelling chosen below was dropped ("In data"). Names resolve from the root,
   not by the lexical scope this note assumed.
 - **Where:** [TSON-SCHEMA] §4.1, §4.2, §5.10, §5.12, §8.1, §8.2, §12.1, §12.3; [TSON-DATA] §4, §7.2.5, §7.4, §7.5.
-  [SPEC-FEEDBACK.md #11](/2026/38/reports/implementation-feedback) (one atom, one spelling), [#12](/2026/38/reports/implementation-feedback) (an application is
+  [implementation-feedback.md #11](/2026/38/reports/implementation-feedback) (one atom, one spelling), [#12](/2026/38/reports/implementation-feedback) (an application is
   a reference value), [#13](/2026/38/reports/implementation-feedback) (a reference in data is grammar), [#14](/2026/38/reports/implementation-feedback)
   (qualified names and tags, resolved from the root), [#21](/2026/38/reports/implementation-feedback) (`allow_sibling`) and
   [#22](/2026/38/reports/implementation-feedback) (`type-ref` names a reference, `type-expr` an expression).
@@ -65,7 +65,7 @@ arguments, say) without admitting a different set of names.
 
 **As built:** the production is [TSON-DATA] §7.4's `reference = qualified-name "<" ws type-args ws ">"`, with `<`
 adjacent to the name (§7.5) and arguments separated by whitespace or a comma, as §12.1's are. A qualified name is one
-unquoted token, `.` being a token character, and a quoted token is never a reference (SPEC-FEEDBACK.md #13).
+unquoted token, `.` being a token character, and a quoted token is never a reference (implementation-feedback.md #13).
 
 **One value.** The kernel's atom, as one-level.md sketched it:
 
@@ -86,9 +86,9 @@ type_ref       => !meta.field_type_ref ^ { allow_sibling: false }
 
 There is no `kind`: what `of` names decides what a slot holds. A constructor, `top` or anything IS-A them, and the
 slot holds type names. Any other type, and it holds value names. A second spelling would say nothing the first does
-not (SPEC-FEEDBACK.md #11). The atom was first declared `reference`. It was renamed `reference_type` when dependent
+not (implementation-feedback.md #11). The atom was first declared `reference`. It was renamed `reference_type` when dependent
 fields gave it `allow_sibling`, a permission true only at a record field's type, where a sibling reference `kind!` may
-stand (SPEC-FEEDBACK.md #21). `<-` is `construction-operator.md`'s spelling, which was
+stand (implementation-feedback.md #21). `<-` is `construction-operator.md`'s spelling, which was
 dropped. `!T { … }` is the spelling throughout.
 
 Its values are the grammar above, so `type_ref` and `type_argument` go. An open alias's `target`, a record template's
@@ -97,7 +97,7 @@ template parameter standing in an argument is the parameter's name as a segment,
 template (§5.10's three places). A closed application still lifts to a minted entry and is named bare where it stands
 (§5.3), so a resolved form carries arguments only where an application is still open, as today. **As built:** those
 three slots are typed `meta.type_ref`, and the name `type_ref` now belongs to that reference atom instance, not to
-the retired record (SPEC-FEEDBACK.md #12).
+the retired record (implementation-feedback.md #12).
 
 **Arguments are typed where they land, not where they are written.** A type argument is a reference and is judged as
 the parameter's `bound` says. A value argument is a token, and its type is the parameter's, reached only through the
@@ -106,7 +106,7 @@ constructor's instance, where `min: 10` is a facet read against `integer_type` u
 That is the rule the kernel already applies to a held body's tokens (§5.10), and it is why `type_argument.value` never
 needed a type: an argument is a token in a reference, and the reference is syntax until it is applied. Nothing is held;
 a reference is written. **As built:** as stated, `maxint<10>` closing to `!numeric.integer_type { max: 10 }`; an
-argument's channel (filed as a reference or as a value) is no part of the reference's identity (SPEC-FEEDBACK.md #12).
+argument's channel (filed as a reference or as a value) is no part of the reference's identity (implementation-feedback.md #12).
 
 ## Where it stands
 
@@ -120,7 +120,7 @@ argument's channel (filed as a reference or as a value) is no part of the refere
 | the value of a `kind<T>` or `ref<T>` slot | a type or a value, judged IS-A `of` | by the slot's rule, below |
 
 **As built:** the `<-` rows are the `!` head and the `^` source, `<-` having been dropped. The last row is a
-`meta.ref<T>` slot. A record field's type may also hold a sibling reference (SPEC-FEEDBACK.md #21).
+`meta.ref<T>` slot. A record field's type may also hold a sibling reference (implementation-feedback.md #21).
 
 **The walk.** The first segment resolves in the one namespace, innermost `!schema` map outward then imports
 (kernel-namespace.md's lexical scope); each further segment selects inside what the name has reached: an entry of a
@@ -130,14 +130,14 @@ reference, delivered as a type with structural identity; any other `of` names a 
 
 **As built:** there is no lexical scope. The first segment names an entry of the document's root namespace, its own
 root entries and its import closure, and inside a nested map a sibling is written by its path. The rest of the walk is
-as stated (SPEC-FEEDBACK.md #14).
+as stated (implementation-feedback.md #14).
 
 **Qualified tags.** `!meta.record { … }` in a resolved form, or `!orders.place_order` in data, is the grammar at the tag
 position. [TSON-DATA] §7.4's `type-ref = "!" identifier` becomes `"!" reference` with no arguments, and §7.7 is
 untouched: the identifier grammar applies per segment, and `.` is already a token character. A schemaless read
 (TSON-DATA §4) leaves a dotted tag as it leaves any tag it cannot resolve, unresolved and preserved; it does not refuse
 one. **As built:** as stated, the production `"!" qualified-name`. An annotation's name became a qualified name too,
-`"@" qualified-name` (`@atom.ordering:TOTAL`, `@meta.disjoint`), on the same terms (SPEC-FEEDBACK.md #14, #15).
+`"@" qualified-name` (`@atom.ordering:TOTAL`, `@meta.disjoint`), on the same terms (implementation-feedback.md #14, #15).
 
 ## Identity
 
@@ -146,7 +146,7 @@ segments, the head's resolved entry, the arguments as references or tokens. Whit
 `result<T>` and `result< T >` are one reference, and two spellings of one application reduce to one minted entry as
 they do today. A reference's canonical text, the one resolved output writes, has no whitespace and arguments separated
 by a single space. **As built:** as stated, with a trailing comma also free (`box< text, >` and `box<text>` close to one
-entry) and a nested argument compared as the entry it closed to (SPEC-FEEDBACK.md #12).
+entry) and a nested argument compared as the entry it closed to (implementation-feedback.md #12).
 
 ## In data
 
@@ -171,7 +171,7 @@ production [TSON-SCHEMA] §12.1 already had was the one data needed. An open app
 everywhere: `!alias { target: result<T> }`, `parents: [result<T>]`, `@meta.application:response<order 201>`. A
 schemaless read keeps it as a structured value, head and arguments, resolving nothing. A Class 1 processor no longer
 refuses one. JSON, which has no unquoted form, carries the same text in a string, read by the same production
-(SPEC-FEEDBACK.md #13).
+(implementation-feedback.md #13).
 
 A reference without arguments stays one unquoted token in data, as every kind and reference value was in Revision 38.
 
@@ -180,12 +180,12 @@ A reference without arguments stays one unquoted token in data, as every kind an
 - **One spelling or two.** Settled: one, `meta.ref<T>`. This note left it deferred. A one-segment restriction could
   not be the difference, since a type-name slot must admit `geo.address` once libraries make room with sub-namespaces,
   and the remaining candidate difference was that a `ref<T>` points at another definition where a `kind<T>` slot
-  takes the name as its value. Revision 39 drops the distinction: `of` decides (SPEC-FEEDBACK.md #11).
+  takes the name as its value. Revision 39 drops the distinction: `of` decides (implementation-feedback.md #11).
 - **Arguments in a data value.** Settled: a slot typed by a reference over a constructor may name an applied type,
   written unquoted (`t: set<text>`). It resolves by structural identity against the applications the closure closed.
   Data never creates one, so an application nothing in the closure closed names no type and is refused
-  (SPEC-FEEDBACK.md #12).
+  (implementation-feedback.md #12).
 - **Value arguments.** Open: whether a value argument may be any token, or only those §12.1's `value-literal` admits
-  (SPEC-FEEDBACK.md #13).
+  (implementation-feedback.md #13).
 - **Diagnostics.** A reference that fails names the segment that failed and what the previous segment reached. The
   first implementation's value walk reports this way; the spec states no rule for it.

@@ -16,8 +16,8 @@ id: "CR-dependent-fields"
   optional dependent field, which is what `record_template_field`'s `( value: type! | value_param )?` needs. With
   `record_template_field.value` retyped, `meta.value` and `meta.value_type` lost their last user and were deleted.
 - **Where it landed:** [TSON-DATA] §2.5, §4, §7.2.5, §7.4, §7.5; [TSON-SCHEMA] §4.2, §5.2–§5.12, §7.4, §8.1, §8.2, §9,
-  §12; [TSON-JSON] §5.6 and §6.1.6. The as-built record is [SPEC-FEEDBACK.md #21](/2026/38/reports/implementation-feedback), and the facets
-  that also stopped using `value` are [SPEC-FEEDBACK.md #17](/2026/38/reports/implementation-feedback).
+  §12; [TSON-JSON] §5.6 and §6.1.6. The as-built record is [implementation-feedback.md #21](/2026/38/reports/implementation-feedback), and the facets
+  that also stopped using `value` are [implementation-feedback.md #17](/2026/38/reports/implementation-feedback).
 
 The note is kept as it was argued. A dependent field is a feature [`one-level.md`](/2026/38/reports/one-level)'s dependency model
 admits, not a part of it: the model's two read edges and its invariant stand without this note, and this note adds one
@@ -65,10 +65,10 @@ as the type that field's value names. Postfix `!` is the dual of prefix `!`:
   errors. The rule is the simplest one that leaves nothing to decide; a sibling reference ends a field's type, so
   whitespace always follows it in a well-formed record. JSON's string form (`"kind!"`) ends with the string.
   - **As built:** the end of the document also counts as following whitespace, so a document that is only `kind!`
-    parses. [SPEC-FEEDBACK.md #21](/2026/38/reports/implementation-feedback) leaves this open.
+    parses. [implementation-feedback.md #21](/2026/38/reports/implementation-feedback) leaves this open.
 - **The sibling is one unquoted token of one segment.**
   - `a.b!` is refused, because a chained projection is not proposed.
-  - A quoted token is never a reference ([SPEC-FEEDBACK.md #13](/2026/38/reports/implementation-feedback)), so `"my field"!` is refused. A
+  - A quoted token is never a reference ([implementation-feedback.md #13](/2026/38/reports/implementation-feedback)), so `"my field"!` is refused. A
     field whose name needs quoting cannot be a sibling.
 - **JSON** carries it as a string holding the same text (`"type!"`), read by the same production, as #13 does for an
   application.
@@ -243,7 +243,7 @@ only the third constrains the order a document writes fields in.
   - A schema document's defaults and pins are already *held values*: a record reader holds the token as written and
     decodes it against the field's type once every reader exists ([TSON-SCHEMA] §5.2, a held value orders nothing).
     `value?: type!` states that type in the kernel instead of in prose.
-  - The reading, and the wait order that [SPEC-FEEDBACK.md #4](/2026/38/reports/implementation-feedback) states, do not change, so the
+  - The reading, and the wait order that [implementation-feedback.md #4](/2026/38/reports/implementation-feedback) states, do not change, so the
     kernel's wait cycle does not grow.
   - **As built:** a schema document's dependent field holds its value as written, whatever its form, and the value is
     judged when the schema links, through the reader of the type its sibling names in the reading schema's namespace.
@@ -260,7 +260,7 @@ only the third constrains the order a document writes fields in.
 **Binding.** The kernel's own `record_field.value` stays held as written, decoded where it is used, so the kernel binds
 as before. A user schema's dependent field binds to a host component of an open type; which one was left open.
 - **As built:** the first implementation binds it to the host language's most general object type, which receives
-  what the named type binds to. [SPEC-FEEDBACK.md #21](/2026/38/reports/implementation-feedback) keeps the choice open.
+  what the named type binds to. [implementation-feedback.md #21](/2026/38/reports/implementation-feedback) keeps the choice open.
 
 ## `record_field.value` gets its real type
 
@@ -275,10 +275,10 @@ With `value?: type!` (above):
   `record_template_field.value`, whose type may be a parameter (`type_param`) and so has no sibling to name, and the
   facets that [`typed-facets.md`](/2026/38/reports/typed-facets) retires.
   - **As built:** both went. The facets are typed by their family's instance
-    ([SPEC-FEEDBACK.md #17](/2026/38/reports/implementation-feedback)), and `record_template_field.value` is `type!` inside the group
+    ([implementation-feedback.md #17](/2026/38/reports/implementation-feedback)), and `record_template_field.value` is `type!` inside the group
     `( value: type! | value_param: meta.param_name )?`. Beside `type_param` it has no sibling to be read against,
     which is §5.10's rule that a literal needs a closed type, read off the kernel. `meta.value` and `meta.value_type`
-    are deleted ([SPEC-FEEDBACK.md #21](/2026/38/reports/implementation-feedback)).
+    are deleted ([implementation-feedback.md #21](/2026/38/reports/implementation-feedback)).
 - **Bootstrap.**
   - `record_field` sits on the kernel's one wait cycle, and in Revision 38 `meta.value` is pre-loaded for it.
     `value?: type!` names no entry, so `record_field` stops waiting on `meta.value`.
@@ -393,7 +393,7 @@ from a value) and is not proposed.
 
 ## Grammar
 
-**[TSON-DATA] §7.4** (data value grammar, as extended by [SPEC-FEEDBACK.md #13](/2026/38/reports/implementation-feedback)):
+**[TSON-DATA] §7.4** (data value grammar, as extended by [implementation-feedback.md #13](/2026/38/reports/implementation-feedback)):
 
 ```abnf
 reference    = sibling-ref
@@ -410,7 +410,7 @@ sibling-ref  = unquoted-token "!"
 ```
 
 **As built:** "followed by whitespace or the end of the document", and the token is an identifier
-([SPEC-FEEDBACK.md #21](/2026/38/reports/implementation-feedback)).
+([implementation-feedback.md #21](/2026/38/reports/implementation-feedback)).
 
 **[TSON-SCHEMA] §12.1:**
 
@@ -436,7 +436,7 @@ The modifier rule in §5.2 does not change, because a sibling reference is never
 
 ## Spec changes
 
-As landed, through [SPEC-FEEDBACK.md #21](/2026/38/reports/implementation-feedback) for Parts 1 and 2 and in place for Part 3:
+As landed, through [implementation-feedback.md #21](/2026/38/reports/implementation-feedback) for Parts 1 and 2 and in place for Part 3:
 - **[TSON-DATA] §7.2.5, §7.4, §7.5**: the postfix `!` and `sibling-ref`.
 - **[TSON-DATA] §2.5 (records)**: the field-order exception for a free sibling and its dependent field.
 - **[TSON-DATA] §4**: a schemaless read keeps a sibling reference as a structured value.
@@ -515,7 +515,7 @@ check; it is now an ordinary type mismatch.
 In this order:
 1. This note.
 2. The conformance vectors above.
-3. The spec text: Parts 1 and 2 through [SPEC-FEEDBACK.md #21](/2026/38/reports/implementation-feedback), and Part 3 in place.
+3. The spec text: Parts 1 and 2 through [implementation-feedback.md #21](/2026/38/reports/implementation-feedback), and Part 3 in place.
 4. `meta.tn`: `meta.reference_type` and its `allow_sibling` facet, `meta.field_type_ref`, the two field types,
    `record_field.value`, and the reference documentation. The rename reached about 22 files of the first
    implementation and 13 lines of the corpus.
@@ -531,7 +531,7 @@ Settled:
 - **Names.** One word per concept: the field is a *sibling*, the reference a *sibling reference*, the field typed by
   one a *dependent field*.
 
-Still open, as [SPEC-FEEDBACK.md #21](/2026/38/reports/implementation-feedback) records them:
+Still open, as [implementation-feedback.md #21](/2026/38/reports/implementation-feedback) records them:
 - **Binding a user schema's dependent field.** Which host component it binds to: the most general object type (as
   built), the tree value, or a type the binding names.
 - **A sibling in a template field typed by a parameter** (`kind: meta.type_ref = T`, `v?: kind!`). It depends on

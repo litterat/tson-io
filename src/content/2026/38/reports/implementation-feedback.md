@@ -38,7 +38,7 @@ revision is open — the register renumbers only when one closes, so a citation 
 valid until then.
 
 **Cite the spec, not the argument that got it there:** `design/` and the Javadoc name the section that requires a
-behaviour, and a `SPEC-FEEDBACK.md #N` citation is for an entry below, where there is no section to point at yet.
+behaviour, and an `implementation-feedback.md #N` citation is for an entry below, where there is no section to point at yet.
 When an entry closes, its citations become spec citations and the entry is deleted — nothing here is an archive.
 
 ---

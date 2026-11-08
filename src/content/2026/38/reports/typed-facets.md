@@ -18,7 +18,7 @@ id: "CR-typed-facets"
   `duration`, `period`, `cidr4`, `cidr6`. `value` and `value_type` are deleted from the kernel. Their other slots went
   with the reference atom (`type_argument`) and with dependent fields (a field's default or pin, typed `type!`). The
   facet edge is rule 1 of the resolution order. The cycle this note predicted turned up in the kernel's own count type.
-- **Where:** [TSON-SCHEMA] §4.2, §5.2, §5.5, §7.4, §13.2. [SPEC-FEEDBACK.md #17](/2026/38/reports/implementation-feedback) (a facet is typed
+- **Where:** [TSON-SCHEMA] §4.2, §5.2, §5.5, §7.4, §13.2. [implementation-feedback.md #17](/2026/38/reports/implementation-feedback) (a facet is typed
   by its family's instance), [#4](/2026/38/reports/implementation-feedback) (resolution order, the edge),
   [#12](/2026/38/reports/implementation-feedback) (`type_argument` goes), [#16](/2026/38/reports/implementation-feedback) (`count`, and the cycle) and
   [#21](/2026/38/reports/implementation-feedback) (the last `value` slots).
@@ -65,11 +65,11 @@ ipv4 => !ipv4_type {}
 
 **As built:** the constructors left `meta.tn`. They live in the data-format libraries under their family's map,
 `numeric.decimal_type` in numeric.tn beside `number => !numeric.decimal_type {}` at its root, `net.ipv4_type` in
-net.tn beside `ipv4 => !net.ipv4_type {}` (SPEC-FEEDBACK.md #15). The facets are as sketched. The digit counts are
+net.tn beside `ipv4 => !net.ipv4_type {}` (implementation-feedback.md #15). The facets are as sketched. The digit counts are
 typed `numeric.count`, the members `numeric.decimal_member_set`, and the network lists `[cidr4]` and `[cidr6]`. A
 float's bounds are `number`, not `float64`, because they are validated against the value as written, before rounding.
 A bound must now be spelled as a value of its family: `!number ^ { min: 0x10 }` is refused, as `!number 0x10` is in
-data, where a `value`-typed slot used to decode it and narrow it (SPEC-FEEDBACK.md #17).
+data, where a `value`-typed slot used to decode it and narrow it (implementation-feedback.md #17).
 
 **What goes with it.** §7.4's "Constraint fields typed as `value`" and its eager-conversion rule: a token at a
 `value`-typed position is read "under the atom it stands for, once that atom is in scope". With the facet typed by that
@@ -77,7 +77,7 @@ atom, the ordinary field reader does the same reading, and the paragraph, the bo
 (§3.4), and `value_type`'s role in the escape are prose no longer needed. `record_field.value` is the other `value` slot,
 retired by [`dependent-fields.md`](/2026/38/reports/dependent-fields); `type_argument` goes with `type_ref`, below, so `value_type`
 leaves the kernel. **As built:** all three. `record_field.value` and `record_template_field.value` are typed `type!`,
-the field's own declared type (SPEC-FEEDBACK.md #21). Nothing in the bundled documents names `value`.
+the field's own declared type (implementation-feedback.md #21). Nothing in the bundled documents names `value`.
 
 ## The edge it adds to the dependency model
 
@@ -97,7 +97,7 @@ and a facet typed by a refinement with facets of its own waits on those.
 
 **As built:** the example moved. `non_negative_integer` was unbounded, so it was replaced by the kernel's
 `numeric.count => !int64 ^ { min: 0 }`, which types every count facet. `multiple_of` is typed `integer`, its sign a
-coherence check, since a step is a value of the integer's domain and no count (SPEC-FEEDBACK.md #16). The edge is the
+coherence check, since a step is a value of the integer's domain and no count (implementation-feedback.md #16). The edge is the
 same: reading `min_length: 5` waits on `numeric.count`'s facets.
 
 **The rule.** A value read against an atom `A` waits on `A`'s facets being read, and `A`'s facets are read against
@@ -107,7 +107,7 @@ these waits over a closure MUST be acyclic, refused naming the atoms on it. The 
 
 **As built:** stated without singling out atoms, as rule 1 of the resolution order. Reading a value against a type `T`
 waits on `T` being ready, an entry being ready when its declaration has been read, and entries waiting on each other
-are refused naming the cycle in wait order (SPEC-FEEDBACK.md #4).
+are refused naming the cycle in wait order (implementation-feedback.md #4).
 
 | declaration | waits | verdict |
 |---|---|---|
@@ -123,8 +123,8 @@ proof, is expected to surface it: a model without the edge does not describe how
 **As built: it surfaced.** Typing `integer_size.bits` by `numeric.count` is the last row in the kernel's own
 vocabulary. `int64`'s `size` is read against `integer_size`, and `count` refines `int64`, so `count` waits on itself
 and the kernel never becomes ready. `bits` is typed `integer`, its being above zero a coherence check
-(SPEC-FEEDBACK.md #16). The kernel's measured wait cycle includes `numeric.count` and `numeric.integer_size` for this
-reason, closed by pre-loading (SPEC-FEEDBACK.md #4, #15).
+(implementation-feedback.md #16). The kernel's measured wait cycle includes `numeric.count` and `numeric.integer_size` for this
+reason, closed by pre-loading (implementation-feedback.md #4, #15).
 
 **Why an atom may be typed by its own instances.** one-level.md's model ("Which side a facet falls on is mechanical")
 separates two closures. `decimal_type`'s *shape* closes on the kernel's `record`, since `min: decimal` is a name and
@@ -135,7 +135,7 @@ instance, which carries no facets. The refused row is the one case where it cann
 same instance.
 
 **As built:** the soundness argument holds, as rule 2 of the resolution order: a reference orders nothing, so
-`decimal_type => atom & { min?: number }` beside `number => !decimal_type {}` is sound (SPEC-FEEDBACK.md #4). The
+`decimal_type => atom & { min?: number }` beside `number => !decimal_type {}` is sound (implementation-feedback.md #4). The
 first implementation runs the pair only as numeric.tn declares it. A constructor composing a base kind directly makes
 a new form, which a processor backs with readers of its own, and it backs the bundled forms alone.
 
@@ -154,13 +154,13 @@ value of the kernel's one reference atom, so an open application in resolved out
 `type_ref` and `type_argument` go. An argument is a token inside a reference, typed where materialisation lands it: the
 body is read as the constructor's instance, where `min: 10` is a facet read against `integer_type` under the rule above.
 Nothing then names `value` in the kernel, and `value_type` goes with the escape hatch rather than surviving at one slot.
-**As built:** as argued (SPEC-FEEDBACK.md #12).
+**As built:** as argued (implementation-feedback.md #12).
 
 ## What landed, in order
 
-The edge was stated in the dependency model as the resolution order's rule 1 (SPEC-FEEDBACK.md #4). The kernel's
+The edge was stated in the dependency model as the resolution order's rule 1 (implementation-feedback.md #4). The kernel's
 fixed point was measured against it. Then:
-- **The reference atom (step 6)** took `type_argument` with the `type_ref` record (SPEC-FEEDBACK.md #12).
+- **The reference atom (step 6)** took `type_argument` with the `type_ref` record (implementation-feedback.md #12).
 - **Counts (#16)** replaced `non_negative_integer` with `numeric.count`, and found the `bits` cycle above.
 - **This step (#17)** came after the kernel and the libraries settled under their maps (step 7). Each atom
   constructor was declared beside its canonical instance in its library, its facets typed by that instance, and
@@ -171,7 +171,7 @@ fixed point was measured against it. Then:
 
 - **Where the facet edge is stated.** In the dependency model from the start, as the reader closure, since the kernel
   already relies on it; this note keeps the typed-facet consequences and the examples. It is the resolution order's
-  rule 1 (SPEC-FEEDBACK.md #4).
+  rule 1 (implementation-feedback.md #4).
 - **Facets of container types.** The rule is over every constructed type. An array reader is its element reader plus
   `min_items`, and one-level.md's mechanical rule says a facet is a value read against its field's type without
   mention of atoms; the examples above are atoms only because the kernel's facet chains are.

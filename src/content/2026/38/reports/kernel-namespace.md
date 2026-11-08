@@ -28,8 +28,8 @@ id: "CR-kernel-namespace"
     only the author annotations, no aliases. `meta.ref<T>` and `meta.declared` are written by path, `kind` and
     `scoped` are gone, and `doc`, `set` and `enum` sit at the kernel's root.
 - **Where:** [TSON-SCHEMA] §2.2.3, §3.4, §4.1, §5.3, §5.12, §6, §8–§10, §12.1, §13.2; [TSON-DATA] §3.1, §4, §7.4.
-  [SPEC-FEEDBACK.md #14](/2026/38/reports/implementation-feedback) (every `!schema` value declares, from the root) and
-  [SPEC-FEEDBACK.md #15](/2026/38/reports/implementation-feedback) (the roots hold the common vocabulary), with the kernel's own layout in
+  [implementation-feedback.md #14](/2026/38/reports/implementation-feedback) (every `!schema` value declares, from the root) and
+  [implementation-feedback.md #15](/2026/38/reports/implementation-feedback) (the roots hold the common vocabulary), with the kernel's own layout in
   the `@doc` that opens `spec/m/meta.tn`.
 
 It answers decision 2 of [`one-level.md`](/2026/38/reports/one-level) ("Decisions before the ladder goes", which names a schema may
@@ -83,7 +83,7 @@ pick      => { t: kind<type> }                -- or meta.kind<meta.type>, under 
 **As built:** the instances an author writes stay at the kernel's root, not inside `meta`. Its constructors are split
 by family, so the first line is `integer => !numeric.integer_type {}` at the kernel's root, and `net.tn` declares
 `uuid => !net.uuid_type {}`. The data schema is unchanged, and the last line is `pick => { t: meta.ref<meta.type> }`,
-with no `kind` (SPEC-FEEDBACK.md #11, #15).
+with no `kind` (implementation-feedback.md #11, #15).
 
 **The construct already exists.** Revision 38's kernel declares `schema => namespace & { key_type: = type_name
 value_type: = top }`: the type of a schema document's own root map. `meta => !schema { … }` is that map nested as an
@@ -94,9 +94,9 @@ entry, not a new kind of namespace. What changes is one sentence of §4.1, that 
 > lift and mint, they may be types, constructors or values, and a qualified name reaches them at any position a bare
 > name is admitted.
 
-**As built:** that sentence is SPEC-FEEDBACK.md #14's proposed §4.1 text, almost word for word. A value of any other
+**As built:** that sentence is implementation-feedback.md #14's proposed §4.1 text, almost word for word. A value of any other
 namespace type stays a value map. The kernel's map type is `meta.schema`, and its root declares `schema => meta.schema`,
-an alias, so `!schema` names the pre-loaded kernel's whatever a document imports or declares (SPEC-FEEDBACK.md #15).
+an alias, so `!schema` names the pre-loaded kernel's whatever a document imports or declares (implementation-feedback.md #15).
 
 The document root is then the outermost `!schema`, and the kernel's bootstrap is the same loop one level deeper:
 `meta => meta.schema <- { … }`, closed by pre-loading as now. `slots.md`'s reading, a schema as an object
@@ -114,7 +114,7 @@ whose slots may hold objects, is this taken literally.
 `temporal` and the libraries' roots. `record`, `identifier`, `type_ref`, `field_name`, `bounded`, `value`, `kind` and
 `core` stay free. The elided constructions target `meta.record`, `meta.array`, `meta.map`, `meta.tuple`, `meta.choice`
 and `meta.alias`. An enumeration is `!enum [A B]`, `enum` sitting at the kernel's root, so there is no `meta.enum`
-(SPEC-FEEDBACK.md #15).
+(implementation-feedback.md #15).
 
 ## What it needs
 
@@ -127,7 +127,7 @@ grammar: `kind<T>` and `ref<T>` are already one atom there, so a qualified name 
 `of` in the `type` family. Under the ladder it is the one new thing, and it is why this step follows the ladder's
 removal. **As built:** landed. A qualified name stands at every type position, as a reference's `of` and as an
 application's head. `meta.reference_type.of` and a chain's `supertypes` and `subtypes` are typed `meta.type_ref`. A
-declared key stays one identifier (SPEC-FEEDBACK.md #14).
+declared key stays one identifier (implementation-feedback.md #14).
 
 **2. Lexical scope inside a `!schema` body.** Inside `meta`, `integer_type` must name its sibling bare, or the kernel
 writes `meta.` on every line. The rule: a bare name resolves in the innermost enclosing `!schema` map first, then each
@@ -140,7 +140,7 @@ and each further segment selects a member. Inside `geo`, a sibling is written `g
 names the root's `address` or fails. The bundled documents write paths throughout (`integer => !numeric.integer_type
 {}`, `format: numeric.ieee_format`). The cost the rule was meant to avoid turned out to be small once the kernel was
 split into six maps by concept, with its common vocabulary at the root. Relative lookup would also need a way to say
-"from the root" and a shadowing rule, silent or diagnosed. Lexical scope stays open (SPEC-FEEDBACK.md #14).
+"from the root" and a shadowing rule, silent or diagnosed. Lexical scope stays open (implementation-feedback.md #14).
 
 **3. Synthetics and identity.** A minted entry (`array_text_1_3600e7d5`) needs a home: the innermost enclosing
 `!schema` of the declaration that lifted it. §10's identity of an entry becomes `!!id` plus a path rather than a name,
@@ -152,18 +152,18 @@ A dotted name contributes its text with each dot written `_` (`array_geo_inner_t
 `meta` contributes its member's name (`array_record_…`), and one under another kernel map keeps its first segment. A
 declared entry's identity is its declaring document and its path, as proposed. A synthetic's is its form, so two
 documents minting one form declare one entry. Homing by the innermost map waits on lexical scope, since a name minted
-inside `geo` would have to resolve where it is written, and stays open with it (SPEC-FEEDBACK.md #14).
+inside `geo` would have to resolve where it is written, and stays open with it (implementation-feedback.md #14).
 
 **4. Qualified tags in data.** A resolved form is a data document, and it describes a type as `!record { fields: … }`.
 Under this proposal that is `!meta.record { … }`. The lexer already takes `meta.record` as one unquoted token, but
 [TSON-DATA] §7.4's tag production has to admit the dot, and a schemaless read has to leave a dotted tag unresolved
 rather than refuse it. That is a Part 1 edit, made in [`reference.md`](/2026/38/reports/reference) ("Qualified tags"). **As built:**
 landed as `"!" qualified-name`. An annotation's name became `"@" qualified-name` on the same terms, so the kernel's
-annotations are written `@atom.ordering:TOTAL` and `@meta.disjoint` (SPEC-FEEDBACK.md #14, #15).
+annotations are written `@atom.ordering:TOTAL` and `@meta.disjoint` (implementation-feedback.md #14, #15).
 
 **5. Extension: who may add to `meta`.** Decided at the time ("Extending the kernel's namespace" below): nobody. A
 `!schema` value is declared in one document, as an entry is, and `meta-kernel.tn` and `meta.tn` become one document.
-**As built:** anybody. Maps are open, and the one-document merge landed (SPEC-FEEDBACK.md #14, #15).
+**As built:** anybody. Maps are open, and the one-document merge landed (implementation-feedback.md #14, #15).
 
 **6. What core re-exports.** A handful of constructors are written by name in data schemas: `kind<T>`, `ref<T>`,
 `scoped` and its instances, `doc`. Either they are spelled `meta.kind<T>` everywhere, or `core.tn` aliases them
@@ -171,9 +171,9 @@ annotations are written `@atom.ordering:TOTAL` and `@meta.disjoint` (SPEC-FEEDBA
 Aliases, for the ones a data schema names; the list is short and is core's to keep.
 
 **As built: no aliases.** The list shrank until nothing was left to alias. `kind` and `ref` became one template,
-`meta.ref<T>`, written by path (SPEC-FEEDBACK.md #11). `scoped` reduced to `meta.declared`, also written by path. `doc`, `set` and `enum`, the constructors a data schema does write
+`meta.ref<T>`, written by path (implementation-feedback.md #11). `scoped` reduced to `meta.declared`, also written by path. `doc`, `set` and `enum`, the constructors a data schema does write
 bare, sit at the kernel's root. core.tn declares no map of its own and holds only the author annotations
-(`deprecated`, `title`, `comment`, `examples`, `read_only`, `write_only`) (SPEC-FEEDBACK.md #15).
+(`deprecated`, `title`, `comment`, `examples`, `read_only`, `write_only`) (implementation-feedback.md #15).
 
 ## Extending the kernel's namespace
 
@@ -226,7 +226,7 @@ weighed above, are answered this way:
   entry.
 - **Collision.** A member path two documents declare is §2.2.3's collision, found when both are imported, as
   predicted. Nothing reserves a map's unclaimed paths for the document that declared it first. That is recorded as
-  open in SPEC-FEEDBACK.md #14 and #15.
+  open in implementation-feedback.md #14 and #15.
 
 B was not taken up.
 
@@ -237,7 +237,7 @@ kernel's qualified names. **As built:** `!schema { numeric => !meta.schema { …
 the six maps' members in resolved form, with the thirteen root entries and the seven synthetics at the root. Each
 library's form holds its own map with its own members and none of the kernel's. A body is tagged by its constructor's
 name (`!meta.record`, `!enum`, `!numeric.decimal_type`). A library's resolved form holds instances of constructors its
-own source declares, so it still reads back only beside its source (SPEC-FEEDBACK.md #4, #15).
+own source declares, so it still reads back only beside its source (implementation-feedback.md #4, #15).
 
 ## The alternative, and why not here
 
@@ -257,17 +257,17 @@ and no import alias exists.
   shadowing was needed.
 - **Decision 1** needs no header opt-in: an extension is spelled where it happens, composing a `meta.` constructor.
   One part is unfinished. A constructor composing a base kind directly makes a new form, and the first implementation
-  backs only the forms the bundled documents declare, refusing an instance of any other (SPEC-FEEDBACK.md #4, #15).
+  backs only the forms the bundled documents declare, refusing an instance of any other (implementation-feedback.md #4, #15).
 - **"The reference atom"** gained its use: a qualified name at a type position is why it was needed.
 - **Decision 3** is unchanged: `meta.namespace` stays a constructor, and `meta.schema` is one of its instances.
 
 ## Settled and open
 
 - **Merging the two kernel documents.** Settled: one document, `meta.tn` (`https://tson.io/2026/39/m/meta.tn`). core.tn
-  keeps its name as the bundle importing numeric.tn, temporal.tn and net.tn (SPEC-FEEDBACK.md #15).
+  keeps its name as the bundle importing numeric.tn, temporal.tn and net.tn (implementation-feedback.md #15).
 - **Scope and shadowing.** Moot while every name resolves from the root. It returns with lexical scope, which is open
-  (SPEC-FEEDBACK.md #14).
+  (implementation-feedback.md #14).
 - **Who may contribute to a map.** Open: any document may, the collision rule guarding a member only by its being
-  declared first (SPEC-FEEDBACK.md #14, #15).
+  declared first (implementation-feedback.md #14, #15).
 - **Which names sit at a root.** Open: the bundled placement is a judgement per entry, "what an author writes" being
-  the intent but not yet a test an entry can be put to (SPEC-FEEDBACK.md #15).
+  the intent but not yet a test an entry can be put to (implementation-feedback.md #15).
