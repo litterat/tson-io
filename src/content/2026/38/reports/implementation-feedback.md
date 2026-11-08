@@ -1,5 +1,5 @@
 ---
-title: "Spec feedback"
+title: "Implementation Feedback"
 description: "The first implementation's register of issues, ambiguities and inconsistencies found in revision 38's Parts 1 and 2: 24 entries, each giving the section, the problem, the reading chosen and, where one runs, the as-built design. It is what revision 39 adjudicates, and the design notes beside it land through its entries #4 to #22."
 baseline: "TSON 2026 Revision 38 (Parts 1 and 2)"
 status: "Open register, input to Revision 39"
