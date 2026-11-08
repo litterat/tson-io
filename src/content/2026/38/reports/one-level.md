@@ -18,7 +18,7 @@ id: "CR-one-level"
   resolves from the root, and synthetics mint at the root. Sub-step 5f is partly done (a resolved form is still read
   under its source's imports), and 5h, `extern`, is deferred.
 - **Where it landed:** [TSON-SCHEMA] §2.2, §3.3, §3.4, §4.1, §4.2, §5.12, §7.8, §8.1, §11.5, §12.1 and [TSON-DATA]
-  §2.2, §3.3, §7.4, in [SPEC-FEEDBACK.md #4](../SPEC-FEEDBACK.md) to [#17](../SPEC-FEEDBACK.md); #18 to #20 and #22
+  §2.2, §3.3, §7.4, in [SPEC-FEEDBACK.md #4](/2026/38/reports/implementation-feedback) to [#17](/2026/38/reports/implementation-feedback); #18 to #20 and #22
   were found while the steps landed, and #21 is dependent fields. "Order of work, as landed" gives each step's entries.
 
 The sections from "Verdict" to "The reference atom" are the report on Revision 38 and the design as decided before
@@ -26,16 +26,16 @@ any of it was built; where the built design differs, a marked **As built** note 
 measurements of Revision 38 come from two probes over Revision 38 on the first implementation, which pin every outcome
 quoted here.
 
-Companion notes: [`slots.md`](slots.md) reads the same design through Self's and Newspeak's slots, as a language
-designer would, and [`computation.md`](computation.md) keeps some future-dreaming about computation that sits beside
-TSON without entering it. [`identity.md`](identity.md) is a research map for identity and delegation, for agents acting
-on people's behalf. [`construction-operator.md`](construction-operator.md) proposed `c <- { … }` and is dropped:
+Companion notes: `slots.md` reads the same design through Self's and Newspeak's slots, as a language
+designer would, and `computation.md` keeps some future-dreaming about computation that sits beside
+TSON without entering it. `identity.md` is a research map for identity and delegation, for agents acting
+on people's behalf. `construction-operator.md` proposed `c <- { … }` and is dropped:
 `!T { … }` is an instance of `T`, and `^` refining any value under its type's rules is
-[SPEC-FEEDBACK.md #5](../SPEC-FEEDBACK.md). [`dependent-fields.md`](dependent-fields.md) is `sibling!`, a feature the
-model admits and the ladder can carry, and [`typed-facets.md`](typed-facets.md) retires `value` from `meta.tn`'s facets
-once one level lets a constructor and its instance share a document; [`kernel-namespace.md`](kernel-namespace.md) puts
+[SPEC-FEEDBACK.md #5](/2026/38/reports/implementation-feedback). [`dependent-fields.md`](/2026/38/reports/dependent-fields) is `sibling!`, a feature the
+model admits and the ladder can carry, and [`typed-facets.md`](/2026/38/reports/typed-facets) retires `value` from `meta.tn`'s facets
+once one level lets a constructor and its instance share a document; [`kernel-namespace.md`](/2026/38/reports/kernel-namespace) puts
 the kernel's declarations under one entry, `meta`, so an importing schema reserves one name (as built, six maps);
-[`reference.md`](reference.md) is the syntax of "The reference atom" below, the qualified name with its arguments as
+[`reference.md`](/2026/38/reports/reference) is the syntax of "The reference atom" below, the qualified name with its arguments as
 one grammar and the atom's value. All four are kept out of this note. The API and agent sketches below came from
 private experiments built on Revision 38; what is kept of them is the design reasoning.
 
@@ -63,7 +63,7 @@ for nothing against a rule that is more correct.
   values").
 - **A constructor and its instance can share a document.** `decimal_type` and `number` sit together, as
   `integer_type` and `integer` already do in the kernel, which is what lets `meta.tn`'s `value`-typed facets be typed
-  by the atoms they bound ([`typed-facets.md`](typed-facets.md), a feature this enables).
+  by the atoms they bound ([`typed-facets.md`](/2026/38/reports/typed-facets), a feature this enables).
 - **The fixture check gets stronger.** A resolved form trusts only the pre-loaded kernel.
 - **The reference vocabulary converges.** `kind_type`, `ref_type` and the name-only `type_ref` are one atom over a
   qualified name, kept apart only because `of` resolves in two stores; under the ladder `ref<T>` is dead at the level
@@ -71,12 +71,12 @@ for nothing against a rule that is more correct.
 - **Explicitness survives at a finer grain.** The header used to say a document *may* declare constructors; each entry
   now says it *is* one, by composing `top`. A data document still declares nothing, and a document's kind is still in
   its header. **As built:** a document's kind is in its root's tag, `!schema` for a schema, read with the header and
-  before any value ([SPEC-FEEDBACK.md #8](../SPEC-FEEDBACK.md)).
+  before any value ([SPEC-FEEDBACK.md #8](/2026/38/reports/implementation-feedback)).
 
-**Two features one level enables are kept out of it.** `sibling!` ([`dependent-fields.md`](dependent-fields.md))
+**Two features one level enables are kept out of it.** `sibling!` ([`dependent-fields.md`](/2026/38/reports/dependent-fields))
 reads a field against a type its sibling names: a value waiting on a shape, which the model below already orders, plus
 one edge inside a record instance that the model does not need and that note adds; it lands under the ladder, on its
-own. Typed facets ([`typed-facets.md`](typed-facets.md)) retire `value` from `meta.tn` once a constructor and its
+own. Typed facets ([`typed-facets.md`](/2026/38/reports/typed-facets)) retire `value` from `meta.tn` once a constructor and its
 instance share a document, and add an edge between values that the model below does not state.
 
 **So it is one revision, in eight ordered steps.** An earlier draft split it in two, because two of the deletions
@@ -167,12 +167,12 @@ shape every meta layer's vocabulary has.
   `boolean`, `integer`, `text`, `regex`, `iri`, `kind` and `doc`, nor of `meta.tn`'s `set`, and §5.10's rule that two
   same-named entries with the same resolved body are one type when parameter types are compared is deleted;
 - **`value_type` and `value`** (§4.2, §7.4): out of `meta.tn`'s facets once a constructor and its instance share a
-  document ([`typed-facets.md`](typed-facets.md)), and out of `type_argument`, which goes with `type_ref` when the
-  reference atom's value carries the application ([`reference.md`](reference.md)); `record_field.value` and
+  document ([`typed-facets.md`](/2026/38/reports/typed-facets)), and out of `type_argument`, which goes with `type_ref` when the
+  reference atom's value carries the application ([`reference.md`](/2026/38/reports/reference)); `record_field.value` and
   `record_template_field.value` keep it until dependent fields land, and then nothing in the kernel names it.
   **As built:** both are deleted. The facets are typed by their instances
-  ([SPEC-FEEDBACK.md #17](../SPEC-FEEDBACK.md)), and the two field slots are `value?: type!`, typed by the field's own
-  `type` ([SPEC-FEEDBACK.md #21](../SPEC-FEEDBACK.md)).
+  ([SPEC-FEEDBACK.md #17](/2026/38/reports/implementation-feedback)), and the two field slots are `value?: type!`, typed by the field's own
+  `type` ([SPEC-FEEDBACK.md #21](/2026/38/reports/implementation-feedback)).
 
 Namespaces are not on this list: Revision 38 made `namespace` a constructor whose instances are maps, inside the
 ladder, and one level keeps it ("Namespaces stay a constructor", below).
@@ -192,7 +192,7 @@ ladder, and one level keeps it ("Namespaces stay a constructor", below).
   `regex`, `iri`, `set`, `kind`, and `doc`. A user schema then imports `core.tn` and gets the entire vocabulary once,
   with one canonical identity per type.
 
-**As built** ([SPEC-FEEDBACK.md #7](../SPEC-FEEDBACK.md)): one namespace per schema, every name resolving there,
+**As built** ([SPEC-FEEDBACK.md #7](/2026/38/reports/implementation-feedback)): one namespace per schema, every name resolving there,
 transitively. The kernel and `meta.tn` became one document, `meta.tn`; numeric.tn, temporal.tn and net.tn each import
 it alone, and `core.tn` imports those three and redeclares none of the kernel's names.
 
@@ -210,7 +210,7 @@ computes the ordering instead, and the next section says exactly what is ordered
 
 ### The dependency model: shape and value
 
-**As built** ([SPEC-FEEDBACK.md #4](../SPEC-FEEDBACK.md)): the model below landed as seven rules worded as an entry
+**As built** ([SPEC-FEEDBACK.md #4](/2026/38/reports/implementation-feedback)): the model below landed as seven rules worded as an entry
 being *ready* and a read *waiting*, rather than as shape and value. Reading a value against a type waits on that type
 and on each type the read reaches; a declaration waits on its head, its refinement source and its `&` operands. A name
 at a `meta.type_ref` or `meta.ref<T>` slot orders nothing, and neither does a held value (a default, a pin, a
@@ -252,7 +252,7 @@ invariant, and is held to it by a rule that already exists:
   closed.
 
 A dependent field adds one edge inside a record instance and a second such case, the pinned dependent field;
-[`dependent-fields.md`](dependent-fields.md) states both and shows the invariant holds.
+[`dependent-fields.md`](/2026/38/reports/dependent-fields) states both and shows the invariant holds.
 
 **Which side a facet falls on is mechanical.** A constructor's facets need no hand assignment, because the side
 follows from the facet field's type and from who reads it:
@@ -269,7 +269,7 @@ as the shape is, plus its facet checks, and a facet check needs its facet value 
 Reading `min: 0.00` on `money => decimal <- { min: 0.00 }` waits on `decimal`'s reader, which is the parser plus the
 checks from `{}`, none. The chain stops at a base instance because a base instance carries no facets, and every base
 instance in the kernel is one (`integer => integer_type <- {}`). A reader may wait on a reader, so reader closure has
-its own cycle, between values; [`typed-facets.md`](typed-facets.md) states the edge and the refusal, and the kernel's
+its own cycle, between values; [`typed-facets.md`](/2026/38/reports/typed-facets) states the edge and the refusal, and the kernel's
 `integer_type.min: integer` is on no such cycle.
 
 **A cycle is a cycle of shape → shape edges,** refused naming the entries on it. The kernel is the one exception: the
@@ -319,7 +319,7 @@ read and held, and it isn't processed until `T` is resolved:
    annotation values. Then kind slots are judged for membership, and references resolved. Nothing here can wait on a
    shape, because all shapes are closed.
 
-**As built** ([SPEC-FEEDBACK.md #4](../SPEC-FEEDBACK.md)): the first implementation makes an entry ready on demand,
+**As built** ([SPEC-FEEDBACK.md #4](/2026/38/reports/implementation-feedback)): the first implementation makes an entry ready on demand,
 the first time anything asks for it, rather than in passes; a read that reaches an entry not yet ready makes it ready
 first, then starts over. The verdict and output are the passes', and source order is not consulted (a test resolves
 each bundled schema shuffled and gets the same output). A cycle is refused naming its entries in wait order:
@@ -414,7 +414,7 @@ Revision 38:
 | a record field holding a plain map `{identifier => meth}` | not entered: "a map that is no namespace, so it is not entered by name" |
 | `ref<meth>` bound to a text host component, naming `nobody.get` | refused: "'nobody' is no entry of this schema or its imports" |
 
-**As built** ([SPEC-FEEDBACK.md #9](../SPEC-FEEDBACK.md)): `namespace` stays a constructor, as a refinement of `map`
+**As built** ([SPEC-FEEDBACK.md #9](/2026/38/reports/implementation-feedback)): `namespace` stays a constructor, as a refinement of `map`
 (`namespace => meta.map ^ { key_type: meta.identifier_ref  voidable?: = false }`), so a namespace type is an instance
 of it and a namespace value is the map. That is step 4 below.
 
@@ -440,7 +440,7 @@ Churn isn't counted (see "Verdict"). What is left are properties of the design, 
   the ladder goes", 2). **As built:** a schema importing core reserves the roots' names (`text`, `enum`, `set`, `doc`,
   `uuid`, `title` among them) and seven map names, `meta`, `atom`, `numeric`, `unicode`, `net`, `binary` and
   `temporal`; `record`, `map`, `namespace`, `template` and `identifier` are free
-  ([SPEC-FEEDBACK.md #15](../SPEC-FEEDBACK.md)).
+  ([SPEC-FEEDBACK.md #15](/2026/38/reports/implementation-feedback)).
 
 ### Decisions before the ladder goes
 
@@ -460,13 +460,13 @@ first draft of this note proposed a header-level opt-in to restore it. It is not
   and no header can state it. The guard the ladder spelled in a header is already in the structure.
 - **The header has one directive.** `!!import` and `!!id` are all a header carries ("How a schema identifies itself"),
   and the rules live in the schema structures themselves: what a document composes is visible per entry as
-  `meta.top`, `meta.atom` or `meta.product` ([`kernel-namespace.md`](kernel-namespace.md)), and a policy that wants to
+  `meta.top`, `meta.atom` or `meta.product` ([`kernel-namespace.md`](/2026/38/reports/kernel-namespace)), and a policy that wants to
   refuse an extension judges the closure on that spelling.
 
 The depth bound no longer depends on a guard. §9.1 states one limit on read-dependency depth over a closure, beside
 nesting depth, as a general limit every processor enforces; the kernel's own depth is fixed by its namespace.
 
-**As built** ([SPEC-FEEDBACK.md #4](../SPEC-FEEDBACK.md), [#7](../SPEC-FEEDBACK.md)): any schema declares a
+**As built** ([SPEC-FEEDBACK.md #4](/2026/38/reports/implementation-feedback), [#7](/2026/38/reports/implementation-feedback)): any schema declares a
 constructor, with no extension guard. A constructor that composes a base kind directly makes a new form, which a
 processor backs with readers of its own; the first implementation backs the forms the kernel and the data-format
 libraries declare, and refuses an instance of any other as not implemented, which is the self-guard above. Decision 1
@@ -483,7 +483,7 @@ wants a constructor and a type-ref wants a type. One level removes exactly that.
 (`atom & { … }` builds a constructor, `point & { … }` a record). In a prototype system (`slots.md`), constructing a
 type from a constructor and constructing a value entry from an ordinary record type are the same slot-closing operation
 at two points in the order, so the grammar position no longer partitions the store. Partitioning by role is the two
-stores again, which "The reference atom" calls the ladder. [`construction-operator.md`](construction-operator.md)
+stores again, which "The reference atom" calls the ladder. `construction-operator.md`
 settles the head position itself, `<-` taking a constructor and `!` a type whose instances are values, and leaves `&`
 and the type-ref position taking both roles, so the decision is one about the namespace. Two candidates were weighed
 and both rejected: **non-transitive imports for reservation**, a second visibility rule beside the import rule, which is
@@ -494,12 +494,12 @@ reservation that identity relies on. What is kept is §2.2.3 as it stands, over 
 - **A collision is an error.** Two libraries that both declare `address`, imported together, refuse the load, as two
   different declarations of one name do today, identity deciding what "different" means.
 - **Room is made with sub-namespaces.** The kernel's and `meta.tn`'s constructors sit under `meta`
-  ([`kernel-namespace.md`](kernel-namespace.md)), so the rare vocabulary costs one name; importing `core.tn` puts the
+  ([`kernel-namespace.md`](/2026/38/reports/kernel-namespace)), so the rare vocabulary costs one name; importing `core.tn` puts the
   common atoms, `text`, `integer`, `uuid`, at the root, where every schema wants them bare; and a library that wants
   room for its own `address` declares it under its own entry, `geo => !schema { address => { … } }`, reached as
   `geo.address`. Import aliasing is not needed, and resolved output stays free of an import list (§8.1).
 
-**As built** ([SPEC-FEEDBACK.md #14](../SPEC-FEEDBACK.md), [#15](../SPEC-FEEDBACK.md)): `geo => !schema { … }`
+**As built** ([SPEC-FEEDBACK.md #14](/2026/38/reports/implementation-feedback), [#15](/2026/38/reports/implementation-feedback)): `geo => !schema { … }`
 declares, its members named by their path from the root. The kernel's machinery sits under six maps rather than one
 (`meta`, `atom`, `numeric`, `unicode`, `net`, `binary`), and temporal.tn adds a seventh, `temporal`.
 
@@ -531,7 +531,7 @@ root's type rather than of the header, and there is one document kind.
 **Decided: one directive, `!!import`; `!!schema` and `!!meta` retired.** The root's tag, `!meta.schema`, signals that
 what follows is a schema map under the imported kernel. The other rows are kept for the record.
 
-**As built** ([SPEC-FEEDBACK.md #8](../SPEC-FEEDBACK.md)): the root's tag is `!schema`, which names the kernel's
+**As built** ([SPEC-FEEDBACK.md #8](/2026/38/reports/implementation-feedback)): the root's tag is `!schema`, which names the kernel's
 root entry `schema => meta.schema`, an alias, whatever the document imports. Classification reads the header, the
 root's leading annotations and its tag, never the root's value; a schema carrying a document-level `@doc` is classified
 past that annotation's value, so the two-directive budget is not kept exactly. A Class 1 processor refuses a schema
@@ -553,7 +553,7 @@ document at the root's tag rather than reading it as a map.
   (`x.tn?sha256=A` beside `x.tn?sha256=B`), or two revisions of one base, in one closure is a collision, refused at the
   importer that joins them. A closure therefore names one kernel: there is no importing across language versions.
   **As built:** two pins of one identity are refused; two revisions of one base are refused only where they declare a
-  common name, since nothing defines a revision for an arbitrary identity ([SPEC-FEEDBACK.md #8](../SPEC-FEEDBACK.md)).
+  common name, since nothing defines a revision for an arbitrary identity ([SPEC-FEEDBACK.md #8](/2026/38/reports/implementation-feedback)).
 
 **What follows:**
 - **The kernel identifies itself and imports nothing.** Its header is `!!id` alone, its root `!meta.schema { … }`,
@@ -607,7 +607,7 @@ algorithm is what closes the gap:
 - No order is asked of the fixture. A fixture whose constructors wait on each other in a cycle doesn't read, as a
   source with the same cycle doesn't compile.
 
-**As built** ([SPEC-FEEDBACK.md #8](../SPEC-FEEDBACK.md), [#4](../SPEC-FEEDBACK.md)): a resolved form's header is its
+**As built** ([SPEC-FEEDBACK.md #8](/2026/38/reports/implementation-feedback), [#4](/2026/38/reports/implementation-feedback)): a resolved form's header is its
 source's and its root is `!schema`, so it is read under its own imports, and nothing is supplied at ingest. Reading it
 by the wait-order algorithm over its own entries is not running (sub-step 5f, partly done), so a fixture holding an
 instance of a constructor it declares does not read back. The kernel and `meta.tn`
@@ -661,7 +661,7 @@ of an ordinary type, the type no longer says which binder it belongs to. The nat
 instances are entries and types whose instances are in documents. A type used both ways has to bind once for both, or
 the line has to be drawn by the use instead of by the type.
 
-**As built** ([SPEC-FEEDBACK.md #9](../SPEC-FEEDBACK.md)): an entry is a type exactly when its value is built by a
+**As built** ([SPEC-FEEDBACK.md #9](/2026/38/reports/implementation-feedback)): an entry is a type exactly when its value is built by a
 constructor IS-A `type`; any other entry is a value, its tag naming its type, and the schema map's values are
 `declared`. The first implementation took the third option, one binder for schemas and data (D3).
 
@@ -685,7 +685,7 @@ as one rule:
 - **In a data document** the probe already shows `type_kind` judged for membership. The same rule extends to value
   entries, which is how an agent plan's `method` could be checked (see the agent section).
 
-**As built** ([SPEC-FEEDBACK.md #11](../SPEC-FEEDBACK.md)): the rule is running under one spelling, `meta.ref<T>`; no
+**As built** ([SPEC-FEEDBACK.md #11](/2026/38/reports/implementation-feedback)): the rule is running under one spelling, `meta.ref<T>`; no
 `kind` stands beside it.
 
 ### The reference atom: `kind`, `ref` and `type_ref` are one
@@ -746,7 +746,7 @@ kind      => <T> !reference { of: T }    -- the one-segment spelling
 ref       => <T> !reference { of: T }    -- the qualified spelling; the two may be one
 ```
 
-**As built** ([SPEC-FEEDBACK.md #10](../SPEC-FEEDBACK.md) to [#13](../SPEC-FEEDBACK.md)): the alias body was renamed
+**As built** ([SPEC-FEEDBACK.md #10](/2026/38/reports/implementation-feedback) to [#13](/2026/38/reports/implementation-feedback)): the alias body was renamed
 `alias`, freeing the word, and the atom is `reference_type`, with one template over it and no `kind`:
 
 ```
@@ -758,14 +758,14 @@ identifier_ref => !meta.type_ref ^ { of: unicode.identifier_type }     -- Revisi
 ```
 
 `allow_sibling` admits a sibling reference, `kind!`, at a record field's type alone
-([SPEC-FEEDBACK.md #21](../SPEC-FEEDBACK.md)). The `type_ref` and `type_argument` records are gone: an application is
-a value of the atom ([SPEC-FEEDBACK.md #12](../SPEC-FEEDBACK.md)), written unquoted in data, `<` and `>` being data
-grammar ([SPEC-FEEDBACK.md #13](../SPEC-FEEDBACK.md)).
+([SPEC-FEEDBACK.md #21](/2026/38/reports/implementation-feedback)). The `type_ref` and `type_argument` records are gone: an application is
+a value of the atom ([SPEC-FEEDBACK.md #12](/2026/38/reports/implementation-feedback)), written unquoted in data, `<` and `>` being data
+grammar ([SPEC-FEEDBACK.md #13](/2026/38/reports/implementation-feedback)).
 
 - `of` names any entry of the one namespace, constructor or type: `kind<record>` and `ref<operation>` are the same
   declaration with a different `of`, which is "What `kind<T>` means" above, now with its kernel shape.
 - `type_ref` goes too: the atom's value is the qualified name *with its arguments*, one grammar at every position
-  ([`reference.md`](reference.md)). A closed application lifts to a minted entry as it does today, so no slot holding a
+  ([`reference.md`](/2026/38/reports/reference)). A closed application lifts to a minted entry as it does today, so no slot holding a
   closed name carries arguments; an open one, in a template body or an alias's target, is the reference as written.
 - `members` goes. With one closure the declaring closure is the judging closure, so the index is computable at ingest
   and says nothing a reader cannot recompute; if a resolved form keeps it for inspection it is honest for the first time.
@@ -785,9 +785,9 @@ grammar ([SPEC-FEEDBACK.md #13](../SPEC-FEEDBACK.md)).
   `kind<X>` and `ref<X>` one application with one canonical content (§8.2), so a slot cannot know which was written. A
   one-segment restriction cannot be the difference, since decision 2's sub-namespaces make `geo.address` a type name a
   `kind<type>` slot must admit. If a difference remains it is this: a `ref<T>` points at another definition, where a
-  `kind<T>` slot takes the name as its value. Deferred ([`reference.md`](reference.md), "One spelling or two").
+  `kind<T>` slot takes the name as its value. Deferred ([`reference.md`](/2026/38/reports/reference), "One spelling or two").
   **As built:** one spelling, `meta.ref<T>`; a second could say nothing the first does not
-  ([SPEC-FEEDBACK.md #11](../SPEC-FEEDBACK.md)).
+  ([SPEC-FEEDBACK.md #11](/2026/38/reports/implementation-feedback)).
 
 **Why this is a second proof.** The verdict's first argument was that one checked rule replaces five that leaked. This
 one is from the other end: the kernel's own vocabulary, designed under the ladder, converges on one reference atom at
@@ -834,8 +834,8 @@ schemas, and a data document still declares nothing others resolve against, stil
 and still can't extend the language it is read in. What the probe changes is the *reason* for the line, which moves
 from "may name a type" to "exports a namespace". A schema and a data document alike refer into their imports and
 nowhere else. **As built:** a data document names its schemas with `!!import`, several in one namespace
-([SPEC-FEEDBACK.md #8](../SPEC-FEEDBACK.md)), and a kind-typed position in every data document is judged by membership
-over its closure ([SPEC-FEEDBACK.md #9](../SPEC-FEEDBACK.md)).
+([SPEC-FEEDBACK.md #8](/2026/38/reports/implementation-feedback)), and a kind-typed position in every data document is judged by membership
+over its closure ([SPEC-FEEDBACK.md #9](/2026/38/reports/implementation-feedback)).
 
 ### The API and the deployment descriptor
 
@@ -905,7 +905,7 @@ The sketch predates the one-directive decision; as built, the root is `!schema {
 - a placement's `query: [status]` must name a field of the record at `request`.
 
 These need the field names of the type a sibling names, not a value of it: a projection through the sibling's target,
-roughly `ref<request.fields!>`. A dependent field ([`dependent-fields.md`](dependent-fields.md)) reads a sibling's value
+roughly `ref<request.fields!>`. A dependent field ([`dependent-fields.md`](/2026/38/reports/dependent-fields)) reads a sibling's value
 and stops there, and the chained projection is an entry-level value → value edge the dependency model's invariant
 excludes, values being leaves. Two more reasons it doesn't fit:
 - **One expression can't serve both endpoint kinds.** `query` sits in a placement shared by an operation (where
@@ -940,30 +940,30 @@ and the interface, which governs the plan and retires an `interface:` field that
 
 One revision, Revision 39, on its proposal branch, in eight steps with two rhythms. Steps 1 to 3 touch no kernel
 entry, so each was checked against the `-resolved.tn` fixtures before the next started. Steps 4 to 8 rewrite the kernel
-document once, with the fixtures moving once ([`kernel-namespace.md`](kernel-namespace.md), "Resolved forms"), and
+document once, with the fixtures moving once ([`kernel-namespace.md`](/2026/38/reports/kernel-namespace), "Resolved forms"), and
 what makes one move checkable is step 2's harness, which is why the proof preceded everything. The spec text landed per
-step, as [SPEC-FEEDBACK.md](../SPEC-FEEDBACK.md) entries.
+step, as [SPEC-FEEDBACK.md](/2026/38/reports/implementation-feedback) entries.
 
 **The model, the proof and the operator, under the ladder.**
 
 1. **Specify the dependency model:** shape and value; the three sides a facet falls on (link, shape, value) by the
    mechanical rule; the two closures, shape then reader, with the reader-closure edge and its cycle check stated here
-   ([`typed-facets.md`](typed-facets.md), "The edge it adds") since the kernel's `multiple_of` relies on it; the
+   ([`typed-facets.md`](/2026/38/reports/typed-facets), "The edge it adds") since the kernel's `multiple_of` relies on it; the
    invariant that a shape never waits on a value; what a cycle is; and the limits, a read-dependency depth over a
    closure as a general §9.1 limit, and a template-expansion bound.
-   **Outcome: landed** as [SPEC-FEEDBACK.md #4](../SPEC-FEEDBACK.md)'s seven rules, worded as readiness and waits (see
+   **Outcome: landed** as [SPEC-FEEDBACK.md #4](/2026/38/reports/implementation-feedback)'s seven rules, worded as readiness and waits (see
    the As built note under "The dependency model"). The depth limit is §11.5's *wait depth*, default 64; template
    expansion needs no new bound.
 2. **Prove it on the kernel.** `meta-kernel-resolved.tn` comes out as a fixed point under read-defer-resolve over the
    pre-loaded kernel shapes, and every facet chain in the kernel closes its reader without a cycle. The harness that
    shows it stays, and is rerun on every kernel edit below. Until it passes, nothing below starts.
-   **Outcome: landed** ([SPEC-FEEDBACK.md #4](../SPEC-FEEDBACK.md)). The kernel has one wait cycle, holding
+   **Outcome: landed** ([SPEC-FEEDBACK.md #4](/2026/38/reports/implementation-feedback)). The kernel has one wait cycle, holding
    `meta.record`; the bootstrap builds by hand only the instances and refinements on it and makes every other entry
    ready by the algorithm, and its output equals the kernel's ordinary resolution against itself, entry for entry. A
    test holds the hand-built set to the measured cycle and was rerun on each kernel edit below. Since step 7 the
    kernel's fixture is `meta-resolved.tn`.
 3. **Dropped: the construction operator.** `!C { … }` is an instance of `C`, a `!` head's role following from its
-   head's chain ([`construction-operator.md`](construction-operator.md)). [SPEC-FEEDBACK.md #5](../SPEC-FEEDBACK.md)
+   head's chain (`construction-operator.md`). [SPEC-FEEDBACK.md #5](/2026/38/reports/implementation-feedback)
    keeps what it opened: `^` refines any value under the rules its type states.
    **Outcome: dropped as planned;** #5 landed.
 
@@ -978,7 +978,7 @@ identifies itself", "The scope push goes") land as text here, where the ladder t
    (`schema => !namespace { … }`, `api => !namespace { key_type: identifier  value_type: method }`) and `orders =>
    !api { … }` an ordinary value of the type `api`, with no exception at `type_kind`, `kind<namespace>` or `ref<api>`,
    and `namespace` no longer a fourth base kind. It needs value entries of ordinary types, so it lands with step 5.
-   **Outcome: landed with 5e** ([SPEC-FEEDBACK.md #9](../SPEC-FEEDBACK.md)) as
+   **Outcome: landed with 5e** ([SPEC-FEEDBACK.md #9](/2026/38/reports/implementation-feedback)) as
    `namespace => meta.map ^ { key_type: meta.identifier_ref  voidable?: = false }`, `identifier_kind` having become
    `identifier_ref` at step 6. `key_type` is required, and the kernel's one namespace type is
    `schema => !meta.namespace { key_type: meta.type_name  value_type: meta.declared }`.
@@ -990,44 +990,44 @@ identifies itself", "The scope push goes") land as text here, where the ladder t
    and the binder split is redrawn. §7.8's scope push goes: `scoped` reduces to `declared`, and [TSON-JSON] §3.3's
    `$schema` becomes the leading `$import`.
    **Outcome: landed, except 5f (partly) and 5h (deferred).** The sub-steps, in the order they landed:
-   - **5a, pins held. Landed** ([SPEC-FEEDBACK.md #4](../SPEC-FEEDBACK.md), rule 3). A default, a pin and a template
+   - **5a, pins held. Landed** ([SPEC-FEEDBACK.md #4](/2026/38/reports/implementation-feedback), rule 3). A default, a pin and a template
      body hold what a schemaless read gives and bind as written, judged against their type once every entry is ready,
      still at load.
    - **5b, the bootstrap in wait order. Landed.** Only the kernel's cycle is built by hand; every other kernel entry is
-     made ready by the algorithm ([SPEC-FEEDBACK.md #4](../SPEC-FEEDBACK.md)).
-   - **5c, the scope push disabled. Landed** ([SPEC-FEEDBACK.md #6](../SPEC-FEEDBACK.md)). A directive inside a value
+     made ready by the algorithm ([SPEC-FEEDBACK.md #4](/2026/38/reports/implementation-feedback)).
+   - **5c, the scope push disabled. Landed** ([SPEC-FEEDBACK.md #6](/2026/38/reports/implementation-feedback)). A directive inside a value
      is a parse error, `scoped`, `extern`, `dynamic`, `extern_of` and `extern_type` are in no bundled schema, and
      `declared_type => sum & {}` with `declared` is the LOCAL cell. [TSON-JSON]'s binding member stands at the top of a
      document alone.
-   - **5d, one namespace. Landed** ([SPEC-FEEDBACK.md #7](../SPEC-FEEDBACK.md)). Placement, direction of service, the
+   - **5d, one namespace. Landed** ([SPEC-FEEDBACK.md #7](/2026/38/reports/implementation-feedback)). Placement, direction of service, the
      import-level rule, the governing-target check, the structure/type-name split and §3.3.5's siblings are deleted;
      core.tn redeclares none of the kernel's names.
-   - **5g, one directive. Landed** ([SPEC-FEEDBACK.md #8](../SPEC-FEEDBACK.md)). The header is an optional `!!id`
+   - **5g, one directive. Landed** ([SPEC-FEEDBACK.md #8](/2026/38/reports/implementation-feedback)). The header is an optional `!!id`
      and any number of `!!import`s; `!!meta` and `!!schema` are parse errors naming their replacement; a root tagged
      `!schema` is a schema; the kernel's header is `!!id` alone; [TSON-JSON]'s member is `$import`.
-   - **5e, value entries and `namespace` as a map. Landed** ([SPEC-FEEDBACK.md #9](../SPEC-FEEDBACK.md)), with step 4.
+   - **5e, value entries and `namespace` as a map. Landed** ([SPEC-FEEDBACK.md #9](/2026/38/reports/implementation-feedback)), with step 4.
      `create_order => !operation { … }` is a value entry; one binder serves schemas and data (D3).
-   - **5f, wait order everywhere. Partly done** ([SPEC-FEEDBACK.md #4](../SPEC-FEEDBACK.md), "What is not running").
+   - **5f, wait order everywhere. Partly done** ([SPEC-FEEDBACK.md #4](/2026/38/reports/implementation-feedback), "What is not running").
      Every schema resolves by the one algorithm, but a resolved form is still read under its source's imports, not by
      the algorithm over its own entries.
    - **5h, `extern` restored. Deferred** out of Revision 39.
-6. **One reference** ([`reference.md`](reference.md)): the qualified name with arguments as one grammar at every type
+6. **One reference** ([`reference.md`](/2026/38/reports/reference)): the qualified name with arguments as one grammar at every type
    position, as the tag in data ([TSON-DATA] §7.4), and as the value of one atom; `kind_type`, `ref_type`, `type_ref`
    and `type_argument` go, and `members` with them. It cannot be written while `of` resolves in two stores, so it
    follows step 5, and it precedes step 7, which writes `meta.integer_type`.
-   **Outcome: landed** ([SPEC-FEEDBACK.md #10](../SPEC-FEEDBACK.md) to [#13](../SPEC-FEEDBACK.md)). There is no
+   **Outcome: landed** ([SPEC-FEEDBACK.md #10](/2026/38/reports/implementation-feedback) to [#13](/2026/38/reports/implementation-feedback)). There is no
    `kind_type`, `ref_type`, `kind` or `type_argument`; the atom is `reference_type`, with `of: meta.type_ref` and, since
    dependent fields, `allow_sibling`; `meta.ref<T>` is the one spelling, and `type_kind` and `identifier_kind` are
    renamed `meta.type_ref` and `meta.identifier_ref`. A reference with arguments is data grammar, written unquoted
-   ([SPEC-FEEDBACK.md #13](../SPEC-FEEDBACK.md)), where [`reference.md`](reference.md) had proposed a quoted token.
-   The alias body was renamed `alias` ([SPEC-FEEDBACK.md #10](../SPEC-FEEDBACK.md)), and
-   [SPEC-FEEDBACK.md #22](../SPEC-FEEDBACK.md) later named §12.1's `type-ref` apart from `meta.type_ref`.
-7. **The kernel under `meta`** ([`kernel-namespace.md`](kernel-namespace.md)): `meta.tn` merges into the kernel as
+   ([SPEC-FEEDBACK.md #13](/2026/38/reports/implementation-feedback)), where [`reference.md`](/2026/38/reports/reference) had proposed a quoted token.
+   The alias body was renamed `alias` ([SPEC-FEEDBACK.md #10](/2026/38/reports/implementation-feedback)), and
+   [SPEC-FEEDBACK.md #22](/2026/38/reports/implementation-feedback) later named §12.1's `type-ref` apart from `meta.type_ref`.
+7. **The kernel under `meta`** ([`kernel-namespace.md`](/2026/38/reports/kernel-namespace)): `meta.tn` merges into the kernel as
    `meta => !schema { … }`, closed maps (rule A); §4.1 restated so every `!schema` value declares; lexical scope inside
    a `!schema` body; synthetics homed by path; `core.tn` imports the kernel directly, re-exports `kind`, `ref`,
    `declared` and `doc` by alias, and keeps the common atoms at the root; `net.tn`'s constructors under `net.`. The
    fixtures move here, once, and step 2's harness is rerun on the rewritten kernel.
-   **Outcome: landed differently** ([SPEC-FEEDBACK.md #14](../SPEC-FEEDBACK.md), [#15](../SPEC-FEEDBACK.md)).
+   **Outcome: landed differently** ([SPEC-FEEDBACK.md #14](/2026/38/reports/implementation-feedback), [#15](/2026/38/reports/implementation-feedback)).
    **As built:**
    - `meta.tn` and the kernel are one document, `meta.tn`, and every `!schema` value declares, as planned.
    - **Six maps, not one.** The kernel nests `meta`, `atom`, `numeric`, `unicode`, `net` and `binary`, beside a root
@@ -1035,7 +1035,7 @@ identifies itself", "The scope push goes") land as text here, where the ladder t
      `iri_reference`, `regex`, `doc`, `enum`, `set`, `schema`).
    - **The maps are open, not closed.** A map of one path declared by several documents of a closure is the union of
      their members, and a member path two of them declare collides, by identity: rule C of
-     [`kernel-namespace.md`](kernel-namespace.md), not A. numeric.tn and net.tn add their constructors to the kernel's
+     [`kernel-namespace.md`](/2026/38/reports/kernel-namespace), not A. numeric.tn and net.tn add their constructors to the kernel's
      `numeric` and `net`, which closed maps would refuse.
    - **No lexical scope.** Every name resolves from the root; inside `geo` a sibling is written `geo.address`, and a
      bare `address` names the root's.
@@ -1047,19 +1047,19 @@ identifies itself", "The scope push goes") land as text here, where the ladder t
    - The fixtures moved once, and step 2's harness was rerun on the rewritten kernel.
 
    Lexical scope, synthetics homed by the innermost map, and who may contribute to an open map are open in #14.
-8. **Typed facets** ([`typed-facets.md`](typed-facets.md)): with every constructor beside its canonical instance in
+8. **Typed facets** ([`typed-facets.md`](/2026/38/reports/typed-facets)): with every constructor beside its canonical instance in
    the one kernel document, each facet is typed by the instance, §7.4's `value`-typed-constraint prose goes, and
    `value_type` is deleted, its last slot having gone in step 6.
-   **Outcome: landed** ([SPEC-FEEDBACK.md #17](../SPEC-FEEDBACK.md)), with every counting facet typed by a fixed
-   64-bit range ([SPEC-FEEDBACK.md #16](../SPEC-FEEDBACK.md)). `value_type` and `value` are deleted from the kernel; the
+   **Outcome: landed** ([SPEC-FEEDBACK.md #17](/2026/38/reports/implementation-feedback)), with every counting facet typed by a fixed
+   64-bit range ([SPEC-FEEDBACK.md #16](/2026/38/reports/implementation-feedback)). `value_type` and `value` are deleted from the kernel; the
    field slots that held `value` are typed by the field's own type, `value?: type!`.
 
 Steps 1 and 2 were the correctness work. Step 3 was small and testable on its own. Steps 4 to 8 were mostly deletion
 once the decisions held, one kernel rewrite checked by the harness. Dependent fields
-([`dependent-fields.md`](dependent-fields.md)) had their own order of work and landed beside these steps
-([SPEC-FEEDBACK.md #21](../SPEC-FEEDBACK.md)); on 2026-11-07 the rule was widened so a sibling may be a field group's
+([`dependent-fields.md`](/2026/38/reports/dependent-fields)) had their own order of work and landed beside these steps
+([SPEC-FEEDBACK.md #21](/2026/38/reports/implementation-feedback)); on 2026-11-07 the rule was widened so a sibling may be a field group's
 member beside an optional dependent field, and `record_template_field` gained `( value: type! | value_param )?`.
-[SPEC-FEEDBACK.md #18](../SPEC-FEEDBACK.md) to [#20](../SPEC-FEEDBACK.md) were found while the record and template
+[SPEC-FEEDBACK.md #18](/2026/38/reports/implementation-feedback) to [#20](/2026/38/reports/implementation-feedback) were found while the record and template
 machinery was rewritten: a restated field's type narrows by IS-A, a record template is its own constructor, and an
 applied parent reaches the head at a closed operand.
 
@@ -1072,11 +1072,11 @@ implementation confirms.
 - **One revision, Revision 39,** in eight ordered steps: the model, the proof and the operator under the ladder, then
   `namespace` under `type`, the ladder's removal, the reference, the kernel namespace and typed facets as one kernel
   rewrite ("Order of work, as landed").
-- **Three features are kept out of this note:** dependent fields ([`dependent-fields.md`](dependent-fields.md)), typed
-  facets ([`typed-facets.md`](typed-facets.md)) and the kernel under its own name
-  ([`kernel-namespace.md`](kernel-namespace.md)). One level enables them; none is part of it.
+- **Three features are kept out of this note:** dependent fields ([`dependent-fields.md`](/2026/38/reports/dependent-fields)), typed
+  facets ([`typed-facets.md`](/2026/38/reports/typed-facets)) and the kernel under its own name
+  ([`kernel-namespace.md`](/2026/38/reports/kernel-namespace)). One level enables them; none is part of it.
 - **No construction operator.** `!C { … }` stays; `^` refines any value under its type's rules
-  ([SPEC-FEEDBACK.md #5](../SPEC-FEEDBACK.md)).
+  ([SPEC-FEEDBACK.md #5](/2026/38/reports/implementation-feedback)).
 - **One directive.** `!!import` only; `!!schema` and `!!meta` are retired; a root tagged `!meta.schema` is a schema
   document ("How a schema identifies itself"). **As built:** the tag is `!schema`, an alias at the kernel's root.
 - **Import rules.** Every import is a schema document, by the test that classifies it; imports are transitive;
@@ -1091,7 +1091,7 @@ implementation confirms.
 - **The kind's membership is unchanged**: by construction, as §4.2 states it. `integer` is a member of
   `kind<integer_type>` because `integer_type` built it, and is not IS-A `top`; no new predicate is needed.
 - **`!` survives in a schema** as the value-entry mark, `!meta.schema { … }` at the root being the first example
-  ([`construction-operator.md`](construction-operator.md)).
+  (`construction-operator.md`).
 - **Anyone may declare a constructor, with no header opt-in** (decision 1): product and namespace constructors are
   read by the kernel's readers, an atom constructor only once the processor backs it, and the depth bound is a general
   §9.1 limit. **As built:** partly; an instance of a constructor refining `record` with fields of its own is still
@@ -1100,7 +1100,7 @@ implementation confirms.
 - **The kernel's names sit under `meta`**, closed maps (rule A in kernel-namespace.md, at implementation), the two
   kernel documents becoming one. **As built:** the two documents are one, but implementation did not confirm rule A.
   The kernel's machinery sits under six open maps, each the union of every document's members (rule C), beside a root
-  vocabulary ([SPEC-FEEDBACK.md #14](../SPEC-FEEDBACK.md), [#15](../SPEC-FEEDBACK.md)).
+  vocabulary ([SPEC-FEEDBACK.md #14](/2026/38/reports/implementation-feedback), [#15](/2026/38/reports/implementation-feedback)).
 - **One global namespace per closure** (decision 2): transitive, a collision refused by identity as §2.2.3 does today,
   room made with sub-namespaces (`geo => !schema { … }`); non-transitive imports, local shadowing and import aliasing
   all rejected. **As built:** every name resolves from the root, with no lexical scope inside a sub-namespace.
@@ -1115,29 +1115,29 @@ implementation confirms.
   - **D2, `namespace`'s `key_type`. Superseded.** The direction was an optional `key_type`, absent meaning the host
     supplies the key family, so that a record's fields could be a namespace keyed by its `name_type`. As built,
     `key_type` is required, `meta.identifier_ref`, and a record's fields go through `field_map`, a plain map keyed by
-    `text`, each key judged by the record's `name_type` ([SPEC-FEEDBACK.md #9](../SPEC-FEEDBACK.md)).
+    `text`, each key judged by the record's `name_type` ([SPEC-FEEDBACK.md #9](/2026/38/reports/implementation-feedback)).
   - **D3, one binder. Done.** One bind context serves schemas and data, the kernel's names fixed to the schema model;
     a value entry no class binds is held as a tree for validation, and refused from a schema loaded to bind
-    ([SPEC-FEEDBACK.md #9](../SPEC-FEEDBACK.md)).
+    ([SPEC-FEEDBACK.md #9](/2026/38/reports/implementation-feedback)).
   - **D4, resolved form or source. Done.** Reading a resolved form is the caller's choice, as ingest is
-    ([SPEC-FEEDBACK.md #8](../SPEC-FEEDBACK.md)).
+    ([SPEC-FEEDBACK.md #8](/2026/38/reports/implementation-feedback)).
   - **D5, the kernel's names. Done.** `!schema` resolves against the pre-loaded kernel, and the kernel's names enter a
-    schema only by import ([SPEC-FEEDBACK.md #8](../SPEC-FEEDBACK.md)).
+    schema only by import ([SPEC-FEEDBACK.md #8](/2026/38/reports/implementation-feedback)).
 - **`kind<T>` and `ref<T>`: one name.** `ref<T>` stays and `kind` goes; `type_kind` and `identifier_kind` are
-  `meta.type_ref` and `meta.identifier_ref` ([SPEC-FEEDBACK.md #11](../SPEC-FEEDBACK.md)).
+  `meta.type_ref` and `meta.identifier_ref` ([SPEC-FEEDBACK.md #11](/2026/38/reports/implementation-feedback)).
 - **`namespace` as `map ^ { key_type: meta.identifier_ref … }`.** `field_map` is a text-keyed map judged by its
-  record's `name_type`, so no namespace leaves `key_type` to its host ([SPEC-FEEDBACK.md #9](../SPEC-FEEDBACK.md)).
+  record's `name_type`, so no namespace leaves `key_type` to its host ([SPEC-FEEDBACK.md #9](/2026/38/reports/implementation-feedback)).
 - **The binder split:** one binder, D3.
 - **The cycle message:** the entries in wait order, `'a' waits on 'b' waits on 'a'`
-  ([SPEC-FEEDBACK.md #4](../SPEC-FEEDBACK.md)).
+  ([SPEC-FEEDBACK.md #4](/2026/38/reports/implementation-feedback)).
 - **The read-dependency depth bound:** §11.5's *wait depth*, the longest chain of waits within one document's
-  resolution, default 64, a chain past it refused as a limit and not a verdict ([SPEC-FEEDBACK.md #4](../SPEC-FEEDBACK.md)).
+  resolution, default 64, a chain past it refused as a limit and not a verdict ([SPEC-FEEDBACK.md #4](/2026/38/reports/implementation-feedback)).
 
 ## Open
 
 - **Typed template bodies:** whether to widen every constructor slot to admit a parameter reference so a held body is
   typed, and whether a declaration-time guarantee over parameter ranges is worth the interval reasoning it needs
-  ("Typed template bodies", above). Still open; [`template-simplification.md`](template-simplification.md) is a
+  ("Typed template bodies", above). Still open; `template-simplification.md` is a
   separate proposal against the Revision 39 draft, not started.
 - **Reading a resolved form by the algorithm over its own entries** (sub-step 5f's remainder), and with it
   **re-resolving a resolved form to itself** as a second fixture check. Still open.
@@ -1145,5 +1145,5 @@ implementation confirms.
   built, an import is ready before a document's resolution starts, so a wait never crosses one; Revision 38 refuses a
   cycle through `!!import` by [TSON-DATA] §2.2.3.
 - **Lexical scope, synthetics homed by the innermost map, and who may contribute to an open map.** Open in
-  [SPEC-FEEDBACK.md #14](../SPEC-FEEDBACK.md).
+  [SPEC-FEEDBACK.md #14](/2026/38/reports/implementation-feedback).
 - **`extern`**, a schema-driven external form: deferred.

@@ -9,7 +9,7 @@ id: "CR-typed-facets"
 # Typed facets: retiring `value` from `meta.tn`
 
 **Status: landed in Revision 39.**
-- **Proposed:** step 8 of [`one-level.md`](one-level.md)'s order of work. Each atom constructor is declared beside its
+- **Proposed:** step 8 of [`one-level.md`](/2026/38/reports/one-level)'s order of work. Each atom constructor is declared beside its
   canonical instance, and its facets are typed by that instance instead of `value`. §7.4's eager-conversion rule
   for `value`-typed constraints goes. The dependency model gains a value-to-value edge: a value read against an atom
   waits on that atom's facets.
@@ -18,10 +18,10 @@ id: "CR-typed-facets"
   `duration`, `period`, `cidr4`, `cidr6`. `value` and `value_type` are deleted from the kernel. Their other slots went
   with the reference atom (`type_argument`) and with dependent fields (a field's default or pin, typed `type!`). The
   facet edge is rule 1 of the resolution order. The cycle this note predicted turned up in the kernel's own count type.
-- **Where:** [TSON-SCHEMA] §4.2, §5.2, §5.5, §7.4, §13.2. [SPEC-FEEDBACK.md #17](../SPEC-FEEDBACK.md) (a facet is typed
-  by its family's instance), [#4](../SPEC-FEEDBACK.md) (resolution order, the edge),
-  [#12](../SPEC-FEEDBACK.md) (`type_argument` goes), [#16](../SPEC-FEEDBACK.md) (`count`, and the cycle) and
-  [#21](../SPEC-FEEDBACK.md) (the last `value` slots).
+- **Where:** [TSON-SCHEMA] §4.2, §5.2, §5.5, §7.4, §13.2. [SPEC-FEEDBACK.md #17](/2026/38/reports/implementation-feedback) (a facet is typed
+  by its family's instance), [#4](/2026/38/reports/implementation-feedback) (resolution order, the edge),
+  [#12](/2026/38/reports/implementation-feedback) (`type_argument` goes), [#16](/2026/38/reports/implementation-feedback) (`count`, and the cycle) and
+  [#21](/2026/38/reports/implementation-feedback) (the last `value` slots).
 
 That note's model and its removal of the ladder stand without this one. What this note needs from one level is one
 thing: a constructor and its canonical instance in one document, so that a facet of the constructor can be typed by
@@ -29,7 +29,7 @@ the instance. It is the kernel's own pattern (§7.4: `integer_type`'s bounds are
 proves the rule"), extended to every atom constructor in `meta.tn` once the ladder no longer keeps the instances a
 rung below. The edge it needs, a reader waiting on the facets it checks with, is stated in one-level.md's model and
 proved on the kernel there; this note is where the edge was found and where its consequences for `meta.tn` are worked
-out. Examples written `c <- { … }` use [`construction-operator.md`](construction-operator.md)'s dropped spelling. Read
+out. Examples written `c <- { … }` use `construction-operator.md`'s dropped spelling. Read
 them as `!c { … }`.
 
 ## The `value` escape hatch in Revision 38
@@ -75,7 +75,7 @@ data, where a `value`-typed slot used to decode it and narrow it (SPEC-FEEDBACK.
 `value`-typed position is read "under the atom it stands for, once that atom is in scope". With the facet typed by that
 atom, the ordinary field reader does the same reading, and the paragraph, the bootstrap-ordering reason it gives
 (§3.4), and `value_type`'s role in the escape are prose no longer needed. `record_field.value` is the other `value` slot,
-retired by [`dependent-fields.md`](dependent-fields.md); `type_argument` goes with `type_ref`, below, so `value_type`
+retired by [`dependent-fields.md`](/2026/38/reports/dependent-fields); `type_argument` goes with `type_ref`, below, so `value_type`
 leaves the kernel. **As built:** all three. `record_field.value` and `record_template_field.value` are typed `type!`,
 the field's own declared type (SPEC-FEEDBACK.md #21). Nothing in the bundled documents names `value`.
 
@@ -148,8 +148,8 @@ facets first, then the values read against it. Order independence and terminatio
 **`type_argument.value`** is an argument to a template's value parameter, `bounded<10>`. Its type is the parameter's,
 reached from a `type_argument` only by following the enclosing application's template name to that template's
 parameter list, a projection through a reference that nothing in the kernel does and
-[`dependent-fields.md`](dependent-fields.md)'s `sibling!` does not do either. It does not need to, because the record it
-sits in does not survive: [`reference.md`](reference.md) makes the qualified name with its arguments one grammar and the
+[`dependent-fields.md`](/2026/38/reports/dependent-fields)'s `sibling!` does not do either. It does not need to, because the record it
+sits in does not survive: [`reference.md`](/2026/38/reports/reference) makes the qualified name with its arguments one grammar and the
 value of the kernel's one reference atom, so an open application in resolved output is that reference as written and
 `type_ref` and `type_argument` go. An argument is a token inside a reference, typed where materialisation lands it: the
 body is read as the constructor's instance, where `min: 10` is a facet read against `integer_type` under the rule above.

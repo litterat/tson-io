@@ -9,7 +9,7 @@ id: "CR-kernel-namespace"
 # The kernel under its own name: `meta.integer_type`
 
 **Status: landed differently in Revision 39.**
-- **Proposed:** step 7 of [`one-level.md`](one-level.md)'s order of work. The kernel's declarations go under one
+- **Proposed:** step 7 of [`one-level.md`](/2026/38/reports/one-level)'s order of work. The kernel's declarations go under one
   nested schema map, `meta`, so that a schema importing it reserves one name. Each map is closed, declared in one
   document (rule A below). A bare name inside a map resolves there first (lexical scope), and a synthetic is homed by
   the innermost map. `core.tn` re-exports the few constructors a data schema writes as aliases, and the two kernel
@@ -28,14 +28,14 @@ id: "CR-kernel-namespace"
     only the author annotations, no aliases. `meta.ref<T>` and `meta.declared` are written by path, `kind` and
     `scoped` are gone, and `doc`, `set` and `enum` sit at the kernel's root.
 - **Where:** [TSON-SCHEMA] §2.2.3, §3.4, §4.1, §5.3, §5.12, §6, §8–§10, §12.1, §13.2; [TSON-DATA] §3.1, §4, §7.4.
-  [SPEC-FEEDBACK.md #14](../SPEC-FEEDBACK.md) (every `!schema` value declares, from the root) and
-  [SPEC-FEEDBACK.md #15](../SPEC-FEEDBACK.md) (the roots hold the common vocabulary), with the kernel's own layout in
+  [SPEC-FEEDBACK.md #14](/2026/38/reports/implementation-feedback) (every `!schema` value declares, from the root) and
+  [SPEC-FEEDBACK.md #15](/2026/38/reports/implementation-feedback) (the roots hold the common vocabulary), with the kernel's own layout in
   the `@doc` that opens `spec/m/meta.tn`.
 
-It answers decision 2 of [`one-level.md`](one-level.md) ("Decisions before the ladder goes", which names a schema may
+It answers decision 2 of [`one-level.md`](/2026/38/reports/one-level) ("Decisions before the ladder goes", which names a schema may
 use) for the kernel's footprint. It rides on two things one level brings: qualified names at type positions ("The
 reference atom", step 6), and the rule that a namespace's members are types or values by what built them ("Entries are
-types or values"). It was written against [`construction-operator.md`](construction-operator.md)'s `<-` spelling,
+types or values"). It was written against `construction-operator.md`'s `<-` spelling,
 which was dropped. Read `c <- { … }` below as `!c { … }`.
 
 ## The problem
@@ -99,7 +99,7 @@ namespace type stays a value map. The kernel's map type is `meta.schema`, and it
 an alias, so `!schema` names the pre-loaded kernel's whatever a document imports or declares (SPEC-FEEDBACK.md #15).
 
 The document root is then the outermost `!schema`, and the kernel's bootstrap is the same loop one level deeper:
-`meta => meta.schema <- { … }`, closed by pre-loading as now. [`slots.md`](slots.md)'s reading, a schema as an object
+`meta => meta.schema <- { … }`, closed by pre-loading as now. `slots.md`'s reading, a schema as an object
 whose slots may hold objects, is this taken literally.
 
 **What it buys.**
@@ -122,7 +122,7 @@ In order of weight, with what became of each.
 
 **1. Qualified names at type positions.** `type-name = identifier` (§12.1), and `type_kind` holds one segment. A `<-`
 operand, a supertype, a field type and a kind slot must admit `meta.integer_type`. This is one-level.md's step 6, the
-one reference atom over a qualified name, which precedes this note's step 7, and [`reference.md`](reference.md) is its
+one reference atom over a qualified name, which precedes this note's step 7, and [`reference.md`](/2026/38/reports/reference) is its
 grammar: `kind<T>` and `ref<T>` are already one atom there, so a qualified name at a type position is that atom with
 `of` in the `type` family. Under the ladder it is the one new thing, and it is why this step follows the ladder's
 removal. **As built:** landed. A qualified name stands at every type position, as a reference's `of` and as an
@@ -157,7 +157,7 @@ inside `geo` would have to resolve where it is written, and stays open with it (
 **4. Qualified tags in data.** A resolved form is a data document, and it describes a type as `!record { fields: … }`.
 Under this proposal that is `!meta.record { … }`. The lexer already takes `meta.record` as one unquoted token, but
 [TSON-DATA] §7.4's tag production has to admit the dot, and a schemaless read has to leave a dotted tag unresolved
-rather than refuse it. That is a Part 1 edit, made in [`reference.md`](reference.md) ("Qualified tags"). **As built:**
+rather than refuse it. That is a Part 1 edit, made in [`reference.md`](/2026/38/reports/reference) ("Qualified tags"). **As built:**
 landed as `"!" qualified-name`. An annotation's name became `"@" qualified-name` on the same terms, so the kernel's
 annotations are written `@atom.ordering:TOTAL` and `@meta.disjoint` (SPEC-FEEDBACK.md #14, #15).
 
@@ -195,7 +195,7 @@ ordinary declaration composing `meta.atom`, wherever it lives, and nothing says 
 
 **B. Parents on a schema map.** `meta => meta & { decimal_type => atom & { … } }`: meta.tn's `meta` has the kernel's as
 a parent, bare `atom` resolves through it, and an importer reaches `meta.integer_type` and `meta.decimal_type` by one
-prefix, the first still the kernel's entry by delegation. This is [`slots.md`](slots.md)'s parent-slot proposal applied
+prefix, the first still the kernel's entry by delegation. This is `slots.md`'s parent-slot proposal applied
 to a `!schema` value, and it is the relation an import already is at the root, so it is one mechanism. Its cost is the
 diamond. If `core.tn` and `net.tn` each extend `meta`, a schema importing both has two `meta` values that differ, which
 Self refuses as ambiguous and which only a linearisation rule (C3) resolves. TSON has no such rule and should not want

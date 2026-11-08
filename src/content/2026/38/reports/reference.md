@@ -9,7 +9,7 @@ id: "CR-reference"
 # The reference: one syntax, one value
 
 **Status: landed in Revision 39, its data spelling changed.**
-- **Proposed:** step 6 of [`one-level.md`](one-level.md)'s order of work. One grammar for a qualified name with its
+- **Proposed:** step 6 of [`one-level.md`](/2026/38/reports/one-level)'s order of work. One grammar for a qualified name with its
   arguments, written wherever a type is named, and that grammar the value of one kernel reference atom, so that
   `kind_type`, `ref_type`, `type_ref` and `type_argument` go.
 - **What happened:** the grammar and the one atom landed. `kind_type`, `ref_type`, `kind` and the `type_argument`
@@ -19,16 +19,16 @@ id: "CR-reference"
   with the lexer unchanged. The quoted spelling chosen below was dropped ("In data"). Names resolve from the root,
   not by the lexical scope this note assumed.
 - **Where:** [TSON-SCHEMA] §4.1, §4.2, §5.10, §5.12, §8.1, §8.2, §12.1, §12.3; [TSON-DATA] §4, §7.2.5, §7.4, §7.5.
-  [SPEC-FEEDBACK.md #11](../SPEC-FEEDBACK.md) (one atom, one spelling), [#12](../SPEC-FEEDBACK.md) (an application is
-  a reference value), [#13](../SPEC-FEEDBACK.md) (a reference in data is grammar), [#14](../SPEC-FEEDBACK.md)
-  (qualified names and tags, resolved from the root), [#21](../SPEC-FEEDBACK.md) (`allow_sibling`) and
-  [#22](../SPEC-FEEDBACK.md) (`type-ref` names a reference, `type-expr` an expression).
+  [SPEC-FEEDBACK.md #11](/2026/38/reports/implementation-feedback) (one atom, one spelling), [#12](/2026/38/reports/implementation-feedback) (an application is
+  a reference value), [#13](/2026/38/reports/implementation-feedback) (a reference in data is grammar), [#14](/2026/38/reports/implementation-feedback)
+  (qualified names and tags, resolved from the root), [#21](/2026/38/reports/implementation-feedback) (`allow_sibling`) and
+  [#22](/2026/38/reports/implementation-feedback) (`type-ref` names a reference, `type-expr` an expression).
 
-[`one-level.md`](one-level.md)'s "The reference atom" is the measured argument that `kind_type`, `ref_type` and
+[`one-level.md`](/2026/38/reports/one-level)'s "The reference atom" is the measured argument that `kind_type`, `ref_type` and
 `type_ref` are one atom, kept apart only by the ladder's two stores. This note is the syntax that argument stops short
 of: the qualified name, with its arguments, is one grammar wherever a type is named, and that grammar is the atom's
-value. [`kernel-namespace.md`](kernel-namespace.md) depends on it (qualified names at type positions, qualified tags in
-data), and [`typed-facets.md`](typed-facets.md) and [`dependent-fields.md`](dependent-fields.md) lose their last
+value. [`kernel-namespace.md`](/2026/38/reports/kernel-namespace) depends on it (qualified names at type positions, qualified tags in
+data), and [`typed-facets.md`](/2026/38/reports/typed-facets) and [`dependent-fields.md`](/2026/38/reports/dependent-fields) lose their last
 `value`-typed slot to it.
 
 ## The problem
@@ -88,7 +88,7 @@ There is no `kind`: what `of` names decides what a slot holds. A constructor, `t
 slot holds type names. Any other type, and it holds value names. A second spelling would say nothing the first does
 not (SPEC-FEEDBACK.md #11). The atom was first declared `reference`. It was renamed `reference_type` when dependent
 fields gave it `allow_sibling`, a permission true only at a record field's type, where a sibling reference `kind!` may
-stand (SPEC-FEEDBACK.md #21). `<-` is [`construction-operator.md`](construction-operator.md)'s spelling, which was
+stand (SPEC-FEEDBACK.md #21). `<-` is `construction-operator.md`'s spelling, which was
 dropped. `!T { … }` is the spelling throughout.
 
 Its values are the grammar above, so `type_ref` and `type_argument` go. An open alias's `target`, a record template's
