@@ -1,6 +1,17 @@
 # Built-in type vocabulary — full contracts
 
-Source: TSON Part 1 §5 and §7.6 (2026 Revision 38). These annotations apply **only in schemaless processing** (a document with no `!!schema`); where a processor reads such a document into a declared host type, an annotation MUST agree with the family that type names. **Any other `!name` in a schemaless document is a resolver error** — the vocabulary is fixed by the revision, so `!uiid` or `!Date` is caught where it is written. Under a `!!schema`, every `!name` resolves through the schema's namespace. Each built-in name denotes the type its **library** declares under that name — the core type library (`https://tson.io/2026/38/m/core.tn`) for most, the network library (`https://tson.io/2026/38/m/net.tn`) for the network rows below — with the same parsing contract, so a document moving under a schema that imports the library keeps its meaning, and a schema that imports core alone has no `ipv4`.
+Source: TSON Part 1 §5 and §7.6 (2026 Revision 39). These annotations apply **only in schemaless processing** (a document with no `!!import`); where a processor reads such a document into a declared host type, an annotation MUST agree with the family that type names. **Any other `!name` in a schemaless document is a resolver error** — the vocabulary is fixed by the revision, so `!uiid`, `!Date` or a dotted `!geo.address` is caught where it is written. Under `!!import`, every `!name` resolves through the one namespace the imports' closures bind.
+
+Each built-in name denotes the type its **library** declares under that name, with the same parsing contract, so a document moving under a schema whose closure holds the library keeps its meaning:
+
+| Library | Document | Built-in names it declares |
+|---|---|---|
+| kernel | `https://tson.io/2026/39/m/meta.tn` (pre-loaded; every library imports it) | `integer`, `int64`, `text`, `boolean`, `regex`, `bytes`, `iri`, `iri_reference` |
+| numeric | `https://tson.io/2026/39/m/numeric.tn` | `number`, `rational`, `complex`, `int8`–`int256` (but `int64`), `uint8`–`uint256`, `float32`, `float64` |
+| temporal | `https://tson.io/2026/39/m/temporal.tn` | `date`, `time`, `datetime`, `duration`, `period` |
+| net | `https://tson.io/2026/39/m/net.tn` | `uuid`, `uri`, `uri_reference`, `email`, `ipv4`, `ipv6`, `cidr4`, `cidr6`, `mac`, `hostname`, `host`, `media_type` |
+
+`core.tn` imports numeric, temporal and net (each of which imports the kernel), so a closure holding core has every name above. A closure holding only numeric has no `uuid`; one holding no library at all has no `text`.
 
 ## The atom parsing model
 
@@ -9,28 +20,29 @@ Each atom owns a *parsing contract*: which token texts it accepts, and what host
 - **Resolver error** — the atom's grammar cannot read the token at all (`twelve` under `!int32`, `2025-13-45` under `!date`, an unpadded `!bytes`).
 - **Validation error** — the token parsed, but the value violates the atom's range (`9999999999` under `!int32`, `10.0.0.0/33` under `!cidr4`).
 
-Value rules belong to the numeric atoms' ranges, the CIDR prefix rules, and the scheme `!uri` and `!iri` require; every other built-in is a pure format check, `!media_type`'s parameters aside (below).
+Value rules belong to the numeric atoms' ranges, the CIDR prefix rules, and the scheme `!uri` and `!iri` require; every other built-in is a pure format check, `!boolean`'s member check and `!media_type`'s parameters aside (below).
 
-A built-in annotation on a record, map, or array is a **resolver error**. Annotate elements individually.
+A built-in annotation on a record, map, or array is a **resolver error**. Annotate elements individually. A built-in annotation takes no arguments: `!int32<8>` and `!text?` are parse errors.
 
 ## Numeric atoms
 
-| Annotation | Grammar forms accepted | Constraint | Host value |
-|---|---|---|---|
-| `!integer` | `integer`, `based-integer` | none; arbitrary precision | integer |
-| `!int8` … `!int256` | `integer`, `based-integer` | n-bit two's-complement signed range | n-bit integer |
-| `!uint8` … `!uint256` | `integer`, `based-integer` | `0 … 2^n − 1` | n-bit unsigned |
-| `!number` | `integer`, `float` | exact; no `.inf`/`.nan` | exact decimal, digits preserved |
-| `!float32` | `integer`, `float`, `hex-float`, `special-value` | rounded to binary32 (ties-to-even) | 32-bit float |
-| `!float64` | same | rounded to binary64 | 64-bit float |
-| `!rational` | `rational` | denominator nonzero by grammar | rational, not normalised (`"2/4"` round-trips as `2/4`; equals `1/2` in value) |
-| `!complex` | `complex`, `float`, `integer` | — | complex number; surface `a+bi` or `a+bj` |
+| Annotation | Library | Grammar forms accepted | Constraint | Host value |
+|---|---|---|---|---|
+| `!integer` | kernel | `integer`, `based-integer` | none; arbitrary precision | integer |
+| `!int64` | kernel | `integer`, `based-integer` | 64-bit two's-complement signed range | 64-bit integer |
+| `!int8` `!int16` `!int32` `!int128` `!int256` | numeric | `integer`, `based-integer` | n-bit two's-complement signed range | n-bit integer |
+| `!uint8` … `!uint256` | numeric | `integer`, `based-integer` | `0 … 2^n − 1` | n-bit unsigned |
+| `!number` | numeric | `integer`, `float` | exact; no `.inf`/`.nan`; scale is not part of the value (`1`, `1.0`, `1.00` are one value) | exact number, preserved as written |
+| `!float32` | numeric | `integer`, `float`, `hex-float`, `special-value` | rounded to binary32 (ties-to-even) | 32-bit float |
+| `!float64` | numeric | same | rounded to binary64 | 64-bit float |
+| `!rational` | numeric | `rational` | denominator nonzero by grammar | rational, not normalised (`"2/4"` round-trips as `2/4`; equals `1/2` in value) |
+| `!complex` | numeric | `complex`, `float`, `integer` | — | complex number; surface `a+bi` or `a+bj` |
 
 Notes:
 - The integer atoms accept signs and bases uniformly: `!uint32 0xFF00_0000`, `!uint32 +10` are fine; `!uint32 -10` parses and then fails the unsigned range (validation error).
-- `!integer` is the arbitrary-precision integer every width refines. It asserts the integer case where base resolution would not give it — `!integer "42"` is the integer 42, and `!integer 1.5` is a resolver error — and names the family a host-typed read reads by.
-- **A sign bound has no built-in name.** `!positive_integer`, `!non_negative_integer`, `!negative_integer` and `!non_positive_integer` are not in the vocabulary (nor in core): schemaless, each is a resolver error, as any name outside the vocabulary is; under a schema, a bound is a refinement the schema declares for itself (`count => !integer ^ { min: 0 }`).
-- `!number` is the exact tier and the JSON-number mapping. A bare JSON number is a `number`. Use `!float32`/`!float64` only when rounding onto an IEEE grid is intended.
+- `!integer` is the arbitrary-precision integer every width refines (the widths are `numeric.tn`'s refinements of the kernel's `integer`, built with `numeric.integer_type`). It asserts the integer case where base resolution would not give it — `!integer "42"` is the integer 42, and `!integer 1.5` is a resolver error — and names the family a host-typed read reads by.
+- **A sign bound has no built-in name.** `!positive_integer`, `!non_negative_integer`, `!negative_integer` and `!non_positive_integer` are in no library: schemaless, each is a resolver error, as any name outside the vocabulary is; under a schema, a bound is a refinement the schema declares for itself (`count => !integer ^ { min: 0 }`).
+- `!number` is the exact tier (`numeric.decimal_type`) and the JSON-number mapping. A bare JSON number is a `number`. Use `!float32`/`!float64` only when rounding onto an IEEE grid is intended.
 - The float atoms accept plain integers, signed zeros (sign preserved), subnormals, `.inf`, `-.inf`, `.infinity`, `.nan`. Every NaN is the canonical quiet NaN — payloads are not preserved.
 - `!rational` content always contains `/`, so it is always quoted: `!rational "2/3"`.
 - `!complex 3+4i` is expressible unquoted (`+` and `i` are in the profile). Under plain base resolution `3+4i` is a *string*; only the annotation makes it a complex number. Hex floats (`0x1.8p3`) likewise resolve as strings without `!float32`/`!float64`.
@@ -65,9 +77,9 @@ Consequences: `5.` is not a number (digits must follow the point); `.5` is; `1_0
 
 ## Binary atom
 
-| Annotation | Encoding | Notes |
-|---|---|---|
-| `!bytes` | RFC 4648 §4 base64 | padding `=` **required** |
+| Annotation | Library | Encoding | Notes |
+|---|---|---|---|
+| `!bytes` | kernel | RFC 4648 §4 base64 | padding `=` **required** |
 
 `!bytes` is the only binary annotation, and its spelling in this notation is base64. The host value is the
 decoded octets. A token that is not valid base64, or whose length is not a multiple of four, is a resolver
@@ -77,12 +89,16 @@ unquoted profile anyway.
 
 **One type, one tag, both classes.** An alphabet is a *spelling* of an octet sequence, not a kind of value,
 and a schemaless document has no schema to carry a selector — so one alphabet is fixed for the whole class of
-text encodings. Under a schema the same type `bytes` carries an `encoding` selector, and another alphabet is
-another *instance* (`hexdigest => !bytes_type { encoding: HEX }`), never a refinement: a spelling narrows
-nothing, so `hexdigest ^ bytes` would claim an IS-A no base64 position could honour. Equality, identity and
-content addressing are over the octets and never over a spelling.
+text encodings. Under a schema the same type, the kernel's `bytes`, carries an `encoding` selector, and another
+alphabet is another *instance* of the constructor (`hexdigest => !binary.bytes_type { encoding: HEX }`), never
+a refinement: a spelling narrows nothing, so `!bytes ^ { encoding: HEX }` would claim an IS-A no base64
+position could honour. Equality, identity and content addressing are over the octets and never over a
+spelling.
 
 ## Temporal atoms
+
+Every row denotes `temporal.tn`'s entry of the same name, built with the library's `temporal.date_type`,
+`temporal.time_type` and so on.
 
 | Annotation | Format | Quote? |
 |---|---|---|
@@ -138,18 +154,17 @@ overflows with no single component long enough to catch.
 
 ## Text, identifier and network atoms
 
-The **Library** column names the companion artifact whose type the annotation denotes: `core` or `net` (`net.tn`).
-
 | Annotation | Library | Contract | Quote? |
 |---|---|---|---|
-| `!boolean` | core | the tokens `true` and `false`, case-sensitive; any other token is a validation error (an enum-member violation). The form is not consulted: `!boolean "true"` and `!boolean true` are one value. Core's `boolean`, `!enum [true false]` | no |
-| `!text` | core | any token; host value is the text. Exists to assert the string case (`!text "42"`) and to anchor the `text_type` family on which the identifier, URI, IRI, `regex` and `email` families build | as content requires |
-| `!uuid` | core | RFC 9562, 8-4-4-4-12 hex with hyphens | no |
-| `!uri` | core | RFC 3986 URI (§3): a scheme is **required**; US-ASCII | yes (`:`) |
-| `!uri_reference` | core | RFC 3986 URI-reference (§4.1): a URI or a relative reference; US-ASCII | yes if it contains `:`, `/`, `?`, `#`, `%`, `@` |
-| `!iri` | core | RFC 3987 IRI (§2.2): a scheme is required; characters beyond US-ASCII written as themselves | yes (`:`) |
-| `!iri_reference` | core | RFC 3987 IRI-reference (§2.2): an IRI or a relative reference | as `!uri_reference` |
-| `!email` | core | RFC 5322 `addr-spec` **restricted to `dot-atom "@" dot-atom`** — no quoted local parts (`"a b"@x.com`), no domain literals (`u@[192.0.2.1]`), no comments | yes (`@`) |
+| `!boolean` | kernel | the tokens `true` and `false`, case-sensitive; any other token is a validation error (an enum-member violation). The form is not consulted: `!boolean "true"` and `!boolean true` are one value. The kernel's `boolean`, `!enum [true false]` | no |
+| `!text` | kernel | any token; host value is the text. Exists to assert the string case (`!text "42"`) and to anchor the `unicode.text_type` family on which the identifier, URI, IRI, `regex` and `email` families build | as content requires |
+| `!regex` | kernel | an RFC 9485 I-Regexp pattern (linear-time matching by construction); host value is the pattern | as content requires — nearly always, since `^ $ * + ? ( ) [ ] { } \ |` are outside the profile |
+| `!iri` | kernel | RFC 3987 IRI (§2.2): a scheme is required; characters beyond US-ASCII written as themselves | yes (`:`) |
+| `!iri_reference` | kernel | RFC 3987 IRI-reference (§2.2): an IRI or a relative reference | yes if it contains `:`, `/`, `?`, `#`, `%`, `@` |
+| `!uuid` | net | RFC 9562, 8-4-4-4-12 hex with hyphens | no |
+| `!uri` | net | RFC 3986 URI (§3): a scheme is **required**; US-ASCII | yes (`:`) |
+| `!uri_reference` | net | RFC 3986 URI-reference (§4.1): a URI or a relative reference; US-ASCII | as `!iri_reference` |
+| `!email` | net | RFC 5322 `addr-spec` **restricted to `dot-atom "@" dot-atom`** — no quoted local parts (`"a b"@x.com`), no domain literals (`u@[192.0.2.1]`), no comments | yes (`@`) |
 | `!ipv4` | net | dotted quad per RFC 3986 `IPv4address` (`192.0.2.1`; no leading-zero octets, no shorthand) | no |
 | `!ipv6` | net | RFC 4291 §2.2 text form; `::` compression allowed; **no zone id** (`fe80::1%eth0` is rejected); no brackets (`[::1]` is a `!host` spelling) | yes |
 | `!cidr4` | net | `addr/prefix`, prefix 0–32; **host bits must be zero** (`10.0.0.1/8` is a validation error) | yes |
@@ -159,7 +174,10 @@ The **Library** column names the companion artifact whose type the annotation de
 | `!host` | net | a host name, an IPv4 address, or an IPv6 address with or without brackets (RFC 3987 `ihost`, DNS names only); no zone id, no percent-encoding | IPv6 yes |
 | `!media_type` | net | an RFC 6838 media type, `type/subtype`, each a `restricted-name` (≤ 127 characters: letters, digits, `! # $ & - ^ _ . +`, starting with a letter or digit); US-ASCII; **no parameters**; no media range (`*/*`, `text/*`) | yes (`/`) |
 
-CIDR prefix out of range or nonzero host bits → validation error. Everything else in this table → resolver error on mismatch, with two more value rules below (a relative reference under `!uri`/`!iri`; parameters under `!media_type`).
+Note the split: `iri` and `iri_reference` are the kernel's, `uri` and `uri_reference` `net.tn`'s — a schema
+whose closure holds only the kernel has `!iri` and no `!uri`.
+
+CIDR prefix out of range or nonzero host bits → validation error. Everything else in this table → resolver error on mismatch, with three more value rules below (`!boolean`'s members; a relative reference under `!uri`/`!iri`; parameters under `!media_type`).
 
 Every atom here but `!boolean` is **string-class**: a bare token schemaless is a string, and only the annotation says which atom it is. The same overlap is why, under a schema, `( hostname | ipv4 | ipv6 )` would need a tag on every value — and why `host` is one atom instead.
 
@@ -214,10 +232,12 @@ address its IPv4-mapped IPv6 form. Zone identifiers (`fe80::1%eth0`) and percent
 (`Text/HTML` = `text/html`). The schemaless atom names a media type proper and **admits no parameters** — a
 `Content-Type` value such as `"text/html; charset=utf-8"` is rejected (Part 2 §5.5 classes it as the withheld
 `allow_parameters` permission, a validation error). A schema position that takes parameters
-declares its own instance (`content_type => !media_type_type { allow_parameters: true }`), where parameters
+declares its own instance (`content_type => !net.media_type_type { allow_parameters: true }`), where parameters
 follow RFC 9110 §8.3.1 and the canonical text is `text/html;charset=utf-8`. A media range (`*/*`, `text/*`) is
 `Accept`'s pattern, not a media type, and is a resolver error. Media types contain `/` and are always quoted.
 
 ## What does not exist
 
-There is no `!binary`, `!base64`, `!base64url`, `!base32` or `!hex` — the one binary tag is `!bytes`. Nor `!string`, `!str`, `!int`, `!positive_integer`, `!non_negative_integer`, `!negative_integer`, `!non_positive_integer`, `!float`, `!double`, `!bool`, `!timestamp`, `!decimal`, `!url`, `!ip`, `!domain`, `!mime`, `!content_type`, `!json`, `!any`, `!null`, `!void`, `!enum`, `!list`, `!array`, `!map`, `!record`. In a schemaless document each is a **resolver error** (Part 1 §3.2): the vocabulary is a property of the revision, not of the deployment, so the rejection is portable, and a diagnostic names the nearest built-in where there is one. A host type a reading application happens to bind is no exception.
+There is no `!binary`, `!base64`, `!base64url`, `!base32` or `!hex` — the one binary tag is `!bytes`. Nor `!string`, `!str`, `!int`, `!positive_integer`, `!non_negative_integer`, `!negative_integer`, `!non_positive_integer`, `!float`, `!double`, `!bool`, `!timestamp`, `!decimal`, `!url`, `!ip`, `!domain`, `!mime`, `!content_type`, `!pattern`, `!json`, `!any`, `!null`, `!void`, `!enum`, `!set`, `!list`, `!array`, `!map`, `!record`, nor any dotted name (`!net.uuid_type`, `!meta.record`). In a schemaless document each is a **resolver error** (Part 1 §3.2): the vocabulary is a property of the revision, not of the deployment, so the rejection is portable, and a diagnostic names the nearest built-in where there is one. A host type a reading application happens to bind is no exception.
+
+`!schema` is not a data tag at all: a root tagged `!schema` makes the document a schema document (Part 1 §2.2), which a data-only processor rejects as such.

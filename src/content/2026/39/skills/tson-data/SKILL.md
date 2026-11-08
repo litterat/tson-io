@@ -1,23 +1,23 @@
 ---
 name: tson-data
-description: Write, read, convert, and fix TSON data documents (.tn files) — the Typed Schema Object Notation text format, JSON-like but not a JSON superset, with optional quotes and commas, records vs maps, the void sentinel `_` (there is no `null`), annotations (`@`), type annotations (`!uuid`, `!date`, `!bytes`…) and directives (`!!id`, `!!schema`). Use this skill whenever the user mentions TSON, a `.tn` file, tson.io, or asks to convert JSON/YAML/TOML into TSON, to write example data for a TSON schema, or to explain why a TSON document fails to parse. Also use it when a user writes something that looks like TSON (unquoted keys, arrow-separated maps, `!type` prefixes, `_` values) even if they don't name the format. For writing schema documents (files with `!!meta`, name-to-type declarations) use the tson-schema skill instead.
+description: Write, read, convert, and fix TSON data documents (.tn files) — the Typed Schema Object Notation text format, JSON-like but not a JSON superset, with optional quotes and commas, records vs maps, the void sentinel `_` (there is no `null`), annotations (`@`), type annotations (`!uuid`, `!date`, `!bytes`, `!geo.address`…) and the header directives `!!id` and `!!import`. Use this skill whenever the user mentions TSON, a `.tn` file, tson.io, or asks to convert JSON/YAML/TOML into TSON, to write example data for a TSON schema, or to explain why a TSON document fails to parse. Also use it when a user writes something that looks like TSON (unquoted keys, arrow-separated maps, `!type` prefixes, `_` values) even if they don't name the format. For writing schema documents (a root tagged `!schema { … }` holding name-to-type declarations) use the tson-schema skill instead.
 ---
 
 # TSON data documents
 
-TSON (Typed Schema Object Notation) is a Unicode text format in the JSON family: quotes and commas are optional where the structure is unambiguous, there are three containers instead of two (records, maps, arrays), a void sentinel `_`, and three kinds of augmentation — annotations `@name`, type annotations `!name`, and directives `!!name:"…"`.
+TSON (Typed Schema Object Notation) is a Unicode text format in the JSON family: quotes and commas are optional where the structure is unambiguous, there are three containers instead of two (records, maps, arrays), a void sentinel `_`, and three kinds of augmentation — annotations `@name`, type annotations `!name`, and header directives `!!name:"…"`.
 
 **TSON is JSON-*like*, not a JSON superset.** A JSON document is not a TSON document, and JSON is a second encoding of the same model (*TSON Part 3: JSON Encoding*), read through a JSON reader that maps its `null` to void. Do not paste JSON and call it TSON — convert it (see below).
 
-This skill covers **data documents** — the Class 1 format defined by *TSON Part 1: Text Data Format*, 2026 Revision 38. The rules below are the ones an author needs; `references/` holds the unusual cases.
+This skill covers **data documents** — the Class 1 format of *TSON Part 1: Text Data Format*, 2026 Revision 39; `references/` holds the unusual cases.
 
-> The 2026 series is a working draft: URLs such as `https://tson.io/2026/38/m/core.tn` carry the revision number, and pins against them change with it.
+> The 2026 series is a working draft: URLs such as `https://tson.io/2026/39/m/core.tn` carry the revision number, and pins against them change with it.
 
 ## Workflow
 
-1. **Decide the document kind.** A data document has an optional `!!id`, an optional `!!schema`, then exactly one value. If the file needs `!!meta` or `name => type` declarations, it is a *schema* document — switch to the tson-schema skill.
-2. **Write the header.** `!!id:"…"` first (only if the document is published or hash-pinned), then `!!schema:"…"` if a schema governs it. A directive argument is a single-line quoted IRI-reference, the `:` is glued to the name, and each directive is on its own physical line.
-3. **Write the value**, following the quoting rule and the container rules below. Under a schema, annotate the root with its type (`!order { … }`).
+1. **Decide the document kind.** A document is an optional `!!id`, any number of `!!import`s, then exactly one value. If that value is tagged `!schema` (`!schema { name => type … }`), it is a *schema* document — switch to the tson-schema skill. Anything else is data.
+2. **Write the header.** `!!id:"…"` first (only if the document is published or hash-pinned), then one `!!import:"…"` per schema the data uses — each a single-line quoted IRI-reference, the `:` glued to the name, one directive per line.
+3. **Write the value**, following the quoting rule and the container rules below. Under `!!import` the root **must** carry its type (`!order { … }`).
 4. **Self-check** against the pitfalls table at the end and the full table in `references/pitfalls.md`. If a hash pin is needed, compute it with `scripts/pin.py`; never invent one.
 
 ## Structure
@@ -32,15 +32,17 @@ Values are separated by whitespace, a comma, or both, and **a comma may follow a
 
 The brace form is decided by the first thing inside it: `{}` is an *empty brace* (resolves to an empty record unless a schema says map); `{ name: …` is a record; `{ key => …` is a map. A record cannot contain `=>` entries and a map cannot contain `:` fields.
 
+Field order carries no meaning but for one schema rule: a field typed by a sibling (`value?: kind!`) follows that sibling, unless the schema pins it or dispatches on it — `{ kind: int32  value: 42 }`; the reverse is a validation error.
+
 **There is no comment syntax.** `#`, `//`, `/* */` are all lexer errors. Put explanatory text in a `@doc:"…"` annotation on the value it describes.
 
 ## Tokens and the quoting rule
 
-A scalar is a *token*: unquoted (`Alice`, `42`, `2025-03-13`, `A-100`, `名前`), single-line quoted (`"has spaces"`), or multi-line quoted (`"""…"""`). Quoting changes a value's identity in one place only: base type resolution, where `42` is a number and `"42"` is the string. Everywhere else form is not meaning — `name` and `"name"` are one field name, `!date 2025-03-13` equals `!date "2025-03-13"`.
+A scalar is a *token*: unquoted (`Alice`, `42`, `2025-03-13`, `A-100`, `名前`), single-line quoted (`"has spaces"`), or multi-line quoted (`"""…"""`). Quoting changes a value's identity in one place only: base type resolution, where `42` is a number and `"42"` the string (under a schema, the same reading picks an untagged choice's variant). Elsewhere form is not meaning — `name` and `"name"` are one field name, `!date 2025-03-13` equals `!date "2025-03-13"`.
 
 An unquoted token may contain only letters and digits of any script (`XID_Continue`) plus `-`, `+`, `.`, and must start with one of those. Two-clause decision procedure for any string value:
 
-1. **Quote if any character is outside that set** — a space, or any of ``: @ / % $ # * ' ` \ & < > ? | ; ( ) ^ = ! ~ { } [ ] , "``. That makes the rule *always* for whole kinds of content: times and datetimes (`"14:30:00Z"`), URLs with a scheme, email addresses, file paths, IPv6 addresses, CIDR networks, rationals (`"2/3"`), money (`"$19.99"`), anything with `..`.
+1. **Quote if any character is outside that set** — a space, or any of ``: @ / % $ # * ' ` \ & < > ? | ; ( ) ^ = ! ~ { } [ ] , "``. So *always* quote times (`"14:30:00Z"`), URLs with a scheme, emails, paths, IPv6, CIDRs, rationals (`"2/3"`), money (`"$19.99"`), anything with `..`, and text with `!`, `<` or `>` — bare, `Hello!` and `List<String>` are references, not text (below).
 2. **Quote if the bare token would resolve to something other than the intended string.** `"true"`, `"false"`, `"42"`, `"1e5"`, `"-0.0"`, `".inf"`, and hex-shaped identifiers such as `"0x71C7…"` — an unquoted `0x…` token is a number. `null` is *not* on this list: it is an ordinary string, so bare `null` and `"null"` are the same value.
 
 Also quote a value that would start with `_` (`"_id"`; bare `_` is the void sentinel) and the single characters `"-"`, `"+"`, `"."` (bare, `-` and `+` are schema-grammar tokens and `.` a lexer error).
@@ -51,16 +53,14 @@ Unquoted tokens must be in Unicode NFC (a lexer error otherwise), so emit NFC. A
 
 ### Field names
 
-Annotation and type-annotation names are **identifiers** — unquoted, starting with `XID_Start`, continuing with `XID_Continue` or `-` — or a parse error. A **field name** is any single-line token, quoted or not (quoting is spelling, not a different name), judged by whoever owns the record:
+Annotation and type-annotation names are unquoted **qualified names** — identifiers (`XID_Start`, then `XID_Continue` or `-`) joined by `.`: `doc`, `atom.ordering`, `geo.address` — or a parse error. A **field name** is any single-line token, quoted or not (quoting is spelling, not a different name), judged by whoever owns the record:
 
 - **Schemaless**, its text (NFC) must be an identifier, or it is a **resolver error**: `{ "first name": 1 }`, `{ "_id": 1 }`, `{ "@id": 1 }`, `{ 42x: 2 }`. Unquoted `{ _id: 1 }` is a parse error (`_` lexes as the void sentinel).
 - **Under a schema**, the record's *name type* judges it — the identifier rule by default; a record declared over a relaxed name type (a JSON-LD or OpenAPI translation) admits `"@id"` or `"$ref"`, written quoted as declared. An undeclared name is a validation error.
 
 **A key that is not a name belongs in a map**: `{ "Content-Type" => "text/plain" }`, `{ "_id" => 1 }`. Map keys are values, not names — unless the schema types one (or any value) by an **identifier family**, which makes it a name under that family's profile.
 
-Names also meet **name hygiene**: a processor refuses look-alikes under its policy (Cyrillic `а` in `аdmin`, two skeleton-equal names in one record or in one identifier-keyed map). A refusal is a policy outcome, not an invalid document; keep names in one script per word.
-
-`true`, `false` and `null` are identifiers like any other — there is no keyword list — so `{ true: 1 }` is legal.
+Names also meet **name hygiene**: look-alikes (Cyrillic `а` in `аdmin`) are *refused* by a processor's policy, not invalid; keep names in one script per word. `true`, `false` and `null` are identifiers like any other, so `{ true: 1 }` is legal.
 
 ### Quoted strings
 
@@ -68,11 +68,11 @@ Single-line strings use the escapes `\" \\ \b \f \n \r \t` plus TSON's `\s` (a s
 
 Character escapes are `\uXXXX` or `\u{1-6 hex}`, denoting a Unicode scalar value. **There are no surrogate pairs**: JSON's `\uD83D\uDE00` is two lexer errors — write `\u{1F600}`, or paste the character.
 
-Multi-line strings open with `"""` plus a line break and close with `"""` on its own line. Common leading indentation (the closing line included; tabs and spaces do not match) and trailing spaces are stripped (`\s` keeps one); the final newline is not part of the value. See `notes` in the worked example, and `references/grammar-notes.md`.
+Multi-line strings open with `"""` plus a line break and close with `"""` on its own line; common leading indentation (the closing line's included) and trailing spaces are stripped (`\s` keeps one), and the final newline is not part of the value.
 
 ## What an unquoted token means (base type resolution)
 
-Base type resolution assigns one of **three** host base types — boolean, number, string — and it applies **only where nothing types the position**: a document with no `!!schema`, read into no declared type. Under a schema, or in a read into a host type naming a Part 1 family, the type's own contract reads the token. A built-in `!type` annotation also overrides it for its token.
+Base type resolution assigns one of **three** host base types — boolean, number, string — **only where nothing types the position**: a document with no `!!import`, read into no declared type. Under a schema, a built-in annotation, or a read into a host type naming a Part 1 family, the type's own contract reads the token.
 
 Where it applies, every unquoted token is resolved in this order — first match wins, and the whole token must match:
 
@@ -80,70 +80,72 @@ Where it applies, every unquoted token is resolved in this order — first match
 2. A number per the number grammar: integers (`42`, `-7`, `+3`, `1_000_000`), based integers (`0xFF`, `0o755`, `0b1010`, lowercase prefix), floats (`1.5`, `.5`, `6.02e23`, `-2e-3`, `+0.0`, `-0.0`), and the specials `.inf`, `-.inf`, `.infinity`, `.nan`. No leading zeros: `007`, `5.`, `1.2.3`, `3+4i` and `2/3` are strings.
 3. Otherwise a string — **`null` included**. There is no null keyword; a bare `null` is the four-character string.
 
-The fall-through is total: base resolution never rejects a token. To have `2025-03-13` read as a date, say so with an annotation (`!date 2025-03-13` is checked; `!int32 007` is a resolver error) or a schema. Only `true` and `false` are keyword-like, and only here.
-
-Numbers are arbitrary precision. Distinct spellings of one value are equal (`255` = `0xFF`, `.5` = `0.5`), and re-emitters should preserve the original spelling.
+The fall-through is total: base resolution never rejects a token. To read `2025-03-13` as a date, annotate it (`!date 2025-03-13`; `!int32 007` is a resolver error) or use a schema. Numbers are arbitrary precision; distinct spellings of one value are equal (`255` = `0xFF`, `.5` = `0.5`), and re-emitters should preserve the original spelling.
 
 **Field names are names and map keys are text** — neither is resolved. Map key identity is textual (`07` and `7` are different keys; `Alice` and `"Alice"` are the same key).
 
 ## `_` — the void sentinel
 
-`_` is the **void sentinel**: the slot is present and its value is *void*. It is the only spelling of void; there is no `null`. A key that does not appear at all is **missing**, a different thing. `_` can stand at any value position — field value, map entry value, array element (`[1 _ 3]` has three elements), or the whole document (`!!id:"…"` then `_` is metadata-only) — but never as a map key.
-
-Under a schema each kind of nothing has its own name. A field that may be missing is **optional** (`a?: T`); a slot that may hold `_` is **voidable**, its type carrying `?` (`a: T?`, `a?: T?`, `[T?]`, `{K => V?}`). `_` at a slot that is not voidable is a validation error; at a defaulted field (`a?: T ~ v`) omitting the key is what injects the default. Schemaless, neither spelling carries a value.
+`_` is the **void sentinel**: the slot is present and its value is *void* — the only spelling of void; there is no `null`. A key that does not appear at all is **missing**, a different thing. `_` can stand at any value position (`[1 _ 3]` has three elements; a document may be `!!id:"…"` then `_`) but never as a map key. Under a schema a field that may be missing is **optional** (`a?: T`) and a slot that may hold `_` is **voidable** (`a: T?`, `[T?]`, `{K => V?}`); `_` elsewhere is a validation error, and at a defaulted field (`a?: T ~ v`) omitting the key injects the default.
 
 ## Augmentation
 
-All three forms attach to the value that *follows* them, in this order: directive, annotations, type annotation, core value.
+Annotations, then a type annotation, attach to the core value that *follows* them; directives belong to the header:
 
 ```
-shipping: !!schema:"https://example.com/address.tn" @doc:"billing copy" !address { street: "12 Byron Rd"  city: London }
+shipping: @doc:"billing copy" !geo.address { street: "12 Byron Rd"  city: London }
 ```
 
-**Annotations `@name` or `@name:value`.** The `@` is glued to the name; with a value the `:` is glued too, and the value is exactly one data value. A valueless annotation needs whitespace after its name. Annotations attach to values, never to field names: `{ name: @deprecated Alice }`, not `{ @deprecated name: Alice }`. On a map entry, annotations before the key annotate the key and those after `=>` the value. The same annotation may repeat; order is preserved. Without a schema they are preserved and never validated; under a schema each `@name` must be a type in the schema's namespace (`@doc` needs core imported) and its value must conform.
+**Annotations `@name` or `@name:value`.** The `@` and any `:` are glued to the name; the value is one data value; a valueless annotation needs whitespace after its name. Annotations attach to values, never to field names: `{ name: @deprecated Alice }`, not `{ @deprecated name: Alice }`. On a map entry, annotations before the key annotate the key and those after `=>` the value. Names may repeat; order is preserved. Schemaless they are kept, never validated; under `!!import` each `@name` must resolve in the document's namespace (`@doc` is the kernel's, `@deprecated` core's) and its value conform.
 
-**Type annotations `!name`.** Glued `!` plus an identifier, then whitespace (or directly a `{`/`[`). `!int32 "5"` needs the space; `!person{name:Alice}` is fine. It tags the value that follows, not its contents. Only a plain name may follow `!` — `![text]`, `!list<text>`, `!text?` are parse errors.
+**Type annotations `!name`.** Glued `!` plus a qualified name, then whitespace (or directly a `{`/`[`). `!int32 "5"` needs the space; `!person{name:Alice}` is fine. `!geo.address` names the member `address` of the schema map `geo`. It tags the value, not its contents. Only a name may follow `!` — `![text]`, `!box<text>`, `!text?` are parse errors; a generic type reaches a tag through a name the schema gives it (`text_box => box<text>`, then `!text_box`).
 
-Without a schema, only the built-in vocabulary (next section) exists: any other `!name` — `!uiid`, `!Date`, `!person` — is a **resolver error**; a document that names its own types names the schema declaring them. Under a `!!schema`, **every** `!name`, built-in names included, must resolve in that schema's namespace; a schema that wants `!uuid` imports core, and one that wants `!ipv4` imports `net.tn`.
+Without `!!import`, only the built-in vocabulary (next section) exists: any other `!name` — `!uiid`, `!Date`, `!person`, any dotted name — is a **resolver error**. Under `!!import`, **every** `!name`, built-ins included, must resolve in the one namespace the imports' closures bind. `!uuid` needs `net.tn` in that closure, `!date` `temporal.tn`, `!int32` `numeric.tn`, `!text` the kernel `meta.tn`; `core.tn` brings all four.
 
-**Directives `!!name:"…"`.** Only four exist: `!!id` (first line), `!!schema` (data-document header, at most once; or immediately before a field value, map entry value or array element, to scope that one value), `!!meta` and `!!import` (schema documents only). Any other name, or a directive before a field name, map key or annotation value, is a parse error. The argument is an IRI-reference, and parsing never fetches it. An `!!id` must already be canonical — lowercase host, an international name in U-labels (`bücher.example`, not `xn--…`), an NFC path with non-ASCII written as itself, no port, userinfo or fragment, and with no host an absolute path (`/local/orders.tn`); a reference such as `!!schema` may use any spelling of the same identity. **A schemaless document opens no schema scope** — a nested `!!schema` in a document with no `!!schema` of its own is a validation error.
+**Directives `!!name:"…"`.** Only two exist, both header-only: `!!id` (first line, optional) and `!!import` (after it, repeatable; several imports are one namespace). A `!!` at any value position, and any other name — `!!schema` and `!!meta` included, retired in revision 39 — is a parse error. The argument is an IRI-reference, never fetched by parsing. An `!!id` is written canonical — lowercase host in U-labels (`bücher.example`, not `xn--…`), NFC path with non-ASCII as itself, no port, userinfo or fragment, a host-less id an absolute path (`/local/orders.tn`); an `!!import` may use any spelling of that identity.
+
+## References: `set<text>` and `kind!`
+
+Two unquoted scalar forms stand beside the token, each one value: an **application** — a qualified name, an adjacent `<`, arguments (names, applications or tokens, never `[…]`, `{…}` or `?`), `>`: `set<text>`, `geo.pair<text int32>` — and a **sibling reference**, one identifier, an adjacent `!`, then whitespace: `kind! `. `box <text>`, `box<>`, `kind!}` and `a!b` are parse errors. Schemaless, each is kept as a structured value — legal, and *not text*. Under a schema they are read at reference-typed slots only (schema-describing data, a `meta.type_ref` field): a type's name bare (`t: geo.address`), an application only if the schema closes that same one. Ordinary data rarely has either.
 
 ## Built-in type annotations (schemaless)
 
-When no schema is in scope, these names parse the following token by the named atom's contract instead of base resolution. They apply to scalars only — annotate elements individually (`[!int32 1 !int32 2]`), never the array. Names are case-sensitive (`!UUID` is not built in).
+With no `!!import`, these names parse the next token by the atom's contract instead of base resolution — scalars only (`[!int32 1 !int32 2]`, never the array), case-sensitive (`!UUID` is not built in). **Lib** is the document declaring each under a schema: *kernel* `meta.tn`, *num* `numeric.tn`, *temp* `temporal.tn`, *net* `net.tn`.
 
-| Annotation | Accepts | Must quote? |
+| Annotation | Lib | Accepts |
 |---|---|---|
-| `!integer` | decimal or based integer, any size (`!integer "42"` is 42; `!integer 1.5` is rejected) | no |
-| `!int8` … `!int256`, `!uint8` … `!uint256` | as `!integer`, range-checked (`!uint8 300` and `!uint32 -1` fail validation) | no |
-| `!number` | exact decimal, preserved as written; no `.inf`/`.nan` | no |
-| `!float32 !float64` | integer, float, hex-float (`0x1.8p3`), `.inf`, `.nan`; rounded to IEEE grid | no |
-| `!rational`, `!complex` | `a/b`, b nonzero, not normalised; `3+4i`, `2.5-1j` or a plain number | `!rational` **yes** (`/`) |
-| `!text` | any token; asserts "this is a string" (`!text "42"`) | as content requires |
-| `!boolean` | `true` or `false`; `!boolean "true"` is the same value | no |
-| `!date` | RFC 3339 `YYYY-MM-DD` | no |
-| `!time` | RFC 3339 `HH:MM:SS[.frac]` + mandatory offset; the time of day **in UTC**; second 60 rejected | **yes** |
-| `!datetime` | RFC 3339 date-time with offset; the **instant**; second 60 rejected | **yes** |
-| `!duration` | elapsed time: `W`, `D`, `H`, `M`, `S` components — no `Y`, no month `M`; signed; no colon form | no |
-| `!period` | calendar span: a `Y` component, an `M` component, or both, nothing else; signed | no |
-| `!uuid` | RFC 9562 | no |
-| `!uri`, `!uri_reference`, `!iri`, `!iri_reference` | RFC 3986 (US-ASCII only) and RFC 3987 (non-ASCII as itself); `!uri` and `!iri` **require** a scheme, the `_reference` forms also take a relative reference | with a scheme, yes |
-| `!email` | `local@domain` (dot-atom only; no quoted local parts or `[ip]` literals) | **yes** (`@`) |
-| `!bytes` | base64 (RFC 4648 §4), **padding required**; the value is the octets | recommended |
-| `!ipv4`, `!ipv6` · net | dotted quad; RFC 4291 text, no zone id (`%eth0`), no brackets | IPv6 **yes** |
-| `!cidr4 !cidr6` · net | `addr/prefix`; host bits must be zero | **yes** (`/`) |
-| `!mac` · net | EUI-48, `aa-bb-cc-dd-ee-ff` or `aa:bb:…` | colon form yes |
-| `!hostname` · net | domain name in LDH, A- or U-labels (`Example.COM` = `example.com`); no trailing dot, no uppercase beyond ASCII, no digit-initial last label | no |
-| `!host` · net | a hostname, IPv4 or IPv6 address (`"[::1]"` = `"::1"`); no zone id | IPv6 **yes** |
-| `!media_type` · net | `type/subtype`, compared without case; no parameters (`;charset=…`), no `*` ranges | **yes** (`/`) |
+| `!integer`, `!int64` | kernel | decimal or based integer (`!integer "42"` is 42; `!integer 1.5` is rejected); `!int64` range-checked |
+| `!int8` … `!int256`, `!uint8` … `!uint256` | num | as `!integer`, range-checked (`!uint8 300`, `!uint32 -1` fail validation) |
+| `!number` | num | exact decimal; no `.inf`/`.nan` |
+| `!float32 !float64` | num | integer, float, hex-float (`0x1.8p3`), `.inf`, `.nan`; rounded to the IEEE grid |
+| `!rational`, `!complex` | num | `"a/b"`, b nonzero, not normalised; `3+4i`, `2.5-1j` or a plain number |
+| `!text`, `!boolean` | kernel | any token, asserting a string (`!text "42"`); `true`/`false` (`!boolean "true"` is the same value) |
+| `!regex` | kernel | RFC 9485 I-Regexp |
+| `!bytes` | kernel | base64 (RFC 4648 §4), **padding required**; the value is the octets |
+| `!iri`, `!iri_reference` | kernel | RFC 3987, non-ASCII as itself; `!iri` **requires** a scheme |
+| `!date` | temp | RFC 3339 `YYYY-MM-DD` |
+| `!time`, `!datetime` | temp | RFC 3339 time / date-time, offset mandatory; a UTC time of day / an instant; second 60 rejected |
+| `!duration` | temp | elapsed time: `W`, `D`, `H`, `M`, `S` components — no `Y`, no month `M`; signed; no colon form |
+| `!period` | temp | calendar span: a `Y` component, an `M` component, or both, nothing else; signed |
+| `!uuid` | net | RFC 9562 |
+| `!uri`, `!uri_reference` | net | RFC 3986, US-ASCII only; `!uri` **requires** a scheme |
+| `!email` | net | `local@domain`, dot-atom only (no quoted local parts, no `[ip]` literals) |
+| `!ipv4`, `!ipv6` | net | dotted quad; RFC 4291 text, no zone id (`%eth0`), no brackets |
+| `!cidr4 !cidr6` | net | `addr/prefix`; host bits must be zero |
+| `!mac` | net | EUI-48, `aa-bb-cc-dd-ee-ff` or `aa:bb:…` |
+| `!hostname` | net | domain name, LDH/A-/U-labels (`Example.COM` = `example.com`); no trailing dot, no uppercase beyond ASCII, no digit-initial last label |
+| `!host` | net | a hostname, IPv4 or IPv6 address (`"[::1]"` = `"::1"`); no zone id |
+| `!media_type` | net | `type/subtype`, caseless; no parameters (`;charset=…`), no `*` ranges |
 
-Rows marked *net* denote the network library `net.tn`'s types, the rest core's: under a schema each exists only if the schema imports its library. There is no `!base64`, `!hex`, `!string`, `!int`, `!bool`, `!timestamp`, `!ip` or `!url`, and no sign-bound `!positive_integer` — each is a resolver error; under a schema a bound is a refinement the schema declares. A token the atom cannot parse is a resolver error (a leap second, non-ASCII under `!uri`); a parsed value outside the atom's value space is a validation error (`!uint8 300`, a relative reference under `!uri`). Details: `references/builtin-types.md`.
+**Quote** `!time`, `!datetime`, `!rational`, `!email`, `!cidr4`/`!cidr6`, `!media_type`, IPv6, colon-form MACs and anything with a scheme; quote `!bytes`, and usually `!regex`. Dates, durations, periods, UUIDs, dotted quads and ASCII host names go bare.
+
+There is no `!base64`, `!hex`, `!string`, `!int`, `!bool`, `!timestamp`, `!ip`, `!url` or `!positive_integer` (resolver errors). A token the atom cannot parse is a resolver error (a leap second, non-ASCII under `!uri`); a parsed value outside its value space a validation error (`!uint8 300`, a relative `!uri`). Details: `references/builtin-types.md`.
 
 ## Worked example
 
 ```
 !!id:"https://example.com/orders/1042.tn"
-!!schema:"https://example.com/order.tn"
+!!import:"https://example.com/order.tn"
 @doc:"Order record exported 2026-07-03"
 !order {
   order_id:  1042
@@ -164,11 +166,14 @@ Rows marked *net* denote the network library `net.tn`'s types, the rest core's: 
   ]
   discounts: { @expires:"2026-12-31" WELCOME10 => "10%" loyalty => _ }
   headers:   { "Content-Type" => "application/json" }
+  shipping:  !geo.address { street: "12 Byron Rd"  city: London }
   notes: """
     Leave the parcel with the concierge.
     """
 }
 ```
+
+`order.tn` imports `core.tn` (so `@doc`, `@deprecated`, `!uuid`, `!date` resolve) and declares `order`, `expires` and the nested map `geo`.
 
 ## Converting from JSON and YAML
 
@@ -178,28 +183,30 @@ Rows marked *net* denote the network library `net.tn`'s types, the rest core's: 
 2. **Object keys that are not identifiers → a map.** `{"first name": …}`, `{"_id": …}`, `{"Content-Type": …}` are errors as schemaless records; write those objects with `=>`. A dictionary-shaped object is a map anyway. (Under a schema whose record declares `"@id"` or `"$ref"`, keep the record and quote the name.)
 3. **`\/` → `/`**, and surrogate pairs → one `\u{…}` escape.
 
-Then drop quotes the quoting rule does not require; commas are optional. JSON numbers are exact `number`s; do not annotate them `!float64` unless the consumer wants rounding. YAML habits and their fixes are in `references/pitfalls.md`.
+Then drop quotes the quoting rule does not require. JSON numbers are exact `number`s; annotate `!float64` only if rounding is wanted. A root's `$import` member becomes the `!!import` header, its `$type` the root's tag. YAML fixes are in `references/pitfalls.md`.
 
 ## Pitfalls — check before delivering
 
 | You wrote | Problem | Write instead |
 |---|---|---|
+| `!!schema:"…"`, `!!meta:"…"`, `x: !!import:"…" …` | retired names; a directive stands in the header only | `!!import:"…"` in the header |
+| `!!import:"…"` then an untagged root | under a schema the root names its type | `!order { … }` |
 | `_id: 1`, `"_id": 1`, `"first name": 1`, `42x: 2` | not an identifier, so not a field name (schemaless, or under the default name type) | a map: `{ "_id" => 1 }` |
 | `missing: null` meaning "no value" | `null` is the *string* `null` | `missing: _` |
+| `msg: Hello!`, `type: List<String>` | a sibling reference and an application, not text | `"Hello!"`, `"List<String>"` |
 | `!uri "docs/a.tn"`, `!uri "https://x.org/café"` | `!uri` needs a scheme and is US-ASCII | `!uri_reference "docs/a.tn"`, `!iri "https://x.org/café"` |
-| `!positive_integer 5`, `!uiid …` | not built in: a resolver error | `!integer 5`, `!uuid …`; under a schema, declare the bound |
-| `!ipv4 …` under a schema importing only core | the network types live in `net.tn` | the schema imports `net.tn` too |
-| `!!id:"https://Example.COM/x.tn"`, an `xn--bcher-kva.example` host | an `!!id` is canonical | lowercase, U-labels: `bücher.example` |
+| `!positive_integer 5`, `!uiid …`, `!geo.address` schemaless | not built in: a resolver error | `!integer 5`, `!uuid …`; import the schema that declares your types |
+| `!uuid …` under imports whose closure lacks `net.tn` | each built-in name lives in one library | import `net.tn`, or `core.tn` for all |
 
 The full table — comments, escapes, signs, commas, glued prefixes, directives, YAML, near-miss numbers — is in `references/pitfalls.md`. Read it before handing over a document.
 
 ## Reference files
 
-- `references/builtin-types.md` — every built-in annotation's exact contract, host value, parse-vs-validation behaviour, and the number grammar.
-- `references/grammar-notes.md` — lexer and grammar details: profiles, field names, escapes, multi-line stripping, adjacency, identity, errors and outcomes, JSON, content addressing, limits.
-- `references/pitfalls.md` — every mistake this skill has seen, with the fix, and YAML conversion. Read before delivering.
-- `scripts/pin.py` — compute or verify a `?sha256=` content pin for a `.tn` file (hash of every byte after the `!!id` line), and check the pinned references a file makes.
+- `references/builtin-types.md` — each built-in's exact contract, library and error kind; the number grammar.
+- `references/grammar-notes.md` — the Part 1 productions verbatim; header, qualified names, references, profiles, escapes, multi-line, adjacency, identity, outcomes, JSON, pins, limits.
+- `references/pitfalls.md` — every mistake seen, with the fix, and YAML conversion.
+- `scripts/pin.py` — compute or verify a `?sha256=` pin (every byte after the `!!id` line) and the pins in a file's `!!import`s.
 
 ## Implementations
 
-**Java** (https://github.com/litterat/ltr8-io-tson-java) and **TypeScript** (https://github.com/litterat/ltr8-io-tson-typescript) track this revision series and report the diagnostics the specification defines; look there for a `tson-java` or `tson-ts` skill.
+**Java** (https://github.com/litterat/ltr8-io-tson-java) and **TypeScript** (https://github.com/litterat/ltr8-io-tson-typescript) track this series; look for a `tson-java` or `tson-ts` skill.

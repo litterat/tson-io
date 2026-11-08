@@ -1,56 +1,67 @@
 ---
 name: tson-schema
-description: Author, review, and explain TSON schema documents — `.tn` files with a `!!meta` header and name-to-type declarations that define records, enums, refined atoms with facets like min and max, choices, generic templates with type parameters, field groups, and constraints for the TSON (Typed Schema Object Notation) type system at tson.io. Use this skill whenever the user asks to write a TSON schema, model a domain in TSON, convert a JSON Schema / TypeScript / Protobuf / OpenAPI definition into TSON, add constraints or defaults to TSON types, or diagnose why a TSON schema fails to load or why data fails validation against it. Also use it when the user pastes anything containing `!!meta`, arrow declarations, `^`, `&`, or `~ default` syntax. For plain TSON *data* documents (no `!!meta`), use the tson-data skill.
+description: Author, review, and explain TSON schema documents — `.tn` files whose root is tagged `!schema` (after `!!id` and `!!import` header lines), holding `name => type-definition` declarations: records, enums, refined atoms with typed facets like min and max, choices, generic templates, field groups, dependent fields and references, for the TSON (Typed Schema Object Notation) type system at tson.io. Use this skill whenever the user asks to write a TSON schema, model a domain in TSON, convert a JSON Schema / TypeScript / Protobuf / OpenAPI definition into TSON, add constraints or defaults to TSON types, or diagnose why a TSON schema fails to load or data fails validation against it. Also use it when the user pastes `!schema {`, arrow declarations, `^`, `&`, `~ default`, `meta.ref<…>` or `kind!` — or an older schema with a `!!meta` header, which it migrates. For plain TSON *data* documents (no `!schema` root), use the tson-data skill.
 ---
 
 # TSON schema documents
 
-A TSON schema is a data document: a header naming its meta-schema, then one braced map of `name => type-definition` declarations. Published schemas are immutable and hash-pinned; a data document binds one with `!!schema:"…"`. This skill covers *TSON Part 2: Type System and Schema*, 2026 Revision 38, with the bundled library files (`references/meta-kernel.tn`, `meta.tn`, `core.tn`, `net.tn`).
+A TSON schema is a document: a header of directives, then one braced map of `name => type-definition` declarations tagged `!schema`. Published schemas are immutable and hash-pinned; a data document uses one with `!!import:"…"`. This skill covers *TSON Part 2: Type System and Schema*, 2026 Revision 39, with the bundled libraries in `references/`: `meta.tn` (the kernel), `numeric.tn`, `temporal.tn`, `net.tn`, and `core.tn`, which imports the three. Their facets are condensed in `references/type-families.md`.
 
-`references/core.tn` holds the named types you build with, `net.tn` the network ones (`ipv4 ipv6 cidr4 cidr6 mac hostname host media_type`); `meta.tn` and `meta-kernel.tn` the facets each family accepts, condensed in `references/type-families.md`.
-
-> Identifiers such as `https://tson.io/2026/38/m/meta.tn` carry the revision; a new revision changes every URL and pin. Never invent a `?sha256=` digest — compute it with the tson-data skill's `pin.py`, copy one from a real file, or leave the reference unpinned.
+> Identifiers such as `https://tson.io/2026/39/m/core.tn` carry the revision; a new revision changes every URL and pin. Never invent a `?sha256=` digest — compute it (`tson hash`, or the tson-data skill's `pin.py`), copy one from a real file, or leave the reference unpinned.
 
 ## Workflow
 
-1. **Header.** Three directives, in this order, each on its own line, `:` glued to the name:
+1. **Header.** `!!id`, then an `!!import` per schema whose names you use (`:` glued to the name); schema annotations; the root, tagged `!schema`:
    ```
    !!id:"https://example.com/task.tn"
-   !!meta:"https://tson.io/2026/38/m/meta.tn"
-   !!import:"https://tson.io/2026/38/m/core.tn"
+   !!import:"https://tson.io/2026/39/m/core.tn"
+   @doc:"Task-tracking example schema."
+   !schema {
+     …
+   }
    ```
-   `!!id` is required to publish; `!!meta` appears once; `!!import` repeats. Without core, `text`, `integer`, `uuid` are **not in scope** — kernel types are `!` targets, never field types. Add `!!import:"https://tson.io/2026/38/m/net.tn"` only when a field uses a network type; core alone declares none. Never import `meta.tn` or the kernel (an import stands at its importer's level), nor write `!!schema`.
-2. **Annotations on the schema** go between the header and the opening brace: `@doc:"…"`.
-3. **Declarations** — pick the form below. Name every constrained atom and bare record; inline you may write only names and sugar (`[T]`, `[T, U]`, `(A | B)`, `{K => V}`, `name<args>`).
-4. **Self-check** against `references/pitfalls.md`, then write a small data document (tson-data skill) instantiating the root type.
+   `!!id` is required to publish. No other directive exists (`!!meta` and `!!schema` were retired in revision 39), and an untagged `{` root makes the file a data document.
+2. **Imports.** A name resolves only where the import closure holds it:
+
+   | Import | Brings |
+   |---|---|
+   | `meta.tn` | `void boolean integer int64 text bytes iri iri_reference regex doc enum set schema`; maps `meta atom numeric unicode net binary` |
+   | `numeric.tn` | + `number rational complex int8`…`int256 uint8`…`uint256 float32 float64` |
+   | `temporal.tn` | + `date time datetime duration period`; map `temporal` |
+   | `net.tn` | + `uuid email uri uri_reference ipv4 ipv6 cidr4 cidr6 mac hostname host media_type` |
+   | `core.tn` | all three, + annotations `title comment examples deprecated read_only write_only` |
+
+   Each library imports `meta.tn` (full table in `type-families.md`). Import `core.tn` unless you want names free: every closure name is reserved (`date` under core, not under `numeric.tn` alone).
+3. **Names resolve from the root, in one namespace.** Root names are bare (`text`, `uuid`, `!enum`, `set<T>`, `@doc`); machinery is written by path — `meta.record`, `meta.type_ref`, `meta.ref<T>`, `!meta.enum_type`, `!meta.set_type`, `!meta.map`, `!numeric.integer_type`, `!unicode.text_type`, `!unicode.identifier_type`, `@meta.disjoint`. No lexical scope or shadowing; redeclaring a name the closure binds is a load error. Declaration order carries nothing; a *wait* cycle (`a => b & {}`, `b => a & {}`) is refused.
+4. **Declarations** — pick the form below. Name every constrained atom and bare record; inline you may write only names and sugar (`[T]`, `[T, U]`, `(A | B)`, `{K => V}`, `name<args>`).
+5. **Self-check** against `references/pitfalls.md` (and `tson compile` if available), then write a small data document (tson-data skill) instantiating the root type.
 
 ## Declaration forms
 
-Everything right of `=>` is a type definition. Pick by what you are making:
 
 | You want | Form | Example | IS-A? |
 |---|---|---|---|
 | a new record | `{ fields }` | `person => { name: text  age: integer }` | none |
 | a record extending others | `A & B & { more }` | `employee => person & contact & { dept: text }` | yes, each |
-| a record tightened | `T ^ { fields }` | `production => config ^ { host?: = "prod.example.com" }` | yes, `T` |
+| a record tightened | `T ^ { fields }` | `production => config ^ { host: = "prod.example.com" }` | yes, `T` |
 | a sealed family | `abstract { … =? }` + members | `pet => abstract { species: text =?  name: text }`, `dog => pet & { species: = "dog" }` | yes, each member |
 | a record nothing may extend | `final { fields }` | `leaf => final { id: uuid }` | none |
 | a record with fields removed | `T - { names }` | `account_public => account - { password }` | **no** |
 | a constrained atom | `!I ^ { facets }` | `age => !integer ^ { min: 0  max: 150 }`, `code => !integer ^ { members: [2 3 5 7] }` | yes, `I` |
 | an enum of names | `!enum [members]` | `status => !enum [OPEN ACTIVE DONE]` | none |
-| a set of allowed texts | `!text ^ { members }` | `ports => !text ^ { members: ["80" "443"] }` | yes, `text` |
-| a field holding a type's name | `kind<C>` | `handler: kind<record>` holds `person`, not a person | none |
-| a fresh atom family (rare) | `!constructor { }` | `dogs => !integer_type {}` — unrelated to `integer` | none |
-| an alias | `name` | `id => uuid` | reference — **a hop, not a rewrite** |
+| a fresh atom family (rare) | `!constructor { }` | `dogs => !numeric.integer_type {}` | none |
+| an alias | `name` | `id => uuid` | — **a hop, not a rewrite** |
 | a container as its own type | sugar | `tags => [text]`, `scores => [integer; 1..]`, `index => {text => [order]}` | none |
 | a union by type | `(A \| B)` | `contact => (email \| phone \| address)` | sum |
 | a union by label | field group | `endpoint => { ( host: text  port: uint16 \| socket: text ) }` | product |
 | a generic | `<P, …> body` | `pair => <T, U> { first: T  second: U }`, `<T: text>` bounded | per body |
-| a set (may be empty) | `set<T>` | `unique_tags => set<text>` | instance of `set_type` |
-| binary | `bytes`, or `!bytes_type { encoding: E }` | `avatar: bytes`; `hexdigest => !bytes_type { encoding: HEX }` | instance |
-| a value whose type the data names | `dynamic`, `declared`, `extern`, `extern_of<S>` | `payload: dynamic` | sum (`scoped`) |
+| a set (may be empty) | `set<T>` | `unique_tags => set<text>` | — |
+| a field typed by a sibling | `kind!` | `setting => { kind: meta.type_ref  value?: kind! }` | — |
+| a field holding a name | a reference | `t: meta.type_ref`, `r: meta.ref<meta.record>`, `m: meta.ref<method>` | — |
+| a value naming its own type | `meta.declared` | `payload: meta.declared` (tag required) | open sum |
+| a nested group of entries | `!schema { … }` | `geo => !schema { address => { city: text } }`, then `geo.address` | — |
 
-`name { … }` with no operator is a parse error — write `^` or `&`. Constructors (entries that IS-A `top`, namespace types among them) and `ref<T>` belong to meta-schemas under the meta-kernel: `references/extension-meta-schemas.md`.
+`name { … }` with no operator is a parse error — write `^` or `&`. `!T { … }` is an *instance of `T`*: over a constructor (`numeric.integer_type`) a type, over an ordinary type a **value entry** (`orders => !interface { … }`), which types nothing. Any schema may declare constructors, namespace types and value entries: `references/extension-meta-schemas.md`.
 
 ## Records and fields
 
@@ -70,15 +81,15 @@ config => {
 }
 ```
 
-(`@doc` is the only comment; the spec's `;` commentary is ABNF convention, and `#`, `//` are lexer errors.)
+(`@doc` is the only comment: the spec's `;` notes are ABNF convention, and `#`, `//` are errors.)
 
-Fields separate by whitespace or comma. A field name is judged by the record's **name type**, an identifier by default, so `{ "first name": text }` is a resolver error; names a JSON vocabulary needs (`"@id"`, `"$ref"`) take a declared name type composed from a fieldless abstract base (`references/declaration-forms.md` §2). **A JSON-Schema-style optional property is `a?: T`, not `a: T?`** — `a: T?` keeps the key required and admits `_`. Refused: a default on an unmarked name (`a: T ~ v`), a pin on a voidable type (`a?: T? = v`), and `_` as a modifier value (write `a?: void?`). Full table: `references/declaration-forms.md`.
+Fields separate by whitespace or comma. A field name is judged by the record's **name type**, an identifier by default, so `{ "first name": text }` is a resolver error; JSON names (`"@id"`, `"$ref"`) take a name type on a fieldless abstract base (`declaration-forms.md` §2). **A JSON-Schema-style optional property is `a?: T`, not `a: T?`** — `a: T?` keeps the key required and admits `_`. Refused: `a: T ~ v`, `a?: T? = v`, and `_` as a modifier value (write `a?: void?`). Modifier values are **single scalar tokens**, only on atom- or enum-typed fields, read by the field's type at load (`int32 ~ "nope"` fails).
 
-Modifier values are **single scalar tokens**, only on atom- or enum-typed fields — no default for a record, container, choice or tuple — and are parsed by the field's type at load (`int32 ~ "nope"` fails).
+Records are **closed**, with no exception; free-form content goes in a map field (`extra?: {text => text}`).
 
-Records are **closed**, with no exception and no open-record switch; put free-form content in a map field (`extra?: {text => dynamic}`).
+**Sealed families.** In the table's `pet`/`dog`, data at a `pet` position is placed by its `species`, untagged. `=?` implies `abstract`; pins are distinct values across the import closure, and a pin never changes. **A member is declared**: `k: dog_of<text>` over `dog_of => <T> pet & { … }` is refused — declare `dogs => dog_of<text>`. `abstract` without `=?` makes the tag required.
 
-**Sealed families.** `pet => abstract { species: text =?  name: text }` is a base with no direct instances whose members each pin the selector — `dog => pet & { species: = "dog"  breed: text }` — so data at a `pet` position is placed by its `species`, untagged. `=?` implies `abstract`; pins are distinct values across the whole import closure. **A member is declared**: a use-site application composing onto a record (`k: dog_of<text>` over `dog_of => <T> pet & { … }`) is refused — declare `dogs => dog_of<text>`. `abstract` alone makes the tag required; `final` forbids `&`/`^` onto the record.
+**Dependent fields.** `kind!` (a field name, adjacent `!`, then whitespace) types a field by the type its sibling's *value* names: `setting => { kind: meta.type_ref  value?: kind! }` reads `{ kind: int32  value: 7 }`. The sibling comes earlier (inherited fields first), is typed by a reference over a constructor (`meta.type_ref`, `meta.ref<meta.atom>` — not `int32` or `meta.ref<method>`), and is there whenever the dependent field is (required, defaulted, pinned, or a group member). The dependent field is never voidable, takes no modifier, and stands only at a record field's type. Data writes a free sibling first.
 
 ## Type expressions (every type position)
 
@@ -87,19 +98,17 @@ Records are **closed**, with no exception and no open-record switch; put free-fo
 | `[T]` | array of T, any length |
 | `[T; N]` | exactly N; `[T; N..M]`, `[T; N..]`, `[T; ..M]` bounded (`0..` errors — write `[T]`) |
 | `[T?]` | elements may be void (`_`) |
-| `[T, U, V]` | tuple — fixed length, 2+ positions; `[T, U?]` a voidable position. One position: `tuple1<T>`, `voidable_tuple1<T>` |
+| `[T, U, V]` | tuple — fixed length, 2+ positions; `[T, U?]` a voidable position. One position: `meta.tuple1<T>`, `meta.voidable_tuple1<T>` |
 | `(A \| B)` | choice, two or more named variants |
 | `{K => V}` | map; `{K => V; 1..}` sized; `{K => V?}` values may be void |
 | `name<arg, arg>` | template application — every parameter must be supplied |
-| `T?` on a field | field voidable — distinct from `[T?]`; `xs?: [T?]` may be missing and holds void elements |
+| `T?` on a field | field voidable — distinct from `[T?]` |
 
-Nesting is free; a comma may follow the last element or argument.
-
-**Sets** are `set<T>`; duplicates are judged by value. **A set may be empty**; a non-empty one is named, `tag_set => !set_type { element_type: text  min_items: 1 }`. **Order is a facet**: `array` is `ordered`, `map` is not unless `!map { key_type: K  value_type: V  ordered: true }`.
+**Sets** are `set<T>`; duplicates are judged by value. **A set may be empty**; a non-empty one is named, `tag_set => !meta.set_type { element_type: text  min_items: 1 }`. **Order is a facet**: an array is `ordered`, a map is not unless `!meta.map { key_type: K  value_type: V  ordered: true }`.
 
 ## Atoms and facets
 
-Core supplies the instances; you tighten their constructor's facets with `!instance ^ { … }`. Facets only narrow: bounds move inward, member sets (`members`, a URI's `schemes`) shrink, permissions (`allow_nan`, `allow_relative`) go true → false, a text `pattern` or `members` is set once, a selector moves only along its own relation (`bytes.encoding` not at all). A facet **fixed at construction** — a text family's `normalization`, an identifier profile, a `name_type` — is never set by `^`; a different one is a fresh `!constructor { … }`. Unknown facet names are errors (`minimum` — TSON says `min`); look facets up in `references/type-families.md` rather than guessing.
+You tighten an instance's facets with `!instance ^ { … }`. **A facet is typed by its family**: a bound on `number` is a `number`, on `date` a `date`; `within` on `ipv4` is `[cidr4]`; a length, count or precision is a `numeric.count`. A value the type refuses is a load error (`!number ^ { min: 0x10 }`; `!duration ^ { max: P1Y }` — a month is a `period`). Facets only narrow: bounds inward, member sets shrink, permissions (`allow_nan`) true → false, a text `pattern` or `members` set once, a selector along its own relation (`bytes.encoding` never). A facet **fixed at construction** — `normalization`, an identifier profile, a `name_type` — needs a fresh `!constructor { … }`. Unknown facet names are errors (`minimum` — TSON says `min`); look facets up in `references/type-families.md`.
 
 ```
 percent  => !number ^ { min: 0  max: 100  fraction_digits: 2 }
@@ -107,87 +116,82 @@ sku      => !text ^ { pattern: "[A-Z]-[0-9]{3}" }
 web_url  => !uri ^ { schemes: [https]  allow_fragment: false }
 lan_addr => !ipv4 ^ { within: ["192.168.0.0/16"] }
 recent   => !datetime ^ { exclusive_min: "2026-01-01T00:00:00Z"  precision: 3 }
-header   => !text_type { normalization: ASCII_CASEFOLD }
+this_year => !date ^ { min: 2026-01-01  max: 2026-12-31 }
+header   => !unicode.text_type { normalization: ASCII_CASEFOLD }
 ```
 
-(`lan_addr` needs the `net.tn` import.) Refinement keeps inherited facets (`!int8 ^ { min: 0 }` is still 8 bits). A text value is its token put into the type's `normalization` form: under `header`, `Content-Type` *is* `content-type`. **`uri` requires a scheme and is US-ASCII**; a relative link is `uri_reference`, a non-ASCII one `iri`/`iri_reference`. **Core holds only what a schema cannot write itself** — no `non_empty_text` or sign-bounded integers: declare `title_text => !text ^ { min_length: 1 }`, `count => !integer ^ { min: 0 }`.
+Refinement keeps inherited facets (`!int8 ^ { min: 0 }` is still 8 bits). Under `header`, `Content-Type` *is* `content-type`. **`uri` requires a scheme and is US-ASCII**; otherwise `uri_reference`, `iri`, `iri_reference`. **No library declares a bound a schema can write** (no `non_empty_text`): declare `title_text => !text ^ { min_length: 1 }`.
 
 ## Enums
 
-`status => !enum [OPEN ACTIVE DONE]` is a vocabulary of **names** (identifiers), so `!enum ["in progress"]` fails. It pins the constructor `enum_type { name_type  members }`, whose `name_type` is any identifier family you declare: `!enum_type { name_type: words  members: ["in progress" "on hold"] }` over `words => !identifier_type { medial: " " }`. Members are unique values of `name_type`, at least one; numbers never (`!integer ^ { members: [1 2 3] }`). A closed set of texts that are not names is no enum: `!text ^ { members: ["80" "443"] }`, string-class. Core's `boolean` is `!enum [true false]`. Default with `status?: status ~ OPEN`.
+`status => !enum [OPEN ACTIVE DONE]` is a vocabulary of **names** (identifiers), so `!enum ["in progress"]` fails. `enum` is `meta.enum_type { name_type  members }` with `name_type` pinned to `meta.identifier`; for other names, `!meta.enum_type { name_type: words  members: ["in progress" "on hold"] }` over `words => !unicode.identifier_type { medial: " " }`. Numbers are never members (`!integer ^ { members: [1 2 3] }`); a closed set of non-name texts is `ports => !text ^ { members: ["80" "443"] }`. `boolean` is `!enum [true false]`. Default with `status?: status ~ OPEN`.
 
-**`identifier` is a text family, not in core**: to type a value or map key as a name, declare `identifier => !identifier_type { continue_add: "-" }`. It is string-class, and its values are names under name hygiene (an identifier-keyed map's keys are a look-alike scope).
+**No library declares `identifier`**: type a name as `meta.identifier`, or declare `identifier => !unicode.identifier_type { continue_add: "-" }`.
 
 ## Choice vs field group
 
-Use a **choice** `(A | B)` when alternatives are distinct *named types*. Data tags the variant (`!email "a@b.c"`), omitted only when the choice is *disjoint* — every variant in a different class among `boolean`, `number`, `string`, `brace`, `bracket`. `(text | integer)` is disjoint; `(email | phone)` is not, nor `(float64 | text)` (a float admitting NaN has no class). No variant may be `void`. `@disjoint` asserts it, checked at load. Records told apart by a field they carry want a sealed family — a choice has no discriminator.
+Use a **choice** `(A | B)` for distinct *named types*. Data tags the variant (`!email "a@b.c"`), untagged only when the choice is *disjoint* — each variant in a different class of `boolean`, `number`, `string`, `brace`, `bracket`: `(text | integer)` is, `(email | phone)` and `(float64 | text)` (NaN has no class) are not. No variant may be `void`. `@meta.disjoint` asserts it at load. Records told apart by a field want a sealed family.
 
-Use a **field group** when alternatives are told apart by *label*, share a type, or are combinations of fields:
+Use a **field group** when alternatives are told apart by *label*, share a type, or combine fields:
 
 ```
-payment => {
-  amount: number
-  ( card: card_details | bank: bank_details | voucher: text )
-  ( note: text | ref: text )?
-}
+payment => { amount: number  ( card: card_details | bank: bank_details )  ( note: text | ref: text )? }
 endpoint => { ( host: text  port: uint16 | socket: text ) }
 contact  => { name: text  ( email: email | phone: text )+ }
-query    => { ( include: text | name?: text  type?: text ) }
 ```
 
-`|` separates **options** of one or more members. An option is *chosen* when any member is present and must then hold every member not marked `?` (`name?:` is optional *within its option*). A bare group admits exactly one chosen option, `)?` at most one, `)+` (single unmarked members only) at least one. Members take no modifier; a group never injects. Each presence rule has one spelling: a lone member takes no `?`, and a one-option group must be `( b: B  a?: A )?` ("`a` requires `b`") — `( a: A  b?: B )` is just fields, and is refused. Labels share the record's namespace; groups do not nest or stand at type positions.
+`|` separates **options** of one or more members. An option is *chosen* when any member is present and must then hold every member not marked `?`. A bare group admits exactly one chosen option, `)?` at most one, `)+` (single unmarked members only) at least one. Members take no modifier; a group never injects. Each presence rule has one spelling (`( b: B  a?: A )?` is "`a` requires `b`"; `declaration-forms.md` §10). Groups do not nest or stand at type positions.
 
 ## Composition, refinement, subtraction
 
-- **Composition `&`** — parents contribute *disjoint* field names (a diamond is an error); the body may add fields or tighten inherited ones, eliding the type (`spec?: = "…"`).
-- **Refinement `^`** — may only touch existing fields; adding one is an error. Each slot moves one way: omission nothing → required → injected, voidable → not, FREE → DEFAULT → FIXED; a default may change, a pin may not. The source must have a record body — not a constructor application (`lookup => {text => integer}` is finished), a choice, or a FINAL record.
-- **Subtraction `-`** — on a construction head, *whitespace before `-`* (`account- {` lexes as one name). No removal on a `^` head; the result is not substitutable for its source.
-- Parents and refinement sources are **named** references — `(a | b) & { … }` is not grammar.
-- **Identity.** A declared entry is its **name** (two `!uuid_type {}` are two types); `bx => box<text>` *is* that application's entry; a reference is a hop. `!uuid ^ {}` is the nominal subtype.
+- **Composition `&`** — parents contribute *disjoint* field names (a diamond is an error); the body adds fields or tightens inherited ones, eliding the type (`spec?: = "…"`).
+- **Refinement `^`** — touches only existing fields. Each slot moves one way: omission nothing → required → injected, voidable → not, FREE → DEFAULT → FIXED; a default may change, a pin may not. The source has a record body — not a container (`{text => integer}` is finished), a choice, or a FINAL record.
+- **Subtraction `-`** — on a construction head, *whitespace before `-`* (`account- {` lexes as one name); never on a `^` head; the result is not substitutable for its source.
+- Operands are **named** references. A declared entry is its **name** (two `!net.uuid_type {}` are two types); `bx => box<text>` *is* that application's entry; an alias is a hop; `!uuid ^ {}` is the nominal subtype.
 
 ## Templates
 
 ```
-container   => <T> { items: [T] }
-pair        => <T, U> { first: T  second: U }
-vector      => <T, N> [T; N]
-retry       => <N> { attempts?: int32 ~ N }
-result      => <T> ( T | error )
-tree        => <T> { value: T  children?: [tree<T>] }
-labelled    => <T: text, N: int8> { label: T  weight?: integer ~ N }
+pair     => <T, U> { first: T  second: U }
+vector   => <T, N> [T; N]
+retry    => <N> { attempts?: int32 ~ N }
+result   => <T> ( T | error )
+tree     => <T> { value: T  children?: [tree<T>] }
+labelled => <T: text, N: int8> { label: T  weight?: integer ~ N }
 ```
 
-**A parameter's type is derived from where it stands**: a type slot makes a *type parameter*; a value slot (`[T; N]`, `~ N`, `= N`, an enum member) a *value parameter* of the slot's or field's type (`retry`'s `N` is an `int32`). Several uses must agree by IS-A. `<T: text>` **bounds** a type parameter; `<N: int8>` narrows a value parameter. **Each application is checked against the parameter list**: `retry<text>` and `labelled<int32, 1>` are refused at the call site.
+**A parameter's type is derived from where it stands**: a type slot makes a *type parameter*; a value slot (`[T; N]`, `~ N`, `= N`, an enum member) a *value parameter* of the slot's or field's type (`retry`'s `N` is an `int32`, `vector`'s a `numeric.count`). `<T: text>` **bounds** a type parameter; `<N: int8>` narrows a value parameter and must IS-A what the uses derive. **Each application is checked against the parameter list**: `retry<text>` and `labelled<int32, 1>` are refused at the call site.
 
-Rules: every use supplies all arguments (a record template named bare is a family base, never an operand); every parameter is used, shadows no type name, and is never an operand (`<T> T & { … }`); value arguments are scalars, with no arithmetic or defaults; a routed modifier takes its literal's name mark (`a?: T ~ N`, never `a: T ~ N`); recursion passes parameters unchanged (`tree<T>`); no parameterised atom refinement — write `<N> !integer_type { min: N }`; a bound names a type, never a constructor. Every recursive type needs a terminating path. Details: `references/templates.md`.
+Rules: every use supplies all arguments (a record template named bare is a family base, never an operand); every parameter is used, shadows no entry, and is never an operand; value arguments are scalars; a routed modifier keeps its literal's name mark (`a?: T ~ N`); recursion passes parameters unchanged and terminates; `<N> !integer ^ { min: N }` is no form — write `<N> !numeric.integer_type { min: N }`; a bound is a type, never a constructor. See `references/templates.md`.
+
+## References: names held as values
+
+`meta.reference_type` types every slot holding a name; its `of` says what the name reaches. **A type's name**: `meta.type_ref` (any type), `meta.ref<C>` over a constructor (`meta.ref<meta.record>`: record types only; `meta.ref<net.uuid_type>` holds `stock_id`, never a UUID). **A value's qualified name**: `meta.ref<T>` over an ordinary type, written `orders.place_order`. An application stands unquoted where a name does: `pair<text integer>`. The slot holds the name, never the thing.
 
 ## Annotations
 
-An annotation is a *type* in the governing target's namespace — in a schema document, the **meta-schema's**. Under `meta.tn`: `@doc:"…"` (CommonMark 0.31.2, raw HTML never executed), `@title`, `@comment` (for maintainers), `@examples:["…"]` (*text*), bare `@deprecated` (the reason goes in `@doc`), and the markers in `references/type-families.md` — no `@since`, `@todo` or `@lang`. An annotation never changes a value or its validity, which is why `abstract`, `final` and `=?` are grammar. A schema's own types are not annotations on itself.
+An annotation is a *type* of the document's one namespace. The kernel has `@doc:"…"` (CommonMark 0.31.2, raw HTML never executed), `@meta.disjoint` and the `@atom.*` markers; `core.tn` adds `@title`, `@comment` (for maintainers), `@examples:["…"]` (*text*), and bare `@deprecated` (reason in `@doc`), `@read_only`, `@write_only` — no `@since`, `@todo` or `@lang`. An annotation never changes validity, which is why `abstract`, `final` and `=?` are grammar.
 
-**Data documents** resolve annotations in the user schema's namespace: declare `expires => @annotation text` for `@expires:"2026-12-31"`, `internal => @annotation void` for a bare `@internal`. An unresolvable annotation is an error. Placement: before a declaration name → the *entry*, after `=>` → the *definition*, before a field name → the field.
+**Your own** are entries, usable in the schema and its data alike: `expires => @meta.annotation text` for `@expires:"2026-12-31"`, `internal => @meta.annotation void` for a bare `@internal`. Before a declaration name an annotation binds the *entry*; after `=>`, the *definition*; before a field name, the field.
 
 ## Data under a schema
 
-- `!!schema:"…"` names a namespace, and **the root names its type** (`!task { … }`) or the document is invalid. `!uuid` works only because core is imported, `!ipv4` only with `net.tn`.
-- **No base type resolution**: `true` and `42` mean whatever the position's type says. There is no `null`; `void` admits `_` alone.
-- A nested `!!schema` is admitted only at a `scoped` position holding `EXTERN` (`extern`, `dynamic`, `extern_of<…>`).
-- An omitted `a?: T ~ v` or `a?: T = v` is injected on decode; an omitted unmarked name is a missing-field error; `_` is an error unless the type carries `?`. At `a?: T? ~ v`, `_` is void and a missing key *the default*.
+- `!!import:"…"` names the namespace, and **the root names its type** (`!task { … }`). `!uuid` works only where the closure holds `net.tn`.
+- **No base type resolution**: `true` and `42` mean what the position's type says. No `null`; `void` admits `_` alone.
+- No directive below the header: a foreign type comes by importing its schema, and a `meta.declared` position needs a tag.
+- An omitted `a?: T ~ v` or `a?: T = v` is injected; an omitted unmarked name is a missing-field error; `_` is refused unless the type carries `?`. At `a?: T? ~ v`, `_` is void and a missing key *the default*.
 
-Subtype admission, empty braces, the `scoped` cells, the void-sentinel table, errors: `references/data-under-schema.md`.
+Subtype admission, empty braces, the void-sentinel table, errors: `references/data-under-schema.md`.
 
-## Converting from another schema language
-
-`references/converting.md` maps JSON Schema, OpenAPI, TypeScript and Protobuf. Do not fake what TSON lacks (open records, regex-keyed properties, conditional schemas) — say so and pick the nearest honest shape.
+**Converting** from JSON Schema, OpenAPI, TypeScript, Protobuf or a revision 38 schema: `references/converting.md`. Do not fake what TSON lacks (open records, regex-keyed properties, conditional schemas) — say so and pick the nearest honest shape.
 
 ## Complete example
 
 ```
 !!id:"https://example.com/task.tn"
-!!meta:"https://tson.io/2026/38/m/meta.tn"
-!!import:"https://tson.io/2026/38/m/core.tn"
+!!import:"https://tson.io/2026/39/m/core.tn"
 @doc:"Task-tracking example schema."
-{
+!schema {
   priority   => !integer ^ { min: 1  max: 5 }
   title_text => !text ^ { min_length: 1 }
   status     => !enum [OPEN ACTIVE DONE]
@@ -207,7 +211,7 @@ Subtype admission, empty braces, the `scoped` cells, the void-sentinel table, er
 and a conforming document — `priority` omitted (defaulted, so injected) and `due` omitted (no value, so it stays missing):
 
 ```
-!!schema:"https://example.com/task.tn"
+!!import:"https://example.com/task.tn"
 !task {
   id:      550e8400-e29b-41d4-a716-446655440000
   title:   "Ship the draft"
@@ -223,19 +227,19 @@ The full table is `references/pitfalls.md`; read it before handing over a schema
 
 | You wrote | Problem | Write instead |
 |---|---|---|
-| `int`, `string`, `bool`, `float`, `double`, `str`, `timestamp`, `binary` | not core names | `integer`/`int32`, `text`, `boolean`, `float64`, `datetime`, `bytes` |
-| `non_empty_text`, `positive_integer`, `non_negative_integer`, `identifier`, `unit` | not in core | declare `!text ^ { min_length: 1 }`, `!integer ^ { min: 0 }`, `!identifier_type { continue_add: "-" }`; `void` |
-| `!enum ["Not Started"]`, `!text_enum [ … ]`, `!enum_type { type: … }` | enum members are names; `text_enum` is gone; the slot is `name_type` | `!text ^ { members: ["Not Started"] }`, or an enum over your own name type |
-| no `!!import` of core, then `name: text`; core only, then `ip: ipv4` | `text` unresolved — kernel types are not field types; network types are `net.tn`'s | import `…/2026/38/m/core.tn`, and `…/m/net.tn` for `ipv4` `mac` `hostname` … |
-| `kind => !enum [ … ]` beside a core import | core declares `kind` | another name: `pet_kind` |
+| `!!meta:"…"`, a bare `{` root; `!!schema:"…"` in data | retired in revision 39 | `!!import`s and `!schema { … }`; data uses `!!import` |
+| `!enum_type`, `!text_type`, `!set_type`, `!map`, `ref<T>`, `kind<C>`, `tuple1<T>`, `@disjoint` | machinery is written by path | `!meta.enum_type`, `!unicode.text_type`, `!meta.set_type`, `!meta.map`, `meta.ref<T>`, `meta.ref<C>`, `meta.tuple1<T>`, `@meta.disjoint` |
+| `meta.tn` alone, then `id: uuid`, `n: int32`, `d: date` | those are the libraries' | import `core.tn` (or `net.tn`, `numeric.tn`, `temporal.tn`) |
+| `dynamic`, `extern`, `extern_of<S>`; `type_kind` | retired | `meta.declared`, the foreign schema imported; `meta.type_ref` |
 
 ## Reference files
 
-- `type-families.md` — every family and container constructor: facets, core instances.
-- `declaration-forms.md` — field slots, refinement orders, composition, subtraction, families, groups, disjointness.
+- `type-families.md` — every family and container constructor: facets, their types, instances.
+- `declaration-forms.md` — field slots, refinement orders, composition, subtraction, families, groups, disjointness, namespaces.
 - `templates.md` — parameter types, held bodies, materialisation, family bases, recursion.
-- `data-under-schema.md` — governed data: subsumption, `_`, injection, `scoped` cells, errors.
-- `converting.md`, `extension-meta-schemas.md`, `pitfalls.md`, `grammar.md` (ABNF, errors, hygiene, limits).
-- `core.tn`, `net.tn`, `meta.tn`, `meta-kernel.tn` — the library itself, and the best examples of idiomatic style.
+- `data-under-schema.md` — governed data: subsumption, `_`, injection, declared positions, errors.
+- `extension-meta-schemas.md` — extending the vocabulary: namespace types, value entries, constructors.
+- `converting.md`, `pitfalls.md`, `grammar.md` (ABNF, errors, hygiene, limits).
+- `meta.tn`, `numeric.tn`, `temporal.tn`, `net.tn`, `core.tn` — the libraries.
 
 [Java](https://github.com/litterat/ltr8-io-tson-java) and [TypeScript](https://github.com/litterat/ltr8-io-tson-typescript) (tson.io's live validator) implementations check this skill's work.
