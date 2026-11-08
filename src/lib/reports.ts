@@ -104,6 +104,12 @@ export const REPORT_ORDER = [
   'avro-to-tson-mapping',
   'graphql-to-tson-mapping',
   'implementation-feedback',
+  'one-level',
+  'reference',
+  'kernel-namespace',
+  'typed-facets',
+  'dependent-fields',
+  'spec-feedback',
 ];
 
 /** `32/reports/avro-to-tson-mapping` -> `avro-to-tson-mapping` */

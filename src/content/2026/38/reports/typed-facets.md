@@ -1,3 +1,11 @@
+---
+title: "Typed facets: retiring \"value\" from meta.tn"
+description: "Step 8 of One Level: declare each atom constructor beside its canonical instance and type its facets by that instance, so value and value_type leave the kernel. Adds a value-to-value edge to the resolution order: a value read against an atom waits on that atom's facets."
+against: "TSON 2026 Revision 38 (Working Draft)"
+status: "Landed in Revision 39"
+id: "CR-typed-facets"
+---
+
 # Typed facets: retiring `value` from `meta.tn`
 
 **Status: landed in Revision 39.**

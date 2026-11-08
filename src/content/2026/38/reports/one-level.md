@@ -1,3 +1,11 @@
+---
+title: "One level: schemas without the meta ladder"
+description: "Removes revision 38's meta ladder (!!meta as a rung, meta layers, placement, the import-level rule) in favour of one namespace per schema, a computed resolution order with a single cycle rule, one header directive, value entries of ordinary types and one reference atom. Its eight-step order of work landed in revision 39, with the kernel-namespace step built differently and extern deferred."
+against: "TSON 2026 Revision 38 (Working Draft)"
+status: "Landed in Revision 39; step 7 built differently, one sub-step partly done, one deferred"
+id: "CR-one-level"
+---
+
 # One level: schemas without the meta ladder
 
 **Status: landed in Revision 39, step 7 differently from proposed, one sub-step partly done and one deferred.**
@@ -8,7 +16,7 @@
 - **What happened:** steps 1 to 8 of the order of work all landed on the Revision 39 proposal branch, step 3 being the
   planned drop of the construction operator. Step 7 was built differently: the kernel's maps are open, every name
   resolves from the root, and synthetics mint at the root. Sub-step 5f is partly done (a resolved form is still read
-  under its source's imports), and 5h, `extern`, is deferred ([`extern.md`](extern.md)).
+  under its source's imports), and 5h, `extern`, is deferred.
 - **Where it landed:** [TSON-SCHEMA] §2.2, §3.3, §3.4, §4.1, §4.2, §5.12, §7.8, §8.1, §11.5, §12.1 and [TSON-DATA]
   §2.2, §3.3, §7.4, in [SPEC-FEEDBACK.md #4](../SPEC-FEEDBACK.md) to [#17](../SPEC-FEEDBACK.md); #18 to #20 and #22
   were found while the steps landed, and #21 is dependent fields. "Order of work, as landed" gives each step's entries.
@@ -561,7 +569,7 @@ document at the root's tag rather than reading it as a map.
 **The scope push goes.** §7.8's EXTERN cell exists so that data can name a schema the declaring schema did not import,
 the change "always visible in the data, never implicit", and it is spelled as a `!!schema` directive on the value.
 Decided: no directive at a value position, and a foreign type is used by importing its schema. A schema-driven form,
-`extern`, is deferred out of this revision ([`extern.md`](extern.md)): a foreign schema that keeps its own names puts two
+`extern`, is deferred out of this revision: a foreign schema that keeps its own names puts two
 namespaces in one document, and either a tag's meaning depends on its position, or the data carries prefixes. What the
 scope push's removal takes with it:
 - `scoped`'s EXTERN cells, `extern`, `extern_of<S>` and `extern_type<S, T>`, and the open-world `dynamic`. The LOCAL
@@ -1002,7 +1010,7 @@ identifies itself", "The scope push goes") land as text here, where the ladder t
    - **5f, wait order everywhere. Partly done** ([SPEC-FEEDBACK.md #4](../SPEC-FEEDBACK.md), "What is not running").
      Every schema resolves by the one algorithm, but a resolved form is still read under its source's imports, not by
      the algorithm over its own entries.
-   - **5h, `extern` restored. Deferred** out of Revision 39 ([`extern.md`](extern.md)).
+   - **5h, `extern` restored. Deferred** out of Revision 39.
 6. **One reference** ([`reference.md`](reference.md)): the qualified name with arguments as one grammar at every type
    position, as the tag in data ([TSON-DATA] §7.4), and as the value of one atom; `kind_type`, `ref_type`, `type_ref`
    and `type_argument` go, and `members` with them. It cannot be written while `of` resolves in two stores, so it
@@ -1077,8 +1085,7 @@ implementation confirms.
 - **The bootstrap.** The kernel carries `!!id` alone, imports nothing, is pre-loaded first by special resolution, and
   must be the revision the software was built for; no other revision's kernel is loaded.
 - **No scope push.** §7.8's value-position `!!schema` goes; a foreign type is used by importing its schema, and
-  [TSON-JSON]'s `$schema` survives only as the leading `$import` ("The scope push goes"). `extern` is deferred
-  ([`extern.md`](extern.md)).
+  [TSON-JSON]'s `$schema` survives only as the leading `$import` ("The scope push goes"). `extern` is deferred.
 - **`namespace` sits under `type`** ("The reference atom"): a namespace type has values, so `kind<type>` reaches it and
   `ref<interface>` names its instances, with no exception to the atom's rule. **As built:** as a refinement of `map`.
 - **The kind's membership is unchanged**: by construction, as §4.2 states it. `integer` is a member of
@@ -1139,4 +1146,4 @@ implementation confirms.
   cycle through `!!import` by [TSON-DATA] §2.2.3.
 - **Lexical scope, synthetics homed by the innermost map, and who may contribute to an open map.** Open in
   [SPEC-FEEDBACK.md #14](../SPEC-FEEDBACK.md).
-- **`extern`**, a schema-driven external form: deferred ([`extern.md`](extern.md)).
+- **`extern`**, a schema-driven external form: deferred.

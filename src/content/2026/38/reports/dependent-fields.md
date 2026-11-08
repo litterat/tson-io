@@ -1,3 +1,11 @@
+---
+title: "Dependent fields: sibling!"
+description: "A record field whose type is the type a sibling field names, spelled value?: type!, so that a field's default and pin have their real type in the kernel. Lands as a reference spelling governed by an allow_sibling facet on meta.reference_type, and takes away the last uses of meta.value."
+against: "TSON 2026 Revision 38 (Working Draft)"
+status: "Landed in Revision 39"
+id: "CR-dependent-fields"
+---
+
 # Dependent fields: `sibling!`
 
 **Status: landed in Revision 39.**

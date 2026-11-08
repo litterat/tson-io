@@ -1,3 +1,11 @@
+---
+title: "The kernel under its own name: meta.integer_type"
+description: "Step 7 of One Level: put the kernel's declarations under names of its own so that an importing schema reserves few names. As built, the kernel is one document holding six open concept maps (meta, atom, numeric, unicode, net, binary) beside thirteen root names an author writes, with every name resolved from the root and no re-exports."
+against: "TSON 2026 Revision 38 (Working Draft)"
+status: "Landed differently in Revision 39"
+id: "CR-kernel-namespace"
+---
+
 # The kernel under its own name: `meta.integer_type`
 
 **Status: landed differently in Revision 39.**
@@ -163,8 +171,7 @@ annotations are written `@atom.ordering:TOTAL` and `@meta.disjoint` (SPEC-FEEDBA
 Aliases, for the ones a data schema names; the list is short and is core's to keep.
 
 **As built: no aliases.** The list shrank until nothing was left to alias. `kind` and `ref` became one template,
-`meta.ref<T>`, written by path (SPEC-FEEDBACK.md #11). `scoped` reduced to `meta.declared` (see
-[`extern.md`](extern.md)), also written by path. `doc`, `set` and `enum`, the constructors a data schema does write
+`meta.ref<T>`, written by path (SPEC-FEEDBACK.md #11). `scoped` reduced to `meta.declared`, also written by path. `doc`, `set` and `enum`, the constructors a data schema does write
 bare, sit at the kernel's root. core.tn declares no map of its own and holds only the author annotations
 (`deprecated`, `title`, `comment`, `examples`, `read_only`, `write_only`) (SPEC-FEEDBACK.md #15).
 

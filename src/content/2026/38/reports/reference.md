@@ -1,3 +1,11 @@
+---
+title: "The reference: one syntax, one value"
+description: "Step 6 of One Level: one grammar for a qualified name with its arguments, written wherever a type is named, and that grammar the value of a single kernel reference atom. kind_type, ref_type and the type_argument record go, leaving meta.ref<T> as the one spelling; in data the argument list is written unquoted rather than quoted as first proposed."
+against: "TSON 2026 Revision 38 (Working Draft)"
+status: "Landed in Revision 39, its data spelling changed"
+id: "CR-reference"
+---
+
 # The reference: one syntax, one value
 
 **Status: landed in Revision 39, its data spelling changed.**
