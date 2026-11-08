@@ -415,14 +415,16 @@ const SCHEMA_SOURCES = import.meta.glob('../content/2026/*/m/*.tn', { query: '?r
 const SCHEMA_FIXTURES = import.meta.glob('../content/2026/*/fixtures/*-resolved.tn', { query: '?raw', import: 'default' });
 
 /** The schema chain's own order; any other source follows it, alphabetically. */
-const SCHEMA_ORDER = ['meta-kernel.tn', 'meta.tn', 'core.tn'];
+const SCHEMA_ORDER = ['meta-kernel.tn', 'meta.tn', 'numeric.tn', 'temporal.tn', 'net.tn', 'core.tn'];
 
 /** One line per schema source, for `/llms.txt`; a source not named here is listed without one. */
 export const SCHEMA_DESCRIPTIONS: Record<string, string> = {
   'meta-kernel.tn': 'Base kind constructors and the IS-A lattice root',
-  'meta.tn': 'Annotation types and schema-level directives',
-  'core.tn': 'Core type library for data interchange',
-  'net.tn': 'Network type library: IP addresses, networks, MAC addresses, host names and media types',
+  'meta.tn': 'The pre-loaded kernel: the type system, its constructors, and the common vocabulary at its root',
+  'numeric.tn': 'Numeric type library: exact, rational and complex numbers, sized integers and floats',
+  'temporal.tn': 'Temporal type library: dates, times, date-times, durations and periods',
+  'net.tn': 'Network and identifier type library: IP addresses and networks, MAC addresses, host names, media types, email, URIs and UUIDs',
+  'core.tn': 'Every bundled type in one import, with the author annotations',
   'policy.tn': 'Processor policy vocabulary: what a processor admits and spends',
 };
 
