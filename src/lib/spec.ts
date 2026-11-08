@@ -35,7 +35,59 @@ export interface RevisionNote {
  */
 export const REVISION_NOTES: Record<string, RevisionNote> = {
   // Plain text, except that `backticks` render as code.
-  '39': { summary: 'In progress.' },
+  '39': {
+    summary: 'Adjudicates the 24-entry implementation-feedback register against revision 38, and removes the meta ladder.',
+    changes: [
+      {
+        what: 'One directive: a header is an optional `!!id` and any number of `!!import`s, and `!!meta` and `!!schema` are parse errors',
+        why: 'every rung of the chain was the same relation, resolve my names against X, so one directive says it for data and schemas alike',
+      },
+      {
+        what: 'A document is a schema exactly when its root is tagged `!schema`',
+        why: 'the header no longer says which kind a document is, so the root\'s tag does, read before anything else',
+      },
+      {
+        what: 'One namespace per schema, its own entries and its import closure, and any schema may declare a constructor',
+        why: 'the meta layer\'s placement and import-level rules made a name\'s meaning depend on where it was written and which rung declared it',
+      },
+      {
+        what: 'The kernel is one document, `meta.tn`, and `meta-kernel.tn` is gone; its root holds the names an author writes, its machinery six maps such as `meta` and `unicode`',
+        why: 'with no ladder there was nothing for two pre-loaded documents to separate, and the common vocabulary reads bare while the type system stays out of the way',
+      },
+      {
+        what: 'New `numeric.tn` and `temporal.tn` libraries beside `net.tn`, each importing the kernel alone; `core.tn` imports the three and declares only the author annotations',
+        why: 'a schema imports the families it uses and reserves only their names, and `core.tn` is still the one import for everything',
+      },
+      {
+        what: 'Schema maps nest as entries, `geo => !schema { … }`, and tags, annotations and references are qualified names such as `!geo.address`',
+        why: 'a schema can group its vocabulary without a second namespace, and every name resolves from the root with no shadowing rule',
+      },
+      {
+        what: 'One reference atom, `meta.ref<T>`; `kind_type`, `ref_type` and `kind` are gone, and an application such as `set<text>` is a value in data',
+        why: 'two atoms said nearly the same thing, and a reference written in data had no grammar of its own',
+      },
+      {
+        what: 'Dependent fields: `value?: kind!` types a field by the type a sibling field names',
+        why: 'a tagged payload or a setting\'s value was either untyped or a choice listing every type in advance',
+      },
+      {
+        what: 'Facets are typed by their family\'s instance, a decimal\'s bounds by `number` and a date\'s by `date`, and `value` is gone',
+        why: 'the ladder kept each constructor a rung above its instance, so its bounds could only be typed `value` and needed conversion rules of their own',
+      },
+      {
+        what: '`!C { … }` is an instance of `C` everywhere, and `^` refines any value under its type\'s rules',
+        why: 'whether an entry is a type now follows from what built it, with no separate rule for constructors',
+      },
+      {
+        what: 'The value-position scope push and `extern_of` are gone; the open sum is `meta.declared`',
+        why: 'a value opening another schema put two namespaces in one document, so a foreign type comes in by import instead',
+      },
+      {
+        what: 'Resolution within a schema runs in a stated wait order, and source order is never consulted',
+        why: 'the order a resolver read a schema\'s entries in was unstated, so two implementations could disagree on one schema',
+      },
+    ],
+  },
   '38': {
     summary: 'Adjudicates the 25-entry spec-feedback register against revision 37.',
     changes: [
