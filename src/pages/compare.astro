@@ -4,8 +4,11 @@ import { CURRENT_REVISION } from '../lib/spec';
 
 const part1Url = `/2026/${CURRENT_REVISION}/tson-part1-data`;
 const part2Url = `/2026/${CURRENT_REVISION}/tson-part2-schema`;
-const coreUrl = `/2026/${CURRENT_REVISION}/m/core.tn`;
+const metaUrl = `/2026/${CURRENT_REVISION}/m/meta.tn`;
+const numericUrl = `/2026/${CURRENT_REVISION}/m/numeric.tn`;
+const temporalUrl = `/2026/${CURRENT_REVISION}/m/temporal.tn`;
 const netUrl = `/2026/${CURRENT_REVISION}/m/net.tn`;
+const coreUrl = `/2026/${CURRENT_REVISION}/m/core.tn`;
 const guideUrl = `/2026/${CURRENT_REVISION}/tson-guide`;
 const policyUrl = `/2026/${CURRENT_REVISION}/m/policy.tn`;
 
@@ -35,10 +38,13 @@ const sections: Section[] = [
     eyebrow: 'Built-in types',
     title: 'Scalar types',
     intro:
-      'What each system names for you, before you write a line of your own. TSON\'s atoms live in the core library and, for network values, the net library, each pinned to the RFC that defines it, and each states its value space: equality and ordering are over values, never spellings. The libraries are a starting set, not a ceiling: new atom types arrive through meta extensions (below).',
+      'What each system names for you, before you write a line of your own. TSON\'s atoms live in the kernel and three libraries, numeric, temporal and net, which `core.tn` imports as one; each is pinned to the RFC that defines it, and each states its value space: equality and ordering are over values, never spellings. The libraries are a starting set, not a ceiling: any schema can declare a new atom family (below).',
     chips: [
-      { label: 'core.tn', href: coreUrl },
+      { label: 'meta.tn', href: metaUrl },
+      { label: 'numeric.tn', href: numericUrl },
+      { label: 'temporal.tn', href: temporalUrl },
       { label: 'net.tn', href: netUrl },
+      { label: 'core.tn', href: coreUrl },
     ],
     rows: [
       { feature: 'Boolean', cells: [['y', '`boolean`'], ['y', '`boolean`'], ['y', '`boolean`'], ['y', '`bool`'], ['y', '`BOOLEAN`'], ['y', '`bool`']] },
@@ -65,8 +71,8 @@ const sections: Section[] = [
       { feature: 'Host names', cells: [['y', '`hostname` — U-labels and A-labels are one value; `host` — a name or an IP address'], ['n', '—'], ['p', '`format: hostname`, `idn-hostname`'], ['n', '—'], ['n', '—'], ['n', '—']] },
       { feature: 'Media types', cells: [['y', '`media_type` (RFC 6838), parameters admitted only where a type allows them'], ['n', '—'], ['n', '— `contentMediaType` describes content, not a value'], ['n', '—'], ['n', '—'], ['n', '—']] },
       { feature: 'Regular expression', cells: [['y', '`regex` — I-Regexp (RFC 9485)'], ['n', '— a facet, not a type'], ['p', '`format: regex`'], ['n', '—'], ['n', '—'], ['n', '—']] },
-      { feature: 'Object identifier', cells: [['n', '— not in core; a meta extension can add it'], ['n', '—'], ['n', '—'], ['n', '—'], ['y', '`OBJECT IDENTIFIER`, `RELATIVE-OID`, `OID-IRI`'], ['n', '—']] },
-      { feature: 'Adding new built-in types', cells: [['y', 'meta extensions declare new atom constructors, facets included'], ['p', 'implementation-defined primitives (1.1)'], ['p', 'custom `$vocabulary` keywords and `format` values'], ['n', '— new types are messages'], ['n', '— a fixed set of built-in types'], ['p', 'application tags, `!mytype`']] },
+      { feature: 'Object identifier', cells: [['n', '— not bundled; any schema can declare it'], ['n', '—'], ['n', '—'], ['n', '—'], ['y', '`OBJECT IDENTIFIER`, `RELATIVE-OID`, `OID-IRI`'], ['n', '—']] },
+      { feature: 'Adding new built-in types', cells: [['y', 'any schema declares new atom constructors, facets included'], ['p', 'implementation-defined primitives (1.1)'], ['p', 'custom `$vocabulary` keywords and `format` values'], ['n', '— new types are messages'], ['n', '— a fixed set of built-in types'], ['p', 'application tags, `!mytype`']] },
     ],
   },
   {
@@ -96,9 +102,10 @@ const sections: Section[] = [
       { feature: 'Refinement (narrow, keep IS-A)', cells: [['y', '`T ^ { … }` — tighten, default or fix fields; never adds or removes one'], ['y', '`restriction`'], ['p', '`allOf` plus keywords; no subtype relation'], ['n', '—'], ['y', 'subtype constraints, `WITH COMPONENTS`'], ['n', '—']] },
       { feature: 'Subtraction (remove fields)', cells: [['y', '`A - { password }` — breaks IS-A; the result has no supertypes'], ['p', '`restriction` can drop optional parts'], ['n', '— copy the schema'], ['n', '—'], ['p', '`WITH COMPONENTS` can mark optional components `ABSENT`'], ['n', '—']] },
       { feature: 'Generics', cells: [['y', 'templates over types and values, `vector<T, N>`; typed parameters, bounds such as `<T: text>`, checked at each application'], ['n', '—'], ['p', '`$dynamicRef` approximates'], ['n', '—'], ['y', 'parameterized types (X.683)'], ['n', '—']] },
-      { feature: 'Open type (value names its type)', cells: [['y', '`declared`, `extern`, `dynamic` — validated against the named type'], ['y', '`xs:any`, `xsi:type`'], ['p', '`{}` accepts anything, unchecked'], ['y', '`google.protobuf.Any`'], ['y', 'open types, `EMBEDDED PDV`'], ['p', 'tags']] },
+      { feature: 'Open type (value names its type)', cells: [['y', '`meta.declared`, the open sum — any type the schema names, validated against it'], ['y', '`xs:any`, `xsi:type`'], ['p', '`{}` accepts anything, unchecked'], ['y', '`google.protobuf.Any`'], ['y', 'open types, `EMBEDDED PDV`'], ['p', 'tags']] },
+      { feature: 'Field typed by another field', cells: [['y', 'dependent fields, `value?: kind!` — read as the type the sibling names'], ['p', 'type alternatives, `xs:alternative` (1.1)'], ['p', '`if` / `then` / `else` on a `const`'], ['p', '`google.protobuf.Any`, a type URL beside opaque bytes'], ['y', 'open types under a table constraint, `&Type({Set}{@id})`'], ['n', '—']] },
       { feature: 'Annotations on data', cells: [['y', '`@name:value` on any value, map key or field; preserved in order'], ['p', 'attributes, where the schema admits them'], ['n', '— JSON has no metadata channel'], ['n', '—'], ['n', '—'], ['p', 'tags and anchors; comments are discarded']] },
-      { feature: 'Typed, validated annotations', cells: [['y', 'every annotation is a type, `deprecated => @annotation void`; an unknown one is an error, and `@disjoint` is checked at load'], ['p', '`xs:appinfo` and foreign attributes, checked only if declared'], ['p', 'annotation keywords; custom ones via `$vocabulary`, unknown ones ignored'], ['y', 'custom options, typed by extending the `*Options` messages'], ['n', '— comments only'], ['n', '—']] },
+      { feature: 'Typed, validated annotations', cells: [['y', 'every annotation is a type, `deprecated => @meta.annotation void`; an unknown one is an error, and `@meta.disjoint` is checked at load'], ['p', '`xs:appinfo` and foreign attributes, checked only if declared'], ['p', 'annotation keywords; custom ones via `$vocabulary`, unknown ones ignored'], ['y', 'custom options, typed by extending the `*Options` messages'], ['n', '— comments only'], ['n', '—']] },
     ],
   },
   {
@@ -107,7 +114,7 @@ const sections: Section[] = [
     title: 'Facets and constraints',
     intro:
       'What a schema can say about a value beyond its type. In TSON a constrained type is a named refinement — `age => !integer ^ { min: 0  max: 150 }` — and it IS-A the type it narrows.',
-    chip: { label: '§5.5', href: `${part2Url}#55-constructor-application-and-atom-refinement` },
+    chip: { label: '§5.5', href: `${part2Url}#55-constructor-application-and-value-refinement` },
     rows: [
       { feature: 'Numeric bounds, inclusive and exclusive', cells: [['y', '`min` / `exclusive_min`, `max` / `exclusive_max` — on dates too'], ['y', '`minInclusive` … `maxExclusive`'], ['y', '`minimum` … `exclusiveMaximum`'], ['n', '— the protovalidate add-on'], ['y', 'value ranges, `(0<..<10)`'], ['n', '—']] },
       { feature: 'Multiple of', cells: [['y', '`multiple_of`'], ['n', '—'], ['y', '`multipleOf`'], ['n', '—'], ['n', '—'], ['n', '—']] },
@@ -116,7 +123,7 @@ const sections: Section[] = [
       { feature: 'Pattern', cells: [['y', '`pattern` — I-Regexp, portable across engines'], ['y', '`pattern`, XSD\'s own dialect'], ['y', '`pattern`, ECMA-262'], ['n', '—'], ['y', '`PATTERN`, permitted alphabet `FROM`'], ['n', '—']] },
       { feature: 'Temporal precision', cells: [['y', '`precision`, 0–9 fractional digits'], ['p', '`explicitTimezone`, or `pattern`'], ['n', '—'], ['n', '—'], ['p', 'time property settings'], ['n', '—']] },
       { feature: 'Address ranges', cells: [['y', '`within` / `excluding` — an empty range is a schema error'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
-      { feature: 'Cross-field rules', cells: [['p', 'field groups only; conditionals declined by design'], ['y', '`xs:assert` (XPath 2.0), `key` / `keyref`'], ['y', '`if` / `then` / `else`, `dependentRequired`, `dependentSchemas`'], ['n', '— CEL through protovalidate'], ['y', 'table and user-defined constraints'], ['n', '—']] },
+      { feature: 'Cross-field rules', cells: [['p', 'field groups and dependent fields; conditionals declined by design'], ['y', '`xs:assert` (XPath 2.0), `key` / `keyref`'], ['y', '`if` / `then` / `else`, `dependentRequired`, `dependentSchemas`'], ['n', '— CEL through protovalidate'], ['y', 'table and user-defined constraints'], ['n', '—']] },
       { feature: 'A misspelt constraint', cells: [['y', 'refused at load: `{ minimum: 1 }` names no facet of `integer`'], ['y', 'invalid against the schema for schemas'], ['n', '— `minimun: 1` is ignored and constrains nothing'], ['y', 'a `protoc` error'], ['y', 'a compiler error'], ['i', 'n/a']] },
     ],
   },
@@ -129,9 +136,9 @@ const sections: Section[] = [
     chip: { label: '§10', href: `${part2Url}#10-schema-resolution-model` },
     rows: [
       { feature: 'Schema written in', cells: [['y', 'TSON — the data\'s own notation'], ['y', 'XML'], ['y', 'JSON'], ['i', 'its own IDL, `.proto`'], ['i', 'its own notation'], ['n', '— no schema language; JSON Schema is used']] },
-      { feature: 'Meta-schema that describes itself', cells: [['y', 'the meta-kernel'], ['y', 'the schema for schemas'], ['y', 'the meta-schema'], ['p', '`descriptor.proto`'], ['n', '—'], ['n', '—']] },
-      { feature: 'Data names its schema', cells: [['y', '`!!schema`, hash-pinned'], ['p', '`xsi:schemaLocation`, a hint'], ['n', '— by convention only'], ['n', '— except `Any` type URLs'], ['n', '—'], ['n', '—']] },
-      { feature: 'Content-hash pinning', cells: [['y', 'SHA-256 on every `!!id`, `!!meta`, `!!import` and `!!schema`'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
+      { feature: 'Meta-schema that describes itself', cells: [['y', 'the kernel, `meta.tn`'], ['y', 'the schema for schemas'], ['y', 'the meta-schema'], ['p', '`descriptor.proto`'], ['n', '—'], ['n', '—']] },
+      { feature: 'Data names its schema', cells: [['y', '`!!import`, hash-pinned'], ['p', '`xsi:schemaLocation`, a hint'], ['n', '— by convention only'], ['n', '— except `Any` type URLs'], ['n', '—'], ['n', '—']] },
+      { feature: 'Content-hash pinning', cells: [['y', 'SHA-256 on every `!!id` and `!!import`'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
       { feature: 'Types in data without a schema', cells: [['y', '`!uuid "…"`, `!ipv4 "…"` — checked with no schema at all; an unknown `!name` is an error'], ['y', '`xsi:type`'], ['n', '—'], ['n', '—'], ['y', 'universal tags in BER and DER'], ['p', 'tags, `!!int`, `!!timestamp`']] },
       { feature: 'Evolution model', cells: [['i', 'immutable: a version is a new hash, so a new required field is safe'], ['i', 'namespaces, versioned by convention'], ['i', '`$id` per version, by convention'], ['i', 'field numbers: never reuse, avoid `required`'], ['i', 'extension markers `...`, version brackets `[[ ]]`'], ['i', '—']] },
       { feature: 'Encodings', cells: [['i', 'TSON text and JSON; compact and binary planned'], ['i', 'XML, EXI'], ['i', 'JSON; YAML in practice'], ['i', 'binary wire, ProtoJSON, text format'], ['i', 'BER, DER, PER, OER, XER, JER'], ['i', 'YAML']] },
@@ -155,7 +162,7 @@ const sections: Section[] = [
     rows: [
       { feature: 'Look-alike names', cells: [['y', 'identifier policy: refused by default (UTS #39 skeletons), in names and identifier-typed values'], ['n', '— any XML name'], ['n', '— any string is a key'], ['p', 'identifiers are ASCII'], ['p', 'identifiers are ASCII'], ['n', '— any string is a key']] },
       { feature: 'Mixed-script and obsolete characters in names', cells: [['y', 'identifier policy: Highly Restrictive by default; level, unit and scripts set in code'], ['n', '—'], ['n', '—'], ['p', 'ASCII only'], ['p', 'ASCII only'], ['n', '—']] },
-      { feature: 'Resource limits with specified defaults', cells: [['y', 'limits policy: twelve, each configurable; tight defaults such as depth 64'], ['n', '— parser-specific'], ['n', '— left to implementations'], ['p', 'implementation defaults, such as recursion depth 100'], ['n', '— left to implementations'], ['n', '— parser-specific']] },
+      { feature: 'Resource limits with specified defaults', cells: [['y', 'limits policy: eleven, each configurable; tight defaults such as depth 64'], ['n', '— parser-specific'], ['n', '— left to implementations'], ['p', 'implementation defaults, such as recursion depth 100'], ['n', '— left to implementations'], ['n', '— parser-specific']] },
       { feature: 'A limit exceeded', cells: [['y', 'a refusal naming the limit; never a crash, never “invalid”'], ['n', '— implementation-defined'], ['n', '— implementation-defined'], ['n', '— implementation-defined'], ['n', '— implementation-defined'], ['n', '— implementation-defined']] },
       { feature: 'Policy known in advance', cells: [['y', 'all three policies and the Unicode version, in the shape `policy.tn` declares; reported with refusals and queryable up front'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
       { feature: 'Screening values', cells: [['y', 'token policy: unrestricted by default; set a restriction level to screen untrusted values'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—'], ['n', '—']] },
@@ -167,7 +174,7 @@ const sections: Section[] = [
 ];
 
 // How the vocabulary grows, from lightest to heaviest. Snippet HTML uses the home page's classes.
-const kernelPin = `https://tson.io/2026/${CURRENT_REVISION}/m/meta-kernel.tn?sha256=…`;
+const coreRef = `https://tson.io/2026/${CURRENT_REVISION}/m/core.tn?sha256=…`;
 const extendTiers = [
   {
     title: 'Refine an atom',
@@ -179,19 +186,18 @@ const extendTiers = [
     title: 'Found a new family',
     where: 'any schema',
     body: 'Apply an existing constructor afresh: same facets and parsing contract, but a distinct type, so a stock ID is refused where an order ID is expected.',
-    html: `<span class="tk">stock_id</span> <span class="gain">=&gt;</span> <span class="gain">!uuid_type</span> <span class="tp">{}</span>
-<span class="tk">order_id</span> <span class="gain">=&gt;</span> <span class="gain">!uuid_type</span> <span class="tp">{}</span>`,
+    html: `<span class="tk">stock_id</span> <span class="gain">=&gt;</span> <span class="gain">!net.uuid_type</span> <span class="tp">{}</span>
+<span class="tk">order_id</span> <span class="gain">=&gt;</span> <span class="gain">!net.uuid_type</span> <span class="tp">{}</span>`,
   },
   {
-    title: 'Extend the meta layer',
-    where: 'a meta-schema',
-    body: 'Declare a new constructor: a new atom family with its own facet vocabulary, pinned to the specification that defines it. This is how every atom in core is built, and the one place constructors may be declared. Processors that read it need to implement its parsing contract.',
-    html: `<span class="gain">!!meta:</span><span class="ts">"${kernelPin}"</span>
-<span class="gain">!!import:</span><span class="ts">"${kernelPin}"</span>
-<span class="tp">{</span>
-  <span class="tk">oid_type</span> <span class="gain">=&gt;</span> <span class="ts">atom</span> <span class="gain">&amp;</span> <span class="ts">atom_specification</span> <span class="gain">&amp;</span> <span class="tp">{</span>
+    title: 'Declare a constructor',
+    where: 'any schema',
+    body: 'Declare a new constructor: a new atom family with its own facet vocabulary, pinned to the specification that defines it. A constructor is a type like any other, and this is how every atom in the kernel and the libraries is built. Processors that read it need to implement its parsing contract.',
+    html: `<span class="gain">!!import:</span><span class="ts">"${coreRef}"</span>
+<span class="gain">!schema</span> <span class="tp">{</span>
+  <span class="tk">oid_type</span> <span class="gain">=&gt;</span> <span class="ts">meta.atom</span> <span class="gain">&amp;</span> <span class="ts">atom.specification</span> <span class="gain">&amp;</span> <span class="tp">{</span>
     <span class="tk">spec</span><span class="gain">?</span><span class="tp">:</span>     <span class="gain">=</span> <span class="ts">"https://www.itu.int/rec/T-REC-X.660"</span>
-    <span class="tk">max_arcs</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">non_negative_integer</span>
+    <span class="tk">max_arcs</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">numeric.count</span>
   <span class="tp">}</span>
 <span class="tp">}</span>`,
   },
@@ -349,11 +355,11 @@ const reports = [
         <div class="pt-10">
           <h3 class="text-lg font-semibold mb-1.5">Extending the vocabulary</h3>
           <p class="text-sm text-gray-500 max-w-3xl mb-5">
-            The TSON column is what the core library ships, not everything TSON can say. Types grow
-            in three steps, and only the last needs a meta-schema: the meta layer is the format's
-            sanctioned extension point, so new type vocabularies arrive as meta-schemas chaining to
-            the meta-kernel, never as grammar changes. The same route adds non-type vocabulary, such
-            as an HTTP operation binding request and response types.
+            The TSON column is what the bundled libraries ship, not everything TSON can say. Types
+            grow in three steps, every one of them in an ordinary schema: a constructor is a type like
+            any other, so new type vocabularies arrive as schemas importing the kernel, never as
+            grammar changes. The same route adds non-type vocabulary, such as an HTTP operation
+            binding request and response types.
           </p>
           <div class="grid gap-5">
             {extendTiers.map((t) => (
@@ -370,9 +376,9 @@ const reports = [
             ))}
           </div>
           <div class="flex flex-wrap gap-2 pt-5">
-            <a href={`${part2Url}#222-the-meta-directive`} class={chipClass}>§2.2.2 the meta layer as extension point</a>
+            <a href={`${part2Url}#33-one-namespace`} class={chipClass}>§3.3 one namespace</a>
             <a href={`${part2Url}#42-type-construction`} class={chipClass}>§4.2 type construction</a>
-            <a href={`${part2Url}#9-the-meta-layer`} class={chipClass}>§9 guidance for extension meta-schemas</a>
+            <a href={`${part2Url}#9-the-kernel-and-the-libraries`} class={chipClass}>§9 guidance for schemas that extend the vocabulary</a>
           </div>
         </div>
       )}

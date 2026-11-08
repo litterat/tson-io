@@ -25,9 +25,8 @@ const trySession = `<span class="tp">$</span> <span class="tk">git clone https:/
 
 // ── the forbidden edit: v2 with a REQUIRED field ─────────────
 const v2Schema = `<span class="gain">!!id:</span><span class="ts">"https://example.com/people-v2.tn?sha256=ac3f2e1a…a8e5be21"</span>
-<span class="gain">!!meta:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/meta.tn?sha256=8b1e4a9c…d7f2a640"</span>
-<span class="gain">!!import:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/core.tn?sha256=3f9d2c71…b8e5c194"</span>
-{
+<span class="gain">!!import:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/core.tn?sha256=4e8d9c43…4d9a562e"</span>
+<span class="gain">!schema</span> {
   <span class="tk">person</span>   <span class="gain">=&gt;</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">born</span><span class="tp">:</span> <span class="ts">date</span>  <span class="added"><span class="tk">email</span><span class="tp">:</span> <span class="ts">text</span></span> }
   <span class="tk">employee</span> <span class="gain">=&gt;</span> <span class="ts">person</span> <span class="gain">&amp;</span> { <span class="tk">department</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">level</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">rank</span> <span class="gain">~</span> <span class="tn">L1</span> }
   <span class="tk">rank</span>    <span class="gain">=&gt;</span> <span class="gain">!enum</span> <span class="tp">[</span><span class="tn">L1 L2 L3</span><span class="tp">]</span>
@@ -89,7 +88,7 @@ const schemaRows = [
     ],
   },
   {
-    chip: '§5.5', href: `${part2Url}#55-constructor-application-and-atom-refinement`, title: 'Atoms and enums',
+    chip: '§5.5', href: `${part2Url}#55-constructor-application-and-value-refinement`, title: 'Atoms and enums',
     why: 'Refine an atom\'s constraint vocabulary with ^, or mint a fresh atom family with a constructor. A range narrows with min and max, a progression with multiple_of, a sparse set with members. The refinement IS-A its source; an enum is its own family of names, and a closed set of texts is text\'s members facet.',
     snippets: [
       { tag: 'schema', kind: 'schema', html: `<span class="tk">port</span>   <span class="gain">=&gt;</span> <span class="gain">!integer</span> <span class="gain">^</span> { <span class="tk">min</span><span class="tp">:</span> <span class="tn">1</span>  <span class="tk">max</span><span class="tp">:</span> <span class="tn">65535</span> }
@@ -176,20 +175,24 @@ const schemaRows = [
     ],
   },
   {
-    chip: '§7.8', href: `${part2Url}#78-cross-schema-type-references`, title: 'Extension points that stay verified',
-    why: 'A position where the data names its own type. declared keeps the choice inside this schema; extern_of admits any type of one named foreign schema, which the data binds with its own pinned !!schema. The payload is validated in full against the type it names — this is not an escape hatch to unchecked data.',
+    chip: '§5.2', href: `${part2Url}#52-field-definitions`, title: 'Dependent fields',
+    why: 'A field typed by the type a sibling field names. value?: kind! reads each instance\'s value against the type its own kind holds, so a settings table or a tagged payload is checked in full rather than left as untyped data. The sibling comes first and is always there to read.',
+    snippets: [
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">setting</span> <span class="gain">=&gt;</span> { <span class="tk">kind</span><span class="tp">:</span> <span class="ts">meta.type_ref</span>  <span class="tk">value</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">kind</span><span class="gain">!</span> }` },
+      { tag: 'data (each value read as the type its kind names)', kind: 'data', html: `<span class="gain">!setting</span> { <span class="tk">kind</span><span class="tp">:</span> <span class="ts">date</span>  <span class="tk">value</span><span class="tp">:</span> <span class="tn">2026-07-01</span> }\n<span class="gain">!setting</span> { <span class="tk">kind</span><span class="tp">:</span> <span class="ts">port</span>  <span class="tk">value</span><span class="tp">:</span> <span class="tn">8080</span> }` },
+    ],
+  },
+  {
+    chip: '§7.8', href: `${part2Url}#78-declared-positions-the-open-sum`, title: 'Extension points that stay verified',
+    why: 'A position where the data names its own type. meta.declared, the open sum, admits any type in the schema\'s namespace — its own declarations and its imports — and the payload is validated in full against the type it names. This is not an escape hatch to unchecked data: a foreign type comes in by importing its schema.',
     snippets: [
       { tag: 'schema', kind: 'schema', html: `<span class="tk">event</span> <span class="gain">=&gt;</span> {
   <span class="tk">at</span><span class="tp">:</span>      <span class="ts">datetime</span>
-  <span class="tk">subject</span><span class="tp">:</span> <span class="ts">declared</span>
-  <span class="tk">payload</span><span class="tp">:</span> <span class="ts">extern_of</span><span class="gain">&lt;</span><span class="ts">"https://example.com/claim.tn"</span><span class="gain">&gt;</span>
+  <span class="tk">subject</span><span class="tp">:</span> <span class="ts">meta.declared</span>
 }` },
-      { tag: 'data (each value names its type; the foreign one names its schema too)', kind: 'data', html: `<span class="gain">!event</span> {
+      { tag: 'data (the value names its type; an untagged one is an error)', kind: 'data', html: `<span class="gain">!event</span> {
   <span class="tk">at</span><span class="tp">:</span>      <span class="ts">"2026-07-01T09:00:00Z"</span>
   <span class="tk">subject</span><span class="tp">:</span> <span class="gain">!sku</span> <span class="ts">"A-123"</span>
-  <span class="tk">payload</span><span class="tp">:</span>
-    <span class="gain">!!schema:</span><span class="ts">"https://example.com/claim.tn?sha256=ac3f2e1a…"</span>
-    <span class="gain">!claim</span> { <span class="tk">reference</span><span class="tp">:</span> <span class="ts">"CLM-5678"</span> }
 }` },
     ],
   },
@@ -288,7 +291,7 @@ const safety = [
   },
   {
     title: 'Every limit is configurable',
-    body: 'Nesting depth 64, 16 MiB documents, a cap on total values, sixteen foreign schemas. The defaults sit at the tight end, so a document that fits them fits any processor, and a deployment raises whichever it needs.',
+    body: 'Nesting depth 64, 16 MiB documents, a million entries in one map, a cap on total values. The defaults sit at the tight end, so a document that fits them fits any processor, and a deployment raises whichever it needs.',
   },
   {
     title: 'A refusal is not a verdict',
@@ -303,7 +306,7 @@ const safety = [
 // ── audience routing ─────────────────────────────────────────
 const routes = [
   { label: 'Learn more about TSON?', title: 'The Developer Guide', href: guideUrl, body: 'The chain walked end to end, versioning, worked examples, and the reasoning behind the design.' },
-  { label: 'Delve into the Specifications?', title: 'Draft Specifications', href: specHubUrl, body: 'Text Data Format, Type System and Schema, JSON Encoding, the meta-schemas, and the core and network type libraries.' },
+  { label: 'Delve into the Specifications?', title: 'Draft Specifications', href: specHubUrl, body: 'Text Data Format, Type System and Schema, JSON Encoding, the kernel, and the numeric, temporal, network and core type libraries.' },
   { label: 'Want the theory?', title: 'The proto-schema research', href: '/research', body: 'The schema model, derived from the physical constraints of serialized data.' },
 ];
 ---
@@ -327,8 +330,8 @@ const routes = [
           <p class="text-gray-500">
             <strong class="text-gray-900">TSON (Typed Schema Object Notation)</strong> gives AI
             structured output with one-shot correction. Schemas cost a third the tokens of JSON
-            Schema and enforce more. Every document names its schema, every schema its
-            meta-schema — <strong class="text-gray-900">one hash verifies the chain</strong>.
+            Schema and enforce more. Every document imports its schema, every schema its
+            libraries — <strong class="text-gray-900">one hash verifies the chain</strong>.
           </p>
         </div>
         <figure class="relative bg-teal-100 rounded-2xl px-5 py-4">

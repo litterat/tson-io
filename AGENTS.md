@@ -5,9 +5,12 @@ interchange, built around strong semantic definitions and closed-world,
 verifiable schemas. The README.md contains additional background and details about TSON.
 
 This site hosts the Specification, background research, developer guides, and the
-SHA-256-pinned schemas: the **meta-kernel** (the self-referencing meta-schema),
-**meta** (the extended meta-schema with the core type constructors), and **core**
-(the common types required for data interchange, based on RFC standards).
+SHA-256-pinned schemas: the **kernel**, `meta.tn` (the type system, pre-loaded, with the
+common vocabulary at its root), the **numeric**, **temporal** and **net** type libraries (exact,
+sized and floating-point numbers; dates, times and durations; IP addresses, host names, media
+types, URIs and UUIDs, each based on RFC standards), **core** (every bundled type in one import,
+with the author annotations), and **policy** (the vocabulary a deployment writes its processor
+policy in).
 
 The specification is a 2026 working draft, with revisions actively underway. When
 it is ready, it will be pinned as version 1.
@@ -51,7 +54,7 @@ tree will not catch a missing declaration.
 
 The spec/schema files live under a revision number so a hash-pinned reference never breaks:
 `src/content/2026/{revision}/*.md` (Part 1/2, the guide), `src/content/2026/{revision}/m/*.tn`
-(meta-kernel, meta, core), and `src/content/2026/{revision}/fixtures/*.tn` (their resolved-output
+(the kernel and the libraries), and `src/content/2026/{revision}/fixtures/*.tn` (their resolved-output
 fixtures). Every revision stays published at its own path forever; nothing is deleted when the
 next one opens.
 
@@ -114,7 +117,7 @@ artifacts take `.tn1`.
    `src/content/2026/34/`. Do **not** copy `reports/` or the previous revision's
    `*-changelog.md` — both belong to the revision they were written against.
 2. In the copies, rewrite `2026/33` -> `2026/34` (the self-referencing
-   `!!id`/`!!meta`/`!!import`/`!!schema` URLs and the spec's own cross-references), and the
+   `!!id`/`!!import` URLs (revisions before 39 also carry `!!meta` and `!!schema`) and the spec's own cross-references), and the
    `## 2026 Revision 33` headings. Drop the previous revision's "what changed" sentence from the
    **Status:** paragraph — it describes the old revision, not the new one. The hash pins come
    across stale (see below) until the author re-stamps them. The skills carry the
@@ -131,13 +134,14 @@ artifacts take `.tn1`.
 rules cover every revision. Each uses one Cloudflare placeholder plus one splat, which is the
 maximum a single rule allows.
 
-The `.tn` files carry **real** sha256 pins (revisions 33–38 all do): the digest is over the file's
-bytes after its `!!id` line, computed bottom-up — the kernel first, then meta pinning the kernel,
-then core, net and policy pinning meta (policy also pins core) — and Part 2 §13.2 repeats all five. Copying a revision forward therefore
+The `.tn` files carry **real** sha256 pins (revisions 33–39 all do): the digest is over the file's
+bytes after its `!!id` line, computed bottom-up — from revision 39 the kernel `meta.tn` first, then
+numeric, temporal, net and policy pinning the kernel, then core pinning the three libraries — and
+Part 2 §13.2 repeats all six. (Revisions 33–38 have a separate `meta-kernel.tn` at the bottom.) Copying a revision forward therefore
 carries the *previous* revision's digests into the new files, which no longer match once the URLs
 are rewritten; the author re-stamps them when the revision lands, and the change log's artifact
 section names the new ones. Check them against the bytes with
-`tail -n +2 m/meta-kernel.tn | shasum -a 256`, and against §13.2 and the change log. The
+`tail -n +2 m/meta.tn | shasum -a 256`, and against §13.2 and the change log. The
 `…_xxhash` suffix in the fixtures' synthetic entry names is a different thing: a placeholder for
 an implementation-chosen content hash, and stays as written.
 
@@ -155,7 +159,7 @@ cp src/content/2026/33/m/*.tn src/content/2026/33/fixtures/*.tn public/2026/33/m
 ```
 
 Which sources a revision lists is derived from its `m/` directory by `schemaFilesFor()` in
-`src/lib/spec.ts` — the chain (kernel, meta, core) first, any other source after it — and a source
+`src/lib/spec.ts` — the kernel and libraries in `SCHEMA_ORDER` first, any other source after it — and a source
 is paired with `fixtures/{name}-resolved.tn` only when that file exists, so a new artifact such as
 revision 37's `policy.tn` lists with no edit. Its `/llms.txt` line comes from `SCHEMA_DESCRIPTIONS`
 beside it; a source missing there is listed without one.

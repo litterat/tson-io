@@ -27,8 +27,9 @@ data is pinned to a specific, hash-identified schema rather than trading correct
 validation across many schema versions.
 
 This site hosts the specification, background research, a developer guide, and the SHA-256-pinned
-schemas: meta-kernel (the self-referencing meta-schema), meta (the extended meta-schema with the
-core type constructors), and core (the common types required for data interchange, based on RFC
-standards), net (the network types: IP addresses, networks, MAC addresses, host names and media
-types), plus policy (the vocabulary a deployment writes its processor policy in). The specification is a 2026 working draft, with revisions actively underway; when
+schemas: the kernel, meta.tn (the type system, pre-loaded, with the common vocabulary at its
+root), the numeric, temporal and net type libraries (exact, sized and floating-point numbers;
+dates, times and durations; IP addresses, host names, media types, URIs and UUIDs, each based on
+RFC standards), core (every bundled type in one import, with the author annotations), and policy
+(the vocabulary a deployment writes its processor policy in). The specification is a 2026 working draft, with revisions actively underway; when
 ready, it will be pinned as version 1.

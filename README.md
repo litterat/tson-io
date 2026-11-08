@@ -38,11 +38,12 @@ specific, hash-identified schema rather than trading correctness away for loose
 validation across many schema versions.
 
 This site hosts the Specification, background research, developer guides, and the
-SHA-256-pinned schemas: the **meta-kernel** (the self-referencing meta-schema),
-**meta** (the extended meta-schema with the core type constructors), **core**
-(the common types required for data interchange, based on RFC standards), **net**
-(the network types: IP addresses, networks, MAC addresses, host names and media
-types), and **policy** (the vocabulary a deployment writes its processor policy in).
+SHA-256-pinned schemas: the **kernel**, `meta.tn` (the type system, pre-loaded, with the
+common vocabulary at its root), the **numeric**, **temporal** and **net** type libraries (exact,
+sized and floating-point numbers; dates, times and durations; IP addresses, host names, media
+types, URIs and UUIDs, each based on RFC standards), **core** (every bundled type in one import,
+with the author annotations), and **policy** (the vocabulary a deployment writes its processor
+policy in).
 
 The specification is a 2026 working draft, with revisions actively underway. When
 it is ready, it will be pinned as version 1.
@@ -68,7 +69,7 @@ src/
     2026/
       32/                # A revision-scoped draft — see "Revision-scoped paths" below
         *.md             # TSON Part 1/2 and companion docs (tson-guide.md)
-        m/                # .tn schema source files (meta-kernel, meta, core, net, policy)
+        m/                # .tn schema source files (meta, numeric, temporal, net, core, policy)
         fixtures/          # Non-normative resolved-output fixtures for the schema source files
     research/
       deep-dive-into-json/   # "A Deep Dive into JSON" article series
