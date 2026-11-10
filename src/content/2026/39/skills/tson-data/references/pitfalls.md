@@ -1,17 +1,14 @@
 # TSON data pitfalls
 
 Every mistake this skill has seen writing TSON data documents, with the fix (2026 Revision 39). The rows
-SKILL.md repeats are the commonest — chiefly JSON and YAML habits, and the spellings revision 39 retired; the
-rest live only here.
+SKILL.md repeats are the commonest — chiefly JSON and YAML habits; the rest live only here.
 
 ## Header, directives and namespace
 
 | You wrote | Problem | Write instead |
 |---|---|---|
-| `!!schema:"https://example.com/order.tn"` | retired in revision 39: a parse error | `!!import:"https://example.com/order.tn"` |
-| `!!meta:"…"` | retired in revision 39: a parse error; a schema document is the one whose root is tagged `!schema` | `!!import:"…"` for what it uses, then `!schema { … }` — and the tson-schema skill |
-| `shipping: !!schema:"…" !address { … }`, `x: !!import:"…" …` | no directive at a value position; a value cannot open a schema of its own | import every schema the document needs in the header; tag the value (`!geo.address { … }`) |
-| `!!version:"1"`, `!!include:"…"`, `!!import :"…"`, `!! import:"…"` | unknown directive, or the `:` / name not glued: parse errors | `!!id` and `!!import` are the only two |
+| `x: !!import:"…" …` | no directive at a value position; a value cannot open a schema of its own | import every schema the document needs in the header; tag the value (`!geo.address { … }`) |
+| `!!schema:"…"`, `!!version:"1"`, `!!include:"…"`, `!!import :"…"`, `!! import:"…"` | unknown directive, or the `:` / name not glued: parse errors | `!!id` and `!!import` are the only two |
 | `!!import:"…"` then `{ … }` (untagged root) | under `!!import` the root names its type: a validation error | `!order { … }` |
 | `!!import:"…"` then `!schema { … }` meant as data | a root tagged `!schema` makes a schema document | name your own type something else, or use the tson-schema skill |
 | `!uiid …`, `!Date …`, `!person { … }`, `!geo.address { … }` with no `!!import` | a type annotation outside the built-in vocabulary is a resolver error, not a marker | `!uuid`, `!date`; for your own types, import the schema that declares them |

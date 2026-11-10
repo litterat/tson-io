@@ -30,8 +30,8 @@ that is not NFC, an encoded unreserved one.
 Directives stand in the header alone (Part 1 §2.2, §3.3): an optional `!!id` on
 the first line, then any number of `!!import`s, then the root value. Only the
 header is read for references, so an `!!import:"..."` quoted inside a doc string
-is never mistaken for one. `!!schema` and `!!meta`, retired in revision 39, are
-reported as the parse errors they are.
+is never mistaken for one. Any other directive name is reported as the parse
+error it is.
 
 This script checks host names by their shape (LDH and U-labels, label and name
 lengths, no trailing dot, no digit-initial last label, Punycode round trip); it
@@ -71,7 +71,6 @@ ID_RE = re.compile(rb'^!!id:"([^"\\]*(?:\\.[^"\\]*)*)"[ \t]*(\r\n|\n|\r|\xc2\x85
 QUOTED_RE = re.compile(r'"([^"\\\r\n\x85\u2028\u2029]*(?:\\.[^"\\\r\n\x85\u2028\u2029]*)*)"')
 DIRECTIVE_NAME_RE = re.compile(r'!!([^\s:"{}\[\]]*)')
 WHITESPACE = set('\t\n\x0b\x0c\r \x85\u200e\u200f\u2028\u2029')  # Pattern_White_Space
-RETIRED = {'schema', 'meta'}
 ESCAPES = {'"': '"', '\\': '\\', 'b': '\b', 'f': '\f', 'n': '\n', 'r': '\r', 't': '\t', 's': ' '}
 UNRESERVED = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
 BIDI_CONTROLS = set('؜‎‏‪‫‬‭‮⁦⁧⁨⁩')
@@ -132,7 +131,7 @@ def header_imports(text: str, has_id: bool):
 
     `text` is the document after its !!id line (or the whole document when it
     has none). Reading stops at the first thing that is not a directive: the
-    root value. A retired or unknown directive name, an !!id past the first
+    root value. An unknown directive name, an !!id past the first
     line, and an !!import argument that is not a single-line quoted token are
     malformed; a directive past the header is the parser's to report, and is
     not looked for here.
@@ -145,9 +144,6 @@ def header_imports(text: str, has_id: bool):
             return imports
         m = DIRECTIVE_NAME_RE.match(text, i)
         name = m.group(1)
-        if name in RETIRED:
-            raise Malformed(f"'!!{name}' is retired (revision 39): a document names its schemas with "
-                            f"'!!import', and a schema document tags its root '!schema' -- a parse error")
         if name == 'id':
             raise Malformed("an '!!id' stands on the first line only" if has_id or i
                             else "malformed '!!id' line")
@@ -559,8 +555,8 @@ def self_test() -> int:
            '@doc:"see !!import:\\"https://evil.example/x.tn\\"" !order { a: "!!import:\\"x\\"" }\n')
     check("header imports", header_imports(doc, True), ["https://tson.io/2026/39/m/core.tn", "/local/a.tn"])
     check("no header", header_imports("!date 2026-07-01\n", False), [])
-    for bad in ('!!schema:"https://example.com/x.tn"\n_', '!!meta:"https://tson.io/2026/39/m/meta.tn"\n_',
-                '!!version:"1"\n_', '!!import :"x"\n_', '!!import:"""\n  x\n  """\n_',
+    for bad in ('!!schema:"https://example.com/x.tn"\n_', '!!version:"1"\n_',
+                '!!import :"x"\n_', '!!import:"""\n  x\n  """\n_',
                 '!!import:"a.tn"\n!!id:"https://example.com/x.tn"\n_'):
         refused(f"header {bad!r}", lambda bad=bad: header_imports(bad, True))
     # digest: the id line and its terminator excluded, a BOM stripped

@@ -2,9 +2,8 @@
 
 Part 2 §2.2.3, §3.3, §4.1, §4.2, §5.2, §5.12, §6 and §9, condensed. This is for the schema that declares vocabulary
 of its own: entries that are not types (an interface's methods, the routes bound to them), slots that name types
-or other entries and are checked when the schema loads, and new constructors. Before revision 39 such a document
-was a "meta-schema" on a rung of its own. Now there is **one level**: no `!!meta`, no meta layers, no rule about
-which level may import which. Any schema may declare a constructor, a namespace type, a value or a reference.
+or other entries and are checked when the schema loads, and new constructors. Any schema may declare a
+constructor, a namespace type, a value or a reference; no special kind of document is needed.
 The quoted diagnostics come from the Java implementation.
 
 ## When you are writing one
@@ -103,8 +102,7 @@ never a referent. Name an application declared in the using schema instead (`bt 
 bt`).
 
 Do not type such a slot `text` or `meta.type_name`. Those hold a bare token the resolver treats as data, so an
-unresolved name loads clean. Revision 38's `kind<C>`, `type_kind` and `identifier_kind` are gone: each one is
-the reference above.
+unresolved name loads clean.
 
 ## Slots that name values: `meta.ref<T>` and qualified names
 
@@ -305,11 +303,9 @@ load-time check is the reason for the whole arrangement.
 
 | You wrote | Problem | Write instead |
 |---|---|---|
-| `!!meta:"…/m/meta-kernel.tn"` or any `!!meta` | retired: a parse error; `meta-kernel.tn` no longer exists | `!!import:"https://tson.io/2026/39/m/meta.tn"` (or `core.tn`) and a root tagged `!schema` |
 | a bare `{ … }` root | no `!schema` tag, so the document is data | `!schema { … }` |
-| `interface => namespace & { key_type: = K  value_type: = V }` | revision 38's spelling; `namespace` is now a map constructor | `interface => !meta.namespace { key_type: K  value_type: V }` |
+| `interface => meta.namespace & { key_type: = K  value_type: = V }` | `meta.namespace` is a map constructor: apply it | `interface => !meta.namespace { key_type: K  value_type: V }` |
 | `record`, `namespace`, `type_ref`, `identifier` unqualified | kernel machinery lives under `meta` | `meta.record`, `meta.namespace`, `meta.type_ref`, `meta.identifier` |
-| `request: kind<record>`, `type_kind`, `identifier_kind` | kinds are gone | `meta.ref<meta.record>`, `meta.type_ref`, `meta.identifier_ref` |
 | `method: ref<method>` | unqualified | `method: meta.ref<method>` |
 | `request: meta.type_name`, `request: text` | inert token: an unresolved name loads clean | `meta.ref<meta.record>` or `meta.type_ref` |
 | `x => { s: orders }`, `response: orders` | a value entry is a value, not a type | name the payload's types |

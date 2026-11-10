@@ -1,6 +1,6 @@
 ---
 name: tson-schema
-description: Author, review, and explain TSON schema documents — `.tn` files whose root is tagged `!schema` (after `!!id` and `!!import` header lines), holding `name => type-definition` declarations: records, enums, refined atoms with typed facets like min and max, choices, generic templates, field groups, dependent fields and references, for the TSON (Typed Schema Object Notation) type system at tson.io. Use this skill whenever the user asks to write a TSON schema, model a domain in TSON, convert a JSON Schema / TypeScript / Protobuf / OpenAPI definition into TSON, add constraints or defaults to TSON types, or diagnose why a TSON schema fails to load or data fails validation against it. Also use it when the user pastes `!schema {`, arrow declarations, `^`, `&`, `~ default`, `meta.ref<…>` or `kind!` — or an older schema with a `!!meta` header, which it migrates. For plain TSON *data* documents (no `!schema` root), use the tson-data skill.
+description: Author, review, and explain TSON schema documents — `.tn` files whose root is tagged `!schema` (after `!!id` and `!!import` header lines), holding `name => type-definition` declarations: records, enums, refined atoms with typed facets like min and max, choices, generic templates, field groups, dependent fields and references, for the TSON (Typed Schema Object Notation) type system at tson.io. Use this skill whenever the user asks to write a TSON schema, model a domain in TSON, convert a JSON Schema / TypeScript / Protobuf / OpenAPI definition into TSON, add constraints or defaults to TSON types, or diagnose why a TSON schema fails to load or data fails validation against it. Also use it when the user pastes `!schema {`, arrow declarations, `^`, `&`, `~ default`, `meta.ref<…>` or `kind!`. For plain TSON *data* documents (no `!schema` root), use the tson-data skill.
 ---
 
 # TSON schema documents
@@ -20,7 +20,7 @@ A TSON schema is a document: a header of directives, then one braced map of `nam
      …
    }
    ```
-   `!!id` is required to publish. No other directive exists (`!!meta` and `!!schema` were retired in revision 39), and an untagged `{` root makes the file a data document.
+   `!!id` is required to publish. No other directive exists, and an untagged `{` root makes the file a data document.
 2. **Imports.** A name resolves only where the import closure holds it:
 
    | Import | Brings |
@@ -61,7 +61,7 @@ A TSON schema is a document: a header of directives, then one braced map of `nam
 | a value naming its own type | `meta.declared` | `payload: meta.declared` (tag required) | open sum |
 | a nested group of entries | `!schema { … }` | `geo => !schema { address => { city: text } }`, then `geo.address` | — |
 
-`name { … }` with no operator is a parse error — write `^` or `&`. `!T { … }` is an *instance of `T`*: over a constructor (`numeric.integer_type`) a type, over an ordinary type a **value entry** (`orders => !interface { … }`), which types nothing. Any schema may declare constructors, namespace types and value entries: `references/extension-meta-schemas.md`.
+`name { … }` with no operator is a parse error — write `^` or `&`. `!T { … }` is an *instance of `T`*: over a constructor (`numeric.integer_type`) a type, over an ordinary type a **value entry** (`orders => !interface { … }`), which types nothing. Any schema may declare constructors, namespace types and value entries: `references/extending.md`.
 
 ## Records and fields
 
@@ -183,7 +183,7 @@ An annotation is a *type* of the document's one namespace. The kernel has `@doc:
 
 Subtype admission, empty braces, the void-sentinel table, errors: `references/data-under-schema.md`.
 
-**Converting** from JSON Schema, OpenAPI, TypeScript, Protobuf or a revision 38 schema: `references/converting.md`. Do not fake what TSON lacks (open records, regex-keyed properties, conditional schemas) — say so and pick the nearest honest shape.
+**Converting** from JSON Schema, OpenAPI, TypeScript or Protobuf: `references/converting.md`. Do not fake what TSON lacks (open records, regex-keyed properties, conditional schemas) — say so and pick the nearest honest shape.
 
 ## Complete example
 
@@ -227,10 +227,10 @@ The full table is `references/pitfalls.md`; read it before handing over a schema
 
 | You wrote | Problem | Write instead |
 |---|---|---|
-| `!!meta:"…"`, a bare `{` root; `!!schema:"…"` in data | retired in revision 39 | `!!import`s and `!schema { … }`; data uses `!!import` |
-| `!enum_type`, `!text_type`, `!set_type`, `!map`, `ref<T>`, `kind<C>`, `tuple1<T>`, `@disjoint` | machinery is written by path | `!meta.enum_type`, `!unicode.text_type`, `!meta.set_type`, `!meta.map`, `meta.ref<T>`, `meta.ref<C>`, `meta.tuple1<T>`, `@meta.disjoint` |
+| a bare `{` root; `!!schema:"…"` | an untagged root is data; the only directives are `!!id` and `!!import` | `!!import`s and `!schema { … }` |
+| `!enum_type`, `!text_type`, `!set_type`, `!map`, `ref<T>`, `tuple1<T>`, `@disjoint` | machinery is written by path | `!meta.enum_type`, `!unicode.text_type`, `!meta.set_type`, `!meta.map`, `meta.ref<T>`, `meta.tuple1<T>`, `@meta.disjoint` |
 | `meta.tn` alone, then `id: uuid`, `n: int32`, `d: date` | those are the libraries' | import `core.tn` (or `net.tn`, `numeric.tn`, `temporal.tn`) |
-| `dynamic`, `extern`, `extern_of<S>`; `type_kind` | retired | `meta.declared`, the foreign schema imported; `meta.type_ref` |
+| `any`, `dynamic` for an open position; `type` for a type's name | no such types | `meta.declared` (a tagged value of any type in the closure); `meta.type_ref` |
 
 ## Reference files
 
@@ -238,7 +238,7 @@ The full table is `references/pitfalls.md`; read it before handing over a schema
 - `declaration-forms.md` — field slots, refinement orders, composition, subtraction, families, groups, disjointness, namespaces.
 - `templates.md` — parameter types, held bodies, materialisation, family bases, recursion.
 - `data-under-schema.md` — governed data: subsumption, `_`, injection, declared positions, errors.
-- `extension-meta-schemas.md` — extending the vocabulary: namespace types, value entries, constructors.
+- `extending.md` — extending the vocabulary: namespace types, value entries, constructors.
 - `converting.md`, `pitfalls.md`, `grammar.md` (ABNF, errors, hygiene, limits).
 - `meta.tn`, `numeric.tn`, `temporal.tn`, `net.tn`, `core.tn` — the libraries.
 

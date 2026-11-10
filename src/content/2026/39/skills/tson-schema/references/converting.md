@@ -1,4 +1,4 @@
-# Converting from JSON Schema, OpenAPI, TypeScript, Protobuf — and from revision 38
+# Converting from JSON Schema, OpenAPI, TypeScript, Protobuf
 
 Construct-by-construct mappings, for when the task starts from an existing schema or type
 definition rather than from a domain. Every target below assumes the schema imports `core.tn`
@@ -33,7 +33,7 @@ definition rather than from a domain. Every target below assumes the schema impo
 | TypeScript `Pick`/`Omit` | `^` (fix/narrow) / `-` removal |
 | generics `Box<T>`, `Result<T, E>`; `T extends string` | templates; a constraint → a bound, `<T: text>` (by IS-A only: the argument must refine `text`) |
 | OpenAPI `components/schemas` | ordinary declarations, in a schema the description imports |
-| OpenAPI `paths` / operations | a namespace type holding the operations, and a value entry of it, both in an ordinary schema: `method => { request?: meta.ref<meta.record>  response?: meta.type_ref }`, `interface => !meta.namespace { key_type: meta.identifier  value_type: method }`, then `orders => !interface { place_order => { request: place_order_request  response: order } }` — `extension-meta-schemas.md` |
+| OpenAPI `paths` / operations | a namespace type holding the operations, and a value entry of it, both in an ordinary schema: `method => { request?: meta.ref<meta.record>  response?: meta.type_ref }`, `interface => !meta.namespace { key_type: meta.identifier  value_type: method }`, then `orders => !interface { place_order => { request: place_order_request  response: order } }` — `extending.md` |
 | `operationId`, `description`, `deprecated`, `$comment`, `examples` | the entry's name; `@doc:"…"` (CommonMark) before the entry; bare `@deprecated` (a reason goes in `@doc`); `@comment:"…"`; `@examples:["…"]` as text |
 | `requestBody` / `responses.<status>.content.schema` | reference-typed slots on the method record (`request?: meta.ref<meta.record>`, `response?: meta.type_ref`), naming declared types; a status is a value slot (`status_code => !integer ^ { min: 100  max: 599 }`) or a fixed field on the error type (`sku_not_found => problem & { status: = 404 … }`) |
 | an operation naming another (a link, a binding to a method) | a `meta.ref<method>` slot, written `orders.place_order` (declare `method_ref => meta.ref<method>` where a processor needs a named slot type) |
@@ -41,26 +41,5 @@ definition rather than from a domain. Every target below assumes the schema impo
 | Protobuf `repeated`, `map<K,V>`, `oneof`, `optional` | `[T]`, `{K => V}`, field group, `?` on the name; `int32/uint64/bytes` → `int32`/`uint64`/`bytes` |
 | Protobuf `google.protobuf.Any` | `meta.declared` (the value names its type), with the schemas it may come from imported |
 | an object whose key order matters | `!meta.map { key_type: text  value_type: V  ordered: true }` — a map is unordered by default |
-
-## From a revision 38 schema
-
-A revision 38 schema converts mechanically; `pitfalls.md` "Retired in revision 39" has one row per
-spelling. In order:
-
-| Revision 38 | Revision 39 |
-|---|---|
-| `!!id` / `!!meta:"…/38/m/meta.tn"` / `!!import:"…/38/m/core.tn"` | `!!id` / `!!import:"…/39/m/core.tn"` — drop `!!meta`; rewrite every `2026/38` URL and drop or re-stamp its pin |
-| `!!import:"…/38/m/net.tn"` beside core | drop it: core imports `net.tn` (keep it only where you import libraries one by one) |
-| the root `{ … }` | `!schema { … }` |
-| a data document's `!!schema:"…"` | `!!import:"…"` |
-| a nested `!!schema` before a value, at `extern`/`dynamic`/`extern_of<…>` | import that schema in the document header; type the position `meta.declared` or a choice |
-| `!enum_type`, `!text_type`, `!identifier_type`, `!integer_type`, `!decimal_type`, `!set_type`, `!map`, `!array`, `!record`, `!bytes_type`, `!uuid_type`, `!uri_type`, … | the same name by path: `meta.`, `unicode.`, `numeric.`, `binary.`, `net.`, `temporal.` (`type-families.md` names each one's map) |
-| `kind<C>`, `type_kind`, `atom_kind`, `identifier_kind` | `meta.ref<C>`, `meta.type_ref`, `meta.ref<meta.atom>`, `meta.identifier_ref` |
-| `ref<T>` (meta-schemas only) | `meta.ref<T>`, in any schema |
-| `@disjoint`, `@annotation`, `@ordering`, `@bounded`, `@exact`, `@numeric` | `@meta.disjoint`, `@meta.annotation`, `@atom.ordering`, `@atom.bounded`, `@atom.exact`, `@atom.numeric` |
-| `tuple1<T>`, `voidable_tuple1<T>`, `identifier`, `non_negative_integer` | `meta.tuple1<T>`, `meta.voidable_tuple1<T>`, `meta.identifier`, `numeric.count` |
-| `value`, `!value_type {}` | no equivalent; type the slot |
-| a meta-schema (`!!meta` the meta-kernel) declaring constructors or namespace types | an ordinary schema importing `meta.tn` (or core) declaring the same entries, by path (`meta.atom & { … }`, `!meta.namespace { … }`) |
-| a description schema governed by that meta-schema, holding `orders => !interface { … }` | the same value entries, in any schema whose closure declares `interface` |
 
 Do not fake a feature the source has and TSON lacks (open records, regex-keyed properties, conditional schemas, a bound on how an argument's type was built, a value naming a schema the document never imported) — say so and choose the nearest honest shape.

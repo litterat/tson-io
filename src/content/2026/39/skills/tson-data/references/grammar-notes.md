@@ -103,7 +103,7 @@ The closed directive set (Part 1 §3.3):
 | `id` | both | header, first line, optional (publishing or pinning a schema requires it) |
 | `import` | both | header, after the optional `id`, repeatable |
 
-Nothing else: a `!!` at any value position (record field value, map key or entry value, array element), or after the root value begins, is a parse error; so is any other name. **`schema` and `meta` are directive names no longer** (retired in revision 39) — a diagnostic for either should name `import`. There is no scope push: a value cannot open a schema of its own.
+Nothing else: a `!!` at any value position (record field value, map key or entry value, array element), or after the root value begins, is a parse error; so is any other name. A value cannot open a schema of its own: every schema a document uses is imported in its header.
 
 **The namespace a data document's imports bind** (Part 2 §3.3, §3.3.4, §7.1):
 
@@ -430,4 +430,3 @@ mechanism from the per-container ones; a reference's arguments count toward it, 
 A deployment raises these; the defaults are what "a conforming document" means with nothing else said. The
 schemas a document's header names are bounded by the schema-side limits of Part 2 §11.5 — import closure 64,
 entries in one schema map 65,536, alias chain, supertype chain, materialisation depth and wait depth 64 each.
-(Revision 38's per-document "foreign schemas" limit went with the value-position scope push.)

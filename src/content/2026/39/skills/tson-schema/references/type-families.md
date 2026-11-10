@@ -7,7 +7,7 @@ root**, named by path (`numeric.decimal_type`, `meta.record`, `unicode.identifie
 the root, inside the bundled documents too; there is no lexical scope.
 
 A **constructor** carries a family's constraint vocabulary. It is an entry that is `meta.top` or IS-A it, and any
-schema whose closure holds the kernel may declare one (`extension-meta-schemas.md`). A family's **instance** is
+schema whose closure holds the kernel may declare one (`extending.md`). A family's **instance** is
 `!constructor {}`, the unconstrained member at the root, and you refine it with `!instance ^ { facets }`. Refine
 instances. Apply a constructor directly only when you mean a *fresh, unrelated* family: `dogs =>
 !numeric.integer_type {}` has the same body as `integer` and no relation to it.
@@ -290,9 +290,8 @@ base64 sha256.
 
 `meta.void_type => meta.atom & {}`, an empty vocabulary, and `void => !meta.void_type {}` at the root. A
 processor recognises it by constructor, never by name. The only value is `_`. Target for bare annotations; a
-field typed `void` holds no value (`a?: void?`). There is no `unit`, and **no `value`**: the escape hatch of
-earlier revisions is gone, a field's default or pin is read by the field's own type, and every facet by its
-family.
+field typed `void` holds no value (`a?: void?`). There is no `unit`, and **no `value`** type: a field's default or pin
+is read by the field's own type, and every facet by its family.
 
 ## Enumerations (kernel)
 
@@ -332,8 +331,7 @@ Kernel root: `boolean => !enum [true false]`.
 | `meta.choice` | `variants: [meta.type_ref]`, `disjoint?: boolean` | the closed sum; sugar `(A \| B)`; two or more; no `void` variant. The resolver derives `disjoint` and writes it in the choice body; it is discarded and recomputed on ingest. Assert it with `@meta.disjoint` |
 | `meta.declared_type` → `meta.declared` | — | the open sum: a value names its own type by its tag, among every type of the reading document's closure, and is validated in full against it. An untagged value is a validation error. It is what a schema map's entries are |
 
-There is no `scoped`, `extern`, `dynamic`, `extern_of` or `extern_type`: a position admits a foreign schema's
-types by importing that schema.
+A position admits a foreign schema's types by importing that schema.
 
 ## References (kernel)
 
@@ -356,11 +354,10 @@ whose type is `of` or IS-A it, so the slot's meaning comes from `of`:
   `meta.ref<meta.record>` (record types, and constructors, whose declarations are records), `meta.ref<net.uuid_type>`
   (types built with `uuid_type`: `stock_id`, never a UUID), `meta.identifier_ref`.
 - **`of` any other type** — the slot holds a value's **qualified name**: `meta.ref<method>` takes
-  `orders.place_order`, never a method written inline (`extension-meta-schemas.md`).
+  `orders.place_order`, never a method written inline (`extending.md`).
 
 A reference is string-class. `allow_sibling` is a permission true only at `meta.field_type_ref`; every other
-reference refuses a sibling reference (`kind!`, `declaration-forms.md`). There is no `kind<C>`, `kind_type`,
-`ref_type`, `type_kind`, `identifier_kind` or `atom_kind`: each is a reference now. Any schema whose closure holds
+reference refuses a sibling reference (`kind!`, `declaration-forms.md`). Any schema whose closure holds
 the kernel writes `meta.ref<T>` and `meta.type_ref` at a field.
 
 ## Products (kernel)
@@ -372,7 +369,7 @@ the kernel writes `meta.ref<T>` and `meta.type_ref` at a field.
 | `meta.array` | `element_type: meta.type_ref`, `voidable? ~ false`, `ordered? ~ true`, `unique_items? ~ false`, `min_items?`, `max_items?: numeric.count` | `[T]`, `[T; N..M]`, `[T?]` |
 | `meta.set_type` (`meta.array ^`) | `voidable? = false`, `ordered? = false`, `unique_items? = true`; bounds as array's | `set<T>` — the kernel root's template. **A set may be empty**; say `min_items: 1` for one that may not |
 | `meta.map` | `key_type`, `value_type: meta.type_ref`, `voidable? ~ false`, `ordered? ~ false`, `min_items?`, `max_items?: numeric.count` | `{K => V}`, `{K => V?; 1..}` |
-| `meta.namespace` (`meta.map ^`) | `key_type: meta.identifier_ref`, `voidable? = false` | none — a map keyed by names, whose values a qualified name enters (`extension-meta-schemas.md`) |
+| `meta.namespace` (`meta.map ^`) | `key_type: meta.identifier_ref`, `voidable? = false` | none — a map keyed by names, whose values a qualified name enters (`extending.md`) |
 | `meta.tuple` | `elements: [meta.tuple_element]` (`{ element_type: meta.type_ref  voidable? }`) | `[T, U?]`; one position: `meta.tuple1<T>`, `meta.voidable_tuple1<T>` |
 
 `ordered` says whether two values differing only in order are one value; it never changes what a document may
@@ -400,10 +397,9 @@ By path, the ones an author reaches for: `meta.identifier`, `meta.type_ref`, `me
 `!unicode.identifier_type { … }`, `!binary.bytes_type { encoding: HEX }`).
 
 Names that do **not** exist: `string str int float double bool binary base64 base64url base32 hex timestamp decimal
-url ip any null unknown unit value list array map record object identifier kind ref text_enum declared extern
+url ip any null unknown unit value list array map record object identifier kind ref text_enum declared
 dynamic non_empty_text positive_integer non_negative_integer negative_integer non_positive_integer annotation
-documentation` at the root, nor the kernel spellings of revision 38 (`kind_type`, `ref_type`, `type_kind`,
-`identifier_kind`, the empty `value_type` constructor, `integer_type` unqualified). A sign bound, a non-empty text and an
+documentation` at the root, nor any kernel constructor unqualified (`integer_type` is `numeric.integer_type`). A sign bound, a non-empty text and an
 `identifier` are one line a schema writes for itself. `set`, `bytes`, `period`, `iri` and `doc` *do* exist at the
 root.
 

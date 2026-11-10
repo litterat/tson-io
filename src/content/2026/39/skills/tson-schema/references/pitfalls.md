@@ -1,43 +1,33 @@
 # Pitfalls — check before delivering
 
 Every mistake this skill has seen, with the fix. Read this before handing over a schema. The first
-table is the spellings revision 39 retired — what a revision 38 schema, an older model, or the
-revision 38 reports will hand you; the second is everything else.
+table covers the header, imports and the kernel's qualified names; the second is everything else.
 
-## Retired in revision 39
+## Header, imports and names
 
 | You wrote | Problem | Write instead |
 |---|---|---|
-| `!!meta:"…/m/meta.tn"` in the header | the governing relation is gone; `!!meta` is a parse error | drop it, and `!!import` every schema whose names you use — `core.tn`, a library, or `meta.tn` |
 | a schema whose root is a bare `{ … }` | a root not tagged `!schema` makes the file a *data* document | `!schema { … }` |
-| `!!schema:"…"` heading a data document | `!!schema` is no longer a directive | `!!import:"…"` (repeatable; the imports form one namespace) |
-| `!!schema:"…"` before a field value or array element | no directive stands below the header; the value-position scope push is gone | import the foreign schema in the document's header, and type the position `meta.declared` or a choice over the types it admits |
+| `!!schema:"…"` heading a data document | not a directive: only `!!id` and `!!import` exist | `!!import:"…"` (repeatable; the imports form one namespace) |
+| `!!import:"…"` before a field value or array element | no directive stands below the header; a value cannot open a schema of its own | import the foreign schema in the document's header, and type the position `meta.declared` or a choice over the types it admits |
 | `!!import` before `!!id` | `!!id` is the first line or absent | `!!id`, then the `!!import`s |
-| `!!import:"…/m/meta-kernel.tn"` | `meta-kernel.tn` no longer exists; the kernel is `meta.tn` | `!!import:"https://tson.io/2026/39/m/meta.tn"` — or `core.tn`, which reaches it |
-| "never import `meta.tn` in a user schema" | the import-level rule is gone | import `meta.tn` alone when the kernel's root (`text integer boolean bytes enum set`…) and machinery are all you need |
 | `meta.tn` alone, then `id: uuid`, `n: int32`, `d: date`, `x: number`, `@title` | those belong to `net.tn`, `numeric.tn`, `temporal.tn`, `core.tn` | import the library you use, or `core.tn` for all of them |
-| `!record`, `!array`, `!map`, `!set_type`, `!tuple`, `!choice`, `!enum_type`, `!void_type`, `namespace & { … }` | the kernel's machinery is written by path | `!meta.record`, `!meta.array`, `!meta.map`, `!meta.set_type`, `!meta.tuple`, `!meta.choice`, `!meta.enum_type`, `!meta.void_type`, `!meta.namespace { key_type: …  value_type: … }` |
+| `!record`, `!array`, `!map`, `!set_type`, `!tuple`, `!choice`, `!enum_type`, `!void_type`, `!namespace { … }` | the kernel's machinery is written by path | `!meta.record`, `!meta.array`, `!meta.map`, `!meta.set_type`, `!meta.tuple`, `!meta.choice`, `!meta.enum_type`, `!meta.void_type`, `!meta.namespace { key_type: …  value_type: … }` |
 | `!integer_type`, `!decimal_type`, `!float_type`, `!rational_type`, `!complex_type` | by path | `!numeric.integer_type`, `!numeric.decimal_type`, … |
 | `!text_type`, `!identifier_type`, `!regex_type` | by path | `!unicode.text_type`, `!unicode.identifier_type`, `!unicode.regex_type` |
 | `!uri_type`, `!iri_type`, `!uuid_type`, `!email_type`, `!ipv4_type`, `!hostname_type`, `!media_type_type`, … | by path | `!net.uri_type`, `!net.iri_type`, `!net.uuid_type`, … |
 | `!bytes_type`, `!date_type`, `!time_type`, `!datetime_type`, `!duration_type`, `!period_type` | by path | `!binary.bytes_type`, `!temporal.date_type`, … |
 | `identifier`, `type_name`, `field_name`, `param_name` used without declaring them | the kernel's are under `meta` | `meta.identifier`, `meta.type_name`, …; or declare your own `identifier => !unicode.identifier_type { continue_add: "-" }` |
 | `tuple1<text>`, `voidable_tuple1<text>` | the kernel's, by path | `meta.tuple1<text>`, `meta.voidable_tuple1<text>` |
-| `atom_specification`, `non_negative_integer` | renamed under the maps | `atom.specification`, `numeric.count` |
+| `non_negative_integer` | no such name | `numeric.count` |
 | `@disjoint`, `@annotation` | by path | `@meta.disjoint`, `@meta.annotation` |
 | `@ordering:TOTAL`, `@bounded`, `@exact`, `@numeric` | the classifying markers live under `atom` | `@atom.ordering:TOTAL`, `@atom.bounded:true`, … |
-| `handler: kind<record>`, `!kind_type { of: … }` | `kind` and `kind_type` are gone; one reference atom serves every name | `handler: meta.ref<meta.record>` (a record type's name); the constructor is `meta.reference_type` |
-| `t: type_kind`, `t: atom_kind`, `t: identifier_kind` | gone | `meta.type_ref`, `meta.ref<meta.atom>`, `meta.identifier_ref` |
-| `to: ref<method>`, `!ref_type { of: … }` | `ref` is the kernel's `meta.ref`, built on `meta.reference_type` | `to: meta.ref<method>` |
-| `{ name: box  arguments: [{ name: text }] }`, `type_argument`, `@application:{ … }` | the resolved-output records for an application are gone | an application is written as the reference it is, unquoted: `box<text>`, `pair<text integer>`; never write `@meta.application` yourself |
+| `to: ref<method>` | `ref` is the kernel's `meta.ref`, built on `meta.reference_type` | `to: meta.ref<method>` |
 | `id => !reference { target: uuid }` | the alias constructor is `meta.alias` | `id => uuid` (or `!meta.alias { target: uuid }`) |
-| `extras?: {text => dynamic}`, `a: extern`, `a: declared`, `extern_of<"…">`, `extern_type<…>`, `!scoped { … }` | `scoped` and its subsets are gone | `meta.declared` (a value naming any type of the closure, tag required), with the foreign schema imported; or a choice; or `{text => text}` for free-form strings |
-| `x: value`, `scalar => !value_type {}` | the uninterpreted `value` atom is gone; facets are typed by their families | type the field; there is no "any scalar" type |
-| `money => decimal <- { min: 0.00 }`, `c <- { … }` | the construction operator was proposed in the revision 38 reports and never adopted | `money => !number ^ { min: 0.00 }` (refinement), or `!numeric.decimal_type { … }` (a fresh family) |
+| `extras?: {text => any}`, `a: any`, `a: declared`, `x: value` | there is no "any value" or "any scalar" type | `meta.declared` (a value naming any type of the closure, tag required), with the foreign schema imported; or a choice; or `{text => text}` for free-form strings |
 | `!number ^ { min: 0x10 }`, `!duration ^ { max: P1Y }`, `!date ^ { min: "2026-01-01T00:00:00Z" }` | a facet is typed by its family's instance, and the value fails it at load | `min: 16`; `max: P365D` (or a `period` for months); `min: 2026-01-01` |
 | `!ipv4 ^ { within: ["10.0.0.1/8"] }` | `within` is `[cidr4]`, and a network has no host bits | `["10.0.0.0/8"]` |
-| `kind => !enum [ … ]` avoided "because core declares `kind`" | core no longer declares `kind` | the name is free: `record`, `identifier`, `type_ref`, `field_name`, `bounded`, `value`, `kind` and `core` stay free under every import |
-| a meta-schema written just to declare a constructor, a namespace type or a value entry | any schema may declare them | declare them in the schema itself; `extension-meta-schemas.md` |
+| a separate schema written just to declare a constructor, a namespace type or a value entry | any schema may declare them | declare them in the schema itself; `extending.md` |
 | `site => { at: address }` inside `geo => !schema { … }` | a name resolves from the root; there is no relative lookup | `at: geo.address` |
 
 ## Everything else
@@ -88,11 +78,11 @@ revision 38 reports will hand you; the second is everything else.
 | `item => { inner: item }` | no finite value | `inner?: item` |
 | `a => b & {}` beside `b => a & {}` | a wait cycle | break the cycle; a *reference* cycle (`tree => { t?: tree }`) is fine |
 | `op => vector<order, 3> & { … }`, `op => {text => order} ^ { … }` | a container closes to a binding record with no fields | compose onto a *record* — a record template's application (`box<order> & { … }`) is fine |
-| `x => { s: orders }` where `orders => !interface { … }` | a value entry is a value, never a type | name the payload's types; see `extension-meta-schemas.md` |
+| `x => { s: orders }` where `orders => !interface { … }` | a value entry is a value, never a type | name the payload's types; see `extending.md` |
 | `request: { … }` or `request: box<text>` inside a value entry, at a `meta.ref<…>` slot | a reference slot in a value body holds one bare name, and a value body lifts nothing | declare `bt => box<text>` and write `request: bt` |
 | `!meta.record { chain: { supertypes: [ … ] } … }`, `@meta.application:…`, `@meta.synthetic` in source | `chain` and both annotations are the resolver's | compose with `&` or refine with `^`; never write them |
-| `@discriminator:type` on a choice of records | retired; a choice has no discriminator | `pet => abstract { type: text =?  … }` with each member pinning `type: = "dog"`, and the position typed `pet` |
-| `@rest` on a map field, `additionalProperties` | retired; records are closed with no exception | a map-typed field, `extras?: {text => text}` |
+| `@discriminator:type` on a choice of records | a choice has no discriminator | `pet => abstract { type: text =?  … }` with each member pinning `type: = "dog"`, and the position typed `pet` |
+| `@rest` on a map field, `additionalProperties` | records are closed with no exception | a map-typed field, `extras?: {text => text}` |
 | `pet => { type: text = "pet" … }` as a discriminated base, members writing `type: = "dog"` | a pin never changes, so no member could pin its own | `type: text =?` on the base (implies `abstract`) |
 | `leaf => final { … }` then `x => leaf & { … }` or `leaf ^ { … }` | nothing composes or refines onto a FINAL record | drop `final`, or subtract (`leaf - { … }`) |
 | a binding map or class table keyed on a minted name such as `box_text_04117bb4` | minted names are not stable | declare `bx => box<text>` and key on `bx` |
@@ -105,7 +95,6 @@ revision 38 reports will hand you; the second is everything else.
 | `?sha256=` written from memory | fabricated pin | compute it (`tson hash`, `pin.py`) or omit it |
 | `; comment`, `# comment`, `// comment` in a schema | no comment syntax (`;` is the size separator; `#` `/` are lexer errors) | `@doc:"…"` before the declaration or field |
 | example data `metadata: { k: v }` for a `{text => text}` field | that is a record; the map needs `=>` | `metadata: { k => v }` |
-| `!meta.array { element_type: T  state: OPTIONAL }`, `element_state` | retired spellings | `voidable: true` (`[T?]`) |
 | `!meta.array { … unordered: true }` | the facet is `ordered` | `ordered: false` (an array is ordered by default; a map is not) |
 | `tags: set<text>` meant non-empty | a set may be empty | `tag_set => !meta.set_type { element_type: text  min_items: 1 }`, then `tags: tag_set` |
 | `!meta.set_type { element_type: T  min_items: 0 }` for a possibly-empty set | that is already `set<T>` | `set<T>` |

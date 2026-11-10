@@ -102,7 +102,7 @@ shipping: @doc:"billing copy" !geo.address { street: "12 Byron Rd"  city: London
 
 Without `!!import`, only the built-in vocabulary (next section) exists: any other `!name` — `!uiid`, `!Date`, `!person`, any dotted name — is a **resolver error**. Under `!!import`, **every** `!name`, built-ins included, must resolve in the one namespace the imports' closures bind. `!uuid` needs `net.tn` in that closure, `!date` `temporal.tn`, `!int32` `numeric.tn`, `!text` the kernel `meta.tn`; `core.tn` brings all four.
 
-**Directives `!!name:"…"`.** Only two exist, both header-only: `!!id` (first line, optional) and `!!import` (after it, repeatable; several imports are one namespace). A `!!` at any value position, and any other name — `!!schema` and `!!meta` included, retired in revision 39 — is a parse error. The argument is an IRI-reference, never fetched by parsing. An `!!id` is written canonical — lowercase host in U-labels (`bücher.example`, not `xn--…`), NFC path with non-ASCII as itself, no port, userinfo or fragment, a host-less id an absolute path (`/local/orders.tn`); an `!!import` may use any spelling of that identity.
+**Directives `!!name:"…"`.** Only two exist, both header-only: `!!id` (first line, optional) and `!!import` (after it, repeatable; several imports are one namespace). A `!!` at any value position, and any other name, is a parse error. The argument is an IRI-reference, never fetched by parsing. An `!!id` is written canonical — lowercase host in U-labels (`bücher.example`, not `xn--…`), NFC path with non-ASCII as itself, no port, userinfo or fragment, a host-less id an absolute path (`/local/orders.tn`); an `!!import` may use any spelling of that identity.
 
 ## References: `set<text>` and `kind!`
 
@@ -189,7 +189,7 @@ Then drop quotes the quoting rule does not require. JSON numbers are exact `numb
 
 | You wrote | Problem | Write instead |
 |---|---|---|
-| `!!schema:"…"`, `!!meta:"…"`, `x: !!import:"…" …` | retired names; a directive stands in the header only | `!!import:"…"` in the header |
+| `x: !!import:"…" …`, `!!schema:"…"` | a directive stands in the header only, and only `!!id` and `!!import` exist | `!!import:"…"` in the header |
 | `!!import:"…"` then an untagged root | under a schema the root names its type | `!order { … }` |
 | `_id: 1`, `"_id": 1`, `"first name": 1`, `42x: 2` | not an identifier, so not a field name (schemaless, or under the default name type) | a map: `{ "_id" => 1 }` |
 | `missing: null` meaning "no value" | `null` is the *string* `null` | `missing: _` |
