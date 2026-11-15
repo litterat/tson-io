@@ -93,9 +93,14 @@ and fail the schema (it has no `draft`). Frontmatter is `title` plus optional `a
 and `inputs` (a list). It renders through the same `[slug].astro` route as the spec documents,
 branching on the absence of `draft`.
 
-**Reports** are revision-scoped and are **not** carried forward: a report is written against the
-revision it names, as input to the next one, and stays there. Retained-revision report pages say
-so rather than claiming they've been superseded.
+**Reports** are revision-scoped and are **not** carried forward. A finding or feedback register
+stays with the revision it was written against, as input to the next one. A design proposal lives
+with the revision it **landed in**, the way a change log does: it keeps `against:` naming the
+revision it was written against and records the landing in `status:`. When a proposal lands,
+move it from the revision it was written against into the one it landed in, rewrite links to it,
+and add a 301 for its old URL to `public/_redirects`. Revision 38's design notes moved to revision
+39 this way; its `implementation-feedback.md` register stayed. Retained-revision report pages say
+a report belongs to its revision rather than claiming it has been superseded.
 
 Report metadata resolves frontmatter first, then `REPORT_META` in `src/lib/reports.ts`, then the
 file's first markdown heading — title and description resolve independently, so a report that
@@ -115,7 +120,7 @@ artifacts take `.tn1`.
 **Starting a new revision** (e.g. 33 -> 34):
 1. Copy the previous revision's `*.md`, `m/`, `fixtures/`, and `skills/` into
    `src/content/2026/34/`. Do **not** copy `reports/` or the previous revision's
-   `*-changelog.md` — both belong to the revision they were written against.
+   `*-changelog.md` — both belong to the revision they were filed under.
 2. In the copies, rewrite `2026/33` -> `2026/34` (the self-referencing
    `!!id`/`!!import` URLs (revisions before 39 also carry `!!meta` and `!!schema`) and the spec's own cross-references), and the
    `## 2026 Revision 33` headings. Drop the previous revision's "what changed" sentence from the

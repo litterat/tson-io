@@ -19,7 +19,7 @@ id: "CR-dependent-fields"
   §12; [TSON-JSON] §5.6 and §6.1.6. The as-built record is [implementation-feedback.md #21](/2026/38/reports/implementation-feedback), and the facets
   that also stopped using `value` are [implementation-feedback.md #17](/2026/38/reports/implementation-feedback).
 
-The note is kept as it was argued. A dependent field is a feature [`one-level.md`](/2026/38/reports/one-level)'s dependency model
+The note is kept as it was argued. A dependent field is a feature [`one-level.md`](/2026/39/reports/one-level)'s dependency model
 admits, not a part of it: the model's two read edges and its invariant stand without this note, and this note adds one
 edge inside a record instance and shows it keeps the invariant.
 
@@ -273,7 +273,7 @@ With `value?: type!` (above):
     no longer forces it.
 - **What it left of `meta.value`.** The proposal expected `meta.value` to stay for two users until each went:
   `record_template_field.value`, whose type may be a parameter (`type_param`) and so has no sibling to name, and the
-  facets that [`typed-facets.md`](/2026/38/reports/typed-facets) retires.
+  facets that [`typed-facets.md`](/2026/39/reports/typed-facets) retires.
   - **As built:** both went. The facets are typed by their family's instance
     ([implementation-feedback.md #17](/2026/38/reports/implementation-feedback)), and `record_template_field.value` is `type!` inside the group
     `( value: type! | value_param: meta.param_name )?`. Beside `type_param` it has no sibling to be read against,

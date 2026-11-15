@@ -31,11 +31,11 @@ designer would, and `computation.md` keeps some future-dreaming about computatio
 TSON without entering it. `identity.md` is a research map for identity and delegation, for agents acting
 on people's behalf. `construction-operator.md` proposed `c <- { … }` and is dropped:
 `!T { … }` is an instance of `T`, and `^` refining any value under its type's rules is
-[implementation-feedback.md #5](/2026/38/reports/implementation-feedback). [`dependent-fields.md`](/2026/38/reports/dependent-fields) is `sibling!`, a feature the
-model admits and the ladder can carry, and [`typed-facets.md`](/2026/38/reports/typed-facets) retires `value` from `meta.tn`'s facets
-once one level lets a constructor and its instance share a document; [`kernel-namespace.md`](/2026/38/reports/kernel-namespace) puts
+[implementation-feedback.md #5](/2026/38/reports/implementation-feedback). [`dependent-fields.md`](/2026/39/reports/dependent-fields) is `sibling!`, a feature the
+model admits and the ladder can carry, and [`typed-facets.md`](/2026/39/reports/typed-facets) retires `value` from `meta.tn`'s facets
+once one level lets a constructor and its instance share a document; [`kernel-namespace.md`](/2026/39/reports/kernel-namespace) puts
 the kernel's declarations under one entry, `meta`, so an importing schema reserves one name (as built, six maps);
-[`reference.md`](/2026/38/reports/reference) is the syntax of "The reference atom" below, the qualified name with its arguments as
+[`reference.md`](/2026/39/reports/reference) is the syntax of "The reference atom" below, the qualified name with its arguments as
 one grammar and the atom's value. All four are kept out of this note. The API and agent sketches below came from
 private experiments built on Revision 38; what is kept of them is the design reasoning.
 
@@ -63,7 +63,7 @@ for nothing against a rule that is more correct.
   values").
 - **A constructor and its instance can share a document.** `decimal_type` and `number` sit together, as
   `integer_type` and `integer` already do in the kernel, which is what lets `meta.tn`'s `value`-typed facets be typed
-  by the atoms they bound ([`typed-facets.md`](/2026/38/reports/typed-facets), a feature this enables).
+  by the atoms they bound ([`typed-facets.md`](/2026/39/reports/typed-facets), a feature this enables).
 - **The fixture check gets stronger.** A resolved form trusts only the pre-loaded kernel.
 - **The reference vocabulary converges.** `kind_type`, `ref_type` and the name-only `type_ref` are one atom over a
   qualified name, kept apart only because `of` resolves in two stores; under the ladder `ref<T>` is dead at the level
@@ -73,10 +73,10 @@ for nothing against a rule that is more correct.
   its header. **As built:** a document's kind is in its root's tag, `!schema` for a schema, read with the header and
   before any value ([implementation-feedback.md #8](/2026/38/reports/implementation-feedback)).
 
-**Two features one level enables are kept out of it.** `sibling!` ([`dependent-fields.md`](/2026/38/reports/dependent-fields))
+**Two features one level enables are kept out of it.** `sibling!` ([`dependent-fields.md`](/2026/39/reports/dependent-fields))
 reads a field against a type its sibling names: a value waiting on a shape, which the model below already orders, plus
 one edge inside a record instance that the model does not need and that note adds; it lands under the ladder, on its
-own. Typed facets ([`typed-facets.md`](/2026/38/reports/typed-facets)) retire `value` from `meta.tn` once a constructor and its
+own. Typed facets ([`typed-facets.md`](/2026/39/reports/typed-facets)) retire `value` from `meta.tn` once a constructor and its
 instance share a document, and add an edge between values that the model below does not state.
 
 **So it is one revision, in eight ordered steps.** An earlier draft split it in two, because two of the deletions
@@ -167,8 +167,8 @@ shape every meta layer's vocabulary has.
   `boolean`, `integer`, `text`, `regex`, `iri`, `kind` and `doc`, nor of `meta.tn`'s `set`, and §5.10's rule that two
   same-named entries with the same resolved body are one type when parameter types are compared is deleted;
 - **`value_type` and `value`** (§4.2, §7.4): out of `meta.tn`'s facets once a constructor and its instance share a
-  document ([`typed-facets.md`](/2026/38/reports/typed-facets)), and out of `type_argument`, which goes with `type_ref` when the
-  reference atom's value carries the application ([`reference.md`](/2026/38/reports/reference)); `record_field.value` and
+  document ([`typed-facets.md`](/2026/39/reports/typed-facets)), and out of `type_argument`, which goes with `type_ref` when the
+  reference atom's value carries the application ([`reference.md`](/2026/39/reports/reference)); `record_field.value` and
   `record_template_field.value` keep it until dependent fields land, and then nothing in the kernel names it.
   **As built:** both are deleted. The facets are typed by their instances
   ([implementation-feedback.md #17](/2026/38/reports/implementation-feedback)), and the two field slots are `value?: type!`, typed by the field's own
@@ -252,7 +252,7 @@ invariant, and is held to it by a rule that already exists:
   closed.
 
 A dependent field adds one edge inside a record instance and a second such case, the pinned dependent field;
-[`dependent-fields.md`](/2026/38/reports/dependent-fields) states both and shows the invariant holds.
+[`dependent-fields.md`](/2026/39/reports/dependent-fields) states both and shows the invariant holds.
 
 **Which side a facet falls on is mechanical.** A constructor's facets need no hand assignment, because the side
 follows from the facet field's type and from who reads it:
@@ -269,7 +269,7 @@ as the shape is, plus its facet checks, and a facet check needs its facet value 
 Reading `min: 0.00` on `money => decimal <- { min: 0.00 }` waits on `decimal`'s reader, which is the parser plus the
 checks from `{}`, none. The chain stops at a base instance because a base instance carries no facets, and every base
 instance in the kernel is one (`integer => integer_type <- {}`). A reader may wait on a reader, so reader closure has
-its own cycle, between values; [`typed-facets.md`](/2026/38/reports/typed-facets) states the edge and the refusal, and the kernel's
+its own cycle, between values; [`typed-facets.md`](/2026/39/reports/typed-facets) states the edge and the refusal, and the kernel's
 `integer_type.min: integer` is on no such cycle.
 
 **A cycle is a cycle of shape → shape edges,** refused naming the entries on it. The kernel is the one exception: the
@@ -460,7 +460,7 @@ first draft of this note proposed a header-level opt-in to restore it. It is not
   and no header can state it. The guard the ladder spelled in a header is already in the structure.
 - **The header has one directive.** `!!import` and `!!id` are all a header carries ("How a schema identifies itself"),
   and the rules live in the schema structures themselves: what a document composes is visible per entry as
-  `meta.top`, `meta.atom` or `meta.product` ([`kernel-namespace.md`](/2026/38/reports/kernel-namespace)), and a policy that wants to
+  `meta.top`, `meta.atom` or `meta.product` ([`kernel-namespace.md`](/2026/39/reports/kernel-namespace)), and a policy that wants to
   refuse an extension judges the closure on that spelling.
 
 The depth bound no longer depends on a guard. §9.1 states one limit on read-dependency depth over a closure, beside
@@ -494,7 +494,7 @@ reservation that identity relies on. What is kept is §2.2.3 as it stands, over 
 - **A collision is an error.** Two libraries that both declare `address`, imported together, refuse the load, as two
   different declarations of one name do today, identity deciding what "different" means.
 - **Room is made with sub-namespaces.** The kernel's and `meta.tn`'s constructors sit under `meta`
-  ([`kernel-namespace.md`](/2026/38/reports/kernel-namespace)), so the rare vocabulary costs one name; importing `core.tn` puts the
+  ([`kernel-namespace.md`](/2026/39/reports/kernel-namespace)), so the rare vocabulary costs one name; importing `core.tn` puts the
   common atoms, `text`, `integer`, `uuid`, at the root, where every schema wants them bare; and a library that wants
   room for its own `address` declares it under its own entry, `geo => !schema { address => { … } }`, reached as
   `geo.address`. Import aliasing is not needed, and resolved output stays free of an import list (§8.1).
@@ -765,7 +765,7 @@ grammar ([implementation-feedback.md #13](/2026/38/reports/implementation-feedba
 - `of` names any entry of the one namespace, constructor or type: `kind<record>` and `ref<operation>` are the same
   declaration with a different `of`, which is "What `kind<T>` means" above, now with its kernel shape.
 - `type_ref` goes too: the atom's value is the qualified name *with its arguments*, one grammar at every position
-  ([`reference.md`](/2026/38/reports/reference)). A closed application lifts to a minted entry as it does today, so no slot holding a
+  ([`reference.md`](/2026/39/reports/reference)). A closed application lifts to a minted entry as it does today, so no slot holding a
   closed name carries arguments; an open one, in a template body or an alias's target, is the reference as written.
 - `members` goes. With one closure the declaring closure is the judging closure, so the index is computable at ingest
   and says nothing a reader cannot recompute; if a resolved form keeps it for inspection it is honest for the first time.
@@ -785,7 +785,7 @@ grammar ([implementation-feedback.md #13](/2026/38/reports/implementation-feedba
   `kind<X>` and `ref<X>` one application with one canonical content (§8.2), so a slot cannot know which was written. A
   one-segment restriction cannot be the difference, since decision 2's sub-namespaces make `geo.address` a type name a
   `kind<type>` slot must admit. If a difference remains it is this: a `ref<T>` points at another definition, where a
-  `kind<T>` slot takes the name as its value. Deferred ([`reference.md`](/2026/38/reports/reference), "One spelling or two").
+  `kind<T>` slot takes the name as its value. Deferred ([`reference.md`](/2026/39/reports/reference), "One spelling or two").
   **As built:** one spelling, `meta.ref<T>`; a second could say nothing the first does not
   ([implementation-feedback.md #11](/2026/38/reports/implementation-feedback)).
 
@@ -905,7 +905,7 @@ The sketch predates the one-directive decision; as built, the root is `!schema {
 - a placement's `query: [status]` must name a field of the record at `request`.
 
 These need the field names of the type a sibling names, not a value of it: a projection through the sibling's target,
-roughly `ref<request.fields!>`. A dependent field ([`dependent-fields.md`](/2026/38/reports/dependent-fields)) reads a sibling's value
+roughly `ref<request.fields!>`. A dependent field ([`dependent-fields.md`](/2026/39/reports/dependent-fields)) reads a sibling's value
 and stops there, and the chained projection is an entry-level value → value edge the dependency model's invariant
 excludes, values being leaves. Two more reasons it doesn't fit:
 - **One expression can't serve both endpoint kinds.** `query` sits in a placement shared by an operation (where
@@ -940,7 +940,7 @@ and the interface, which governs the plan and retires an `interface:` field that
 
 One revision, Revision 39, on its proposal branch, in eight steps with two rhythms. Steps 1 to 3 touch no kernel
 entry, so each was checked against the `-resolved.tn` fixtures before the next started. Steps 4 to 8 rewrite the kernel
-document once, with the fixtures moving once ([`kernel-namespace.md`](/2026/38/reports/kernel-namespace), "Resolved forms"), and
+document once, with the fixtures moving once ([`kernel-namespace.md`](/2026/39/reports/kernel-namespace), "Resolved forms"), and
 what makes one move checkable is step 2's harness, which is why the proof preceded everything. The spec text landed per
 step, as [implementation-feedback.md](/2026/38/reports/implementation-feedback) entries.
 
@@ -948,7 +948,7 @@ step, as [implementation-feedback.md](/2026/38/reports/implementation-feedback) 
 
 1. **Specify the dependency model:** shape and value; the three sides a facet falls on (link, shape, value) by the
    mechanical rule; the two closures, shape then reader, with the reader-closure edge and its cycle check stated here
-   ([`typed-facets.md`](/2026/38/reports/typed-facets), "The edge it adds") since the kernel's `multiple_of` relies on it; the
+   ([`typed-facets.md`](/2026/39/reports/typed-facets), "The edge it adds") since the kernel's `multiple_of` relies on it; the
    invariant that a shape never waits on a value; what a cycle is; and the limits, a read-dependency depth over a
    closure as a general §9.1 limit, and a template-expansion bound.
    **Outcome: landed** as [implementation-feedback.md #4](/2026/38/reports/implementation-feedback)'s seven rules, worded as readiness and waits (see
@@ -1011,7 +1011,7 @@ identifies itself", "The scope push goes") land as text here, where the ladder t
      Every schema resolves by the one algorithm, but a resolved form is still read under its source's imports, not by
      the algorithm over its own entries.
    - **5h, `extern` restored. Deferred** out of Revision 39.
-6. **One reference** ([`reference.md`](/2026/38/reports/reference)): the qualified name with arguments as one grammar at every type
+6. **One reference** ([`reference.md`](/2026/39/reports/reference)): the qualified name with arguments as one grammar at every type
    position, as the tag in data ([TSON-DATA] §7.4), and as the value of one atom; `kind_type`, `ref_type`, `type_ref`
    and `type_argument` go, and `members` with them. It cannot be written while `of` resolves in two stores, so it
    follows step 5, and it precedes step 7, which writes `meta.integer_type`.
@@ -1019,10 +1019,10 @@ identifies itself", "The scope push goes") land as text here, where the ladder t
    `kind_type`, `ref_type`, `kind` or `type_argument`; the atom is `reference_type`, with `of: meta.type_ref` and, since
    dependent fields, `allow_sibling`; `meta.ref<T>` is the one spelling, and `type_kind` and `identifier_kind` are
    renamed `meta.type_ref` and `meta.identifier_ref`. A reference with arguments is data grammar, written unquoted
-   ([implementation-feedback.md #13](/2026/38/reports/implementation-feedback)), where [`reference.md`](/2026/38/reports/reference) had proposed a quoted token.
+   ([implementation-feedback.md #13](/2026/38/reports/implementation-feedback)), where [`reference.md`](/2026/39/reports/reference) had proposed a quoted token.
    The alias body was renamed `alias` ([implementation-feedback.md #10](/2026/38/reports/implementation-feedback)), and
    [implementation-feedback.md #22](/2026/38/reports/implementation-feedback) later named §12.1's `type-ref` apart from `meta.type_ref`.
-7. **The kernel under `meta`** ([`kernel-namespace.md`](/2026/38/reports/kernel-namespace)): `meta.tn` merges into the kernel as
+7. **The kernel under `meta`** ([`kernel-namespace.md`](/2026/39/reports/kernel-namespace)): `meta.tn` merges into the kernel as
    `meta => !schema { … }`, closed maps (rule A); §4.1 restated so every `!schema` value declares; lexical scope inside
    a `!schema` body; synthetics homed by path; `core.tn` imports the kernel directly, re-exports `kind`, `ref`,
    `declared` and `doc` by alias, and keeps the common atoms at the root; `net.tn`'s constructors under `net.`. The
@@ -1035,7 +1035,7 @@ identifies itself", "The scope push goes") land as text here, where the ladder t
      `iri_reference`, `regex`, `doc`, `enum`, `set`, `schema`).
    - **The maps are open, not closed.** A map of one path declared by several documents of a closure is the union of
      their members, and a member path two of them declare collides, by identity: rule C of
-     [`kernel-namespace.md`](/2026/38/reports/kernel-namespace), not A. numeric.tn and net.tn add their constructors to the kernel's
+     [`kernel-namespace.md`](/2026/39/reports/kernel-namespace), not A. numeric.tn and net.tn add their constructors to the kernel's
      `numeric` and `net`, which closed maps would refuse.
    - **No lexical scope.** Every name resolves from the root; inside `geo` a sibling is written `geo.address`, and a
      bare `address` names the root's.
@@ -1047,7 +1047,7 @@ identifies itself", "The scope push goes") land as text here, where the ladder t
    - The fixtures moved once, and step 2's harness was rerun on the rewritten kernel.
 
    Lexical scope, synthetics homed by the innermost map, and who may contribute to an open map are open in #14.
-8. **Typed facets** ([`typed-facets.md`](/2026/38/reports/typed-facets)): with every constructor beside its canonical instance in
+8. **Typed facets** ([`typed-facets.md`](/2026/39/reports/typed-facets)): with every constructor beside its canonical instance in
    the one kernel document, each facet is typed by the instance, §7.4's `value`-typed-constraint prose goes, and
    `value_type` is deleted, its last slot having gone in step 6.
    **Outcome: landed** ([implementation-feedback.md #17](/2026/38/reports/implementation-feedback)), with every counting facet typed by a fixed
@@ -1056,7 +1056,7 @@ identifies itself", "The scope push goes") land as text here, where the ladder t
 
 Steps 1 and 2 were the correctness work. Step 3 was small and testable on its own. Steps 4 to 8 were mostly deletion
 once the decisions held, one kernel rewrite checked by the harness. Dependent fields
-([`dependent-fields.md`](/2026/38/reports/dependent-fields)) had their own order of work and landed beside these steps
+([`dependent-fields.md`](/2026/39/reports/dependent-fields)) had their own order of work and landed beside these steps
 ([implementation-feedback.md #21](/2026/38/reports/implementation-feedback)); on 2026-11-07 the rule was widened so a sibling may be a field group's
 member beside an optional dependent field, and `record_template_field` gained `( value: type! | value_param )?`.
 [implementation-feedback.md #18](/2026/38/reports/implementation-feedback) to [#20](/2026/38/reports/implementation-feedback) were found while the record and template
@@ -1072,9 +1072,9 @@ implementation confirms.
 - **One revision, Revision 39,** in eight ordered steps: the model, the proof and the operator under the ladder, then
   `namespace` under `type`, the ladder's removal, the reference, the kernel namespace and typed facets as one kernel
   rewrite ("Order of work, as landed").
-- **Three features are kept out of this note:** dependent fields ([`dependent-fields.md`](/2026/38/reports/dependent-fields)), typed
-  facets ([`typed-facets.md`](/2026/38/reports/typed-facets)) and the kernel under its own name
-  ([`kernel-namespace.md`](/2026/38/reports/kernel-namespace)). One level enables them; none is part of it.
+- **Three features are kept out of this note:** dependent fields ([`dependent-fields.md`](/2026/39/reports/dependent-fields)), typed
+  facets ([`typed-facets.md`](/2026/39/reports/typed-facets)) and the kernel under its own name
+  ([`kernel-namespace.md`](/2026/39/reports/kernel-namespace)). One level enables them; none is part of it.
 - **No construction operator.** `!C { … }` stays; `^` refines any value under its type's rules
   ([implementation-feedback.md #5](/2026/38/reports/implementation-feedback)).
 - **One directive.** `!!import` only; `!!schema` and `!!meta` are retired; a root tagged `!meta.schema` is a schema

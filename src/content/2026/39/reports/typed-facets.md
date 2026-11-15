@@ -9,7 +9,7 @@ id: "CR-typed-facets"
 # Typed facets: retiring `value` from `meta.tn`
 
 **Status: landed in Revision 39.**
-- **Proposed:** step 8 of [`one-level.md`](/2026/38/reports/one-level)'s order of work. Each atom constructor is declared beside its
+- **Proposed:** step 8 of [`one-level.md`](/2026/39/reports/one-level)'s order of work. Each atom constructor is declared beside its
   canonical instance, and its facets are typed by that instance instead of `value`. §7.4's eager-conversion rule
   for `value`-typed constraints goes. The dependency model gains a value-to-value edge: a value read against an atom
   waits on that atom's facets.
@@ -75,7 +75,7 @@ data, where a `value`-typed slot used to decode it and narrow it (implementation
 `value`-typed position is read "under the atom it stands for, once that atom is in scope". With the facet typed by that
 atom, the ordinary field reader does the same reading, and the paragraph, the bootstrap-ordering reason it gives
 (§3.4), and `value_type`'s role in the escape are prose no longer needed. `record_field.value` is the other `value` slot,
-retired by [`dependent-fields.md`](/2026/38/reports/dependent-fields); `type_argument` goes with `type_ref`, below, so `value_type`
+retired by [`dependent-fields.md`](/2026/39/reports/dependent-fields); `type_argument` goes with `type_ref`, below, so `value_type`
 leaves the kernel. **As built:** all three. `record_field.value` and `record_template_field.value` are typed `type!`,
 the field's own declared type (implementation-feedback.md #21). Nothing in the bundled documents names `value`.
 
@@ -148,8 +148,8 @@ facets first, then the values read against it. Order independence and terminatio
 **`type_argument.value`** is an argument to a template's value parameter, `bounded<10>`. Its type is the parameter's,
 reached from a `type_argument` only by following the enclosing application's template name to that template's
 parameter list, a projection through a reference that nothing in the kernel does and
-[`dependent-fields.md`](/2026/38/reports/dependent-fields)'s `sibling!` does not do either. It does not need to, because the record it
-sits in does not survive: [`reference.md`](/2026/38/reports/reference) makes the qualified name with its arguments one grammar and the
+[`dependent-fields.md`](/2026/39/reports/dependent-fields)'s `sibling!` does not do either. It does not need to, because the record it
+sits in does not survive: [`reference.md`](/2026/39/reports/reference) makes the qualified name with its arguments one grammar and the
 value of the kernel's one reference atom, so an open application in resolved output is that reference as written and
 `type_ref` and `type_argument` go. An argument is a token inside a reference, typed where materialisation lands it: the
 body is read as the constructor's instance, where `min: 10` is a facet read against `integer_type` under the rule above.

@@ -9,7 +9,7 @@ id: "CR-reference"
 # The reference: one syntax, one value
 
 **Status: landed in Revision 39, its data spelling changed.**
-- **Proposed:** step 6 of [`one-level.md`](/2026/38/reports/one-level)'s order of work. One grammar for a qualified name with its
+- **Proposed:** step 6 of [`one-level.md`](/2026/39/reports/one-level)'s order of work. One grammar for a qualified name with its
   arguments, written wherever a type is named, and that grammar the value of one kernel reference atom, so that
   `kind_type`, `ref_type`, `type_ref` and `type_argument` go.
 - **What happened:** the grammar and the one atom landed. `kind_type`, `ref_type`, `kind` and the `type_argument`
@@ -24,11 +24,11 @@ id: "CR-reference"
   (qualified names and tags, resolved from the root), [#21](/2026/38/reports/implementation-feedback) (`allow_sibling`) and
   [#22](/2026/38/reports/implementation-feedback) (`type-ref` names a reference, `type-expr` an expression).
 
-[`one-level.md`](/2026/38/reports/one-level)'s "The reference atom" is the measured argument that `kind_type`, `ref_type` and
+[`one-level.md`](/2026/39/reports/one-level)'s "The reference atom" is the measured argument that `kind_type`, `ref_type` and
 `type_ref` are one atom, kept apart only by the ladder's two stores. This note is the syntax that argument stops short
 of: the qualified name, with its arguments, is one grammar wherever a type is named, and that grammar is the atom's
-value. [`kernel-namespace.md`](/2026/38/reports/kernel-namespace) depends on it (qualified names at type positions, qualified tags in
-data), and [`typed-facets.md`](/2026/38/reports/typed-facets) and [`dependent-fields.md`](/2026/38/reports/dependent-fields) lose their last
+value. [`kernel-namespace.md`](/2026/39/reports/kernel-namespace) depends on it (qualified names at type positions, qualified tags in
+data), and [`typed-facets.md`](/2026/39/reports/typed-facets) and [`dependent-fields.md`](/2026/39/reports/dependent-fields) lose their last
 `value`-typed slot to it.
 
 ## The problem
