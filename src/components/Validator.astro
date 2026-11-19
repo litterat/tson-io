@@ -6,8 +6,9 @@
  *
  * Ported from `examples/web-demo` in the TypeScript implementation
  * (github.com/litterat/ltr8-io-tson-typescript), which is where the scenarios and the diagnostics
- * rendering are maintained. Nothing is fetched: `@ltr8/tson/stdlib` carries meta-kernel, meta.tn,
- * core.tn, net.tn and policy.tn as embedded text, so the whole ladder resolves client-side.
+ * rendering are maintained. Nothing is fetched: `@ltr8/tson/stdlib` carries the kernel (meta.tn),
+ * the numeric, temporal and net libraries, core.tn and policy.tn as embedded text, so a schema's
+ * whole import closure resolves client-side.
  *
  * The JSON tab is this page's own, not the port's demo: the same examples in Part 3's encoding,
  * read by `@ltr8/tson/json` against the one compiled schema.
@@ -366,7 +367,7 @@
 
 <script>
   import { classifyDocument, parse, validate } from '@ltr8/tson';
-  import { CORE_TN, META_TN, NET_TN, standardLibrary } from '@ltr8/tson/stdlib';
+  import { CORE_TN, standardLibrary } from '@ltr8/tson/stdlib';
   import {
     canonicalizeIdentity,
     declaredSha256,
@@ -380,12 +381,10 @@
   interface SchemaSpec {
     id: string;
     body: string;
-    /** Also imports net.tn: core alone declares no network type. */
-    net?: boolean;
   }
 
   const PEOPLE_BODY = `@doc:"The demo schema: an employee record."
-{
+!schema {
   @doc:"A person on the payroll."
   employee => {
     id:        uuid
@@ -403,7 +402,7 @@
 `;
 
   const OBSERVATORY_BODY = `@doc:"A tour of the schema language: atom refinements, enums over a name type, typed field names, bounded templates, field groups, maps, sets, tuples, composition, refinement, subtraction and guarded recursion."
-{
+!schema {
   @doc:"Three letters, a dash, three digits."
   designator => !text ^ { pattern: "[A-Z]{3}-[0-9]{3}" }
 
@@ -421,12 +420,12 @@
   status => !enum [PLANNED ACTIVE DEGRADED RETIRED]
 
   @doc:"An enum's members are names of its name type. Words admits a single space inside a name, so partly cloudy is a name, judged by hygiene and equal only to itself."
-  words => !identifier_type { medial: " " }
-  sky => !enum_type { name_type: words  members: ["clear" "partly cloudy" "overcast"] }
+  words => !unicode.identifier_type { medial: " " }
+  sky => !meta.enum_type { name_type: words  members: ["clear" "partly cloudy" "overcast"] }
 
   @doc:"Field names from a JSON vocabulary: a name type admitting @ and $, set on a fieldless abstract base that records compose."
-  json_name   => !identifier_type { start_add: "@$" }
-  json_record => !record { name_type: json_name  extension: ABSTRACT  fields: {} }
+  json_name   => !unicode.identifier_type { start_add: "@$" }
+  json_record => !meta.record { name_type: json_name  extension: ABSTRACT  fields: {} }
   linked_id   => json_record & { "@id": iri  "@type": text }
 
   @doc:"A type parameter, used at an element position."
@@ -441,7 +440,7 @@
   @doc:"Partial application re-declares the open parameter."
   index_of => <V> {designator => V}
 
-  @doc:"A set: unordered, unique, and possibly empty. Written through meta's set template."
+  @doc:"A set: unordered, unique, and possibly empty. Written through the kernel's set template."
   partner_set => set<non_empty_text>
 
   coordinate => [number, number]
@@ -540,23 +539,20 @@
   instrument_public => instrument - { recorded_by, serial }
 
   @doc:"A user-defined valueless annotation: presence is the information. Written bare in data."
-  @annotation
-  critical => void
+  critical => @meta.annotation void
 
   @doc:"A user-defined text annotation. Written @operator:\\"...\\" in data."
-  @annotation
-  operator => text
+  operator => @meta.annotation text
 
   @doc:"A user-defined record annotation: the annotation value is a whole record."
-  @annotation
-  calibration => {
+  calibration => @meta.annotation {
     by:         non_empty_text
     on:         date
     drift_ppm:  number
     verified?:  boolean ~ false
   }
 
-  @doc:"Built-in atoms from core and net, each parsed and constrained by its own grammar: a host is a name or an address, and a media type admits no parameters unless its type allows them. Final: nothing may compose onto it."
+  @doc:"Built-in atoms from the core libraries, each parsed and constrained by its own grammar: a host is a name or an address, and a media type admits no parameters unless its type allows them. Final: nothing may compose onto it."
   telemetry => final {
     stream_id:  uuid
     endpoint:   uri
@@ -599,9 +595,8 @@
 
   const PEOPLE: SchemaSpec = { id: 'https://example.com/people.tn', body: PEOPLE_BODY };
   const OBSERVATORY: SchemaSpec = {
-    id: 'https://tson.io/2026/38/examples/observatory.tn',
+    id: 'https://tson.io/2026/39/examples/observatory.tn',
     body: OBSERVATORY_BODY,
-    net: true,
   };
 
   interface Scenario {
@@ -633,7 +628,7 @@
       root: 'employee',
       ok: true,
       resetsSchema: true,
-      data: `!!schema:"https://example.com/people.tn?sha256=__PIN__"
+      data: `!!import:"https://example.com/people.tn?sha256=__PIN__"
 !employee {
   id:      "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
   name:    "Ada Lovelace"
@@ -659,7 +654,7 @@
       id: 'planted',
       label: 'ten planted errors',
       root: 'employee',
-      data: `!!schema:"https://example.com/people.tn?sha256=__PIN__"
+      data: `!!import:"https://example.com/people.tn?sha256=__PIN__"
 !employee {
   id:        "not-a-uuid"
   name:      ""
@@ -693,7 +688,7 @@
       id: 'typo',
       label: 'one typo',
       root: 'employee',
-      data: `!!schema:"https://example.com/people.tn?sha256=__PIN__"
+      data: `!!import:"https://example.com/people.tn?sha256=__PIN__"
 !employee {
   id:      "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
   name:    "Ada Lovelace"
@@ -717,7 +712,7 @@
       id: 'missing',
       label: 'missing fields',
       root: 'employee',
-      data: `!!schema:"https://example.com/people.tn?sha256=__PIN__"
+      data: `!!import:"https://example.com/people.tn?sha256=__PIN__"
 !employee {
   name: "Grace Hopper"
   age:  45
@@ -733,7 +728,7 @@
       id: 'syntax',
       label: 'malformed syntax',
       root: 'employee',
-      data: `!!schema:"https://example.com/people.tn?sha256=__PIN__"
+      data: `!!import:"https://example.com/people.tn?sha256=__PIN__"
 !employee {
   id:   "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
   name: "Unclosed record
@@ -783,7 +778,7 @@
       root: 'observatory',
       ok: true,
       schema: OBSERVATORY,
-      data: `!!schema:"https://tson.io/2026/38/examples/observatory.tn?sha256=__PIN__"
+      data: `!!import:"https://tson.io/2026/39/examples/observatory.tn?sha256=__PIN__"
 
 !observatory {
   id:          "MKA-001"
@@ -883,7 +878,7 @@
 
   telemetry: {
     stream_id:  "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
-    endpoint:   "https://tson.io/2026/38/examples/observatory.tn"
+    endpoint:   "https://tson.io/2026/39/examples/observatory.tn"
     host:       "relay.mauna-kea.example"
     format:     "application/cbor"
     heartbeat:  "PT30S"
@@ -1024,7 +1019,7 @@
 
   "telemetry": {
     "stream_id":  "f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
-    "endpoint":   "https://tson.io/2026/38/examples/observatory.tn",
+    "endpoint":   "https://tson.io/2026/39/examples/observatory.tn",
     "host":       "relay.mauna-kea.example",
     "format":     "application/cbor",
     "heartbeat":  "PT30S",
@@ -1073,20 +1068,18 @@
   const encoder = new TextEncoder();
 
   /**
-   * The schema, headed by the full pinned chain. `!!meta` and `!!import` take their references
-   * from the stdlib documents themselves rather than from hardcoded hex, so they are exactly the
-   * identities the registry is keyed by and cannot drift from the schemas actually shipped.
+   * The schema, headed by its pinned import of core. The `!!import` takes its reference from the
+   * stdlib document itself rather than from hardcoded hex, so it is exactly the identity the
+   * registry is keyed by and cannot drift from the schema actually shipped. Core imports the
+   * numeric, temporal and net libraries, which import the kernel, so one import reaches them all.
    *
    * `selfPin` goes on `!!id`, and stamping it does not change the digest it states: §7.3 hashes
    * from the second line on, precisely so a document can name its own content.
    */
   function buildSchema(spec: SchemaSpec, selfPin: string | null): string {
-    const metaId = classifyDocument(encoder.encode(META_TN)).id ?? '';
     const coreId = classifyDocument(encoder.encode(CORE_TN)).id ?? '';
-    const netId = classifyDocument(encoder.encode(NET_TN)).id ?? '';
     const id = selfPin ? `${spec.id}?sha256=${selfPin}` : spec.id;
-    const net = spec.net ? `!!import:"${netId}"\n` : '';
-    return `!!id:"${id}"\n!!meta:"${metaId}"\n!!import:"${coreId}"\n${net}${spec.body}`;
+    return `!!id:"${id}"\n!!import:"${coreId}"\n${spec.body}`;
   }
 
   /** `spec` carrying its own digest on the `!!id`, the line §7.3 excludes from that digest. */
@@ -1242,20 +1235,20 @@
   const isGap = (code: string) => code === 'NOT_IMPLEMENTED';
 
   /**
-   * The entries this schema declares itself, as opposed to the ~48 it gets from `!!import`ing
+   * The entries this schema declares itself, as opposed to the many it reaches by `!!import`ing
    * core.tn — the useful half of "no entry named X" is what you could have written instead.
    * `origins` records ids without their scheme, so both sides are normalised before comparing.
    *
    * Resolver-materialised entries are dropped: desugaring `tags?: [non_empty_text]` lifts a
    * synthetic `array_non_empty_text_70c48588`, and §8.2 makes those names implementation-chosen
    * and non-normative — offering one as something you could have typed would be a lie. The
-   * meta-kernel marks them with a `@synthetic` key annotation, which is what this reads.
+   * resolver marks them with a `@meta.synthetic` key annotation, which is what this reads.
    */
   function localEntryNames(linked: CompiledSchema['linked']): string[] {
     const strip = (u: string) => u.replace(/^[a-z]+:\/\//i, '').replace(/\?.*$/, '');
     const home = strip(linked.id);
     const isSynthetic = (name: string) =>
-      (linked.keyAnnotations.get(name) ?? []).some((a) => a.name === 'synthetic');
+      (linked.keyAnnotations.get(name) ?? []).some((a) => a.name === 'meta.synthetic');
     return [...linked.entries.keys()].filter(
       (n) => strip(linked.origins.get(n) ?? '') === home && !isSynthetic(n),
     );
@@ -1270,7 +1263,7 @@
 
   /**
    * Stamps the schema's current digest onto both references that name it: the schema's own `!!id`
-   * and the document's `!!schema`. §2.2.1's pinning half, via the library's `withSha256Pin`, the
+   * and the document's `!!import` of it. §2.2.1's pinning half, via the library's `withSha256Pin`, the
    * exact inverse of the `declaredSha256` read that found the mismatch. Re-pinning the `!!id` is
    * safe mid-flight because §7.3 excludes that line from the hash, so the digest it states stays
    * the digest of what follows. Deliberately an action: a consumer re-pins after reviewing a new
@@ -1310,18 +1303,42 @@
    * it stands in for the fetch that would otherwise trigger the check.
    */
   function checkPins(doc: Document | null, schemaText: string, digest: string | null): Diagnostic[] {
-    pinnedRef = doc?.schema ?? null;
     selfRef = null;
-    if (!digest) return [];
     try {
       selfRef = classifyDocument(encoder.encode(schemaText)).id ?? null;
     } catch {
       // An unparseable header is already reported by the compile step.
     }
+    pinnedRef = importOf(doc, selfRef);
+    if (!digest) return [];
     // The consumer side only: the schema's own `!!id` is checked before compiling, by
     // `checkSelfPin`, since `resolveSchema` refuses a schema that does not match it.
-    const problem = pinProblem(pinnedRef, digest, 'the document\u2019s !!schema');
+    const problem = pinProblem(pinnedRef, digest, 'the document\u2019s !!import');
     return problem ? [problem] : [];
+  }
+
+  /**
+   * The document's `!!import` of the schema in the pane, among whatever else it imports. Matched on
+   * canonical identity, which ignores the pin, so a reference pinned to an older digest is still
+   * found — that mismatch is exactly what the caller is looking for.
+   */
+  function importOf(doc: Document | null, schemaId: string | null): string | null {
+    if (!doc || !schemaId) return null;
+    let want: string;
+    try {
+      want = canonicalizeIdentity(schemaId);
+    } catch {
+      return null;
+    }
+    return (
+      doc.imports.find((ref) => {
+        try {
+          return canonicalizeIdentity(ref) === want;
+        } catch {
+          return false;
+        }
+      }) ?? null
+    );
   }
 
   /**
@@ -1453,7 +1470,7 @@
     schemaBroken = false;
     const digest = await schemaDigest(schemaEl.value);
 
-    // The `!!schema` reference as the document writes it, pin and all. A document that will not
+    // The document's `!!import`s as it writes them, pins and all. A document that will not
     // parse has worse problems than its pin, so a failure here just skips the check. JSON has no
     // pin to check: its binding arrives out-of-band, and §3.4 makes it not content-addressed.
     const json = format === 'json';
@@ -1616,7 +1633,7 @@
       schemaEl.value = await pinnedSchema(want);
     }
 
-    // Stamp the document's `!!schema` against the schema actually in scope now. Scenarios keep the
+    // Stamp the document's `!!import` against the schema actually in scope now. Scenarios keep the
     // placeholder rather than a baked-in digest, so loading one after a re-pin cannot drag the
     // original digest back in — an example is written against the schema you are holding.
     const digest = await schemaDigest(schemaEl.value);
@@ -1637,9 +1654,9 @@
   async function init() {
     if (!dataEl || !schemaEl || !rootEl || !chipsEl) return;
 
-    // The whole chain starts out correctly pinned: the schema's `!!meta` and `!!import` carry the
-    // stdlib's own identities, its `!!id` carries its own digest, and every document's `!!schema`
-    // carries the same. Computed once from the schema as shipped and never restamped — the pin
+    // The whole chain starts out correctly pinned: the schema's `!!import` carries the stdlib's own
+    // identity, its `!!id` carries its own digest, and every document's `!!import` carries the
+    // same. Computed once from the schema as shipped and never restamped — the pin
     // belongs to the document, and rewriting it to track an edit would forge what it proves.
     try {
       schemaEl.value = await pinnedSchema(PEOPLE);
