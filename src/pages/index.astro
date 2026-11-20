@@ -313,7 +313,7 @@ const routes = [
 
 <Layout
   title="TSON (Typed Schema Object Notation)"
-  description="Schema and data for AI: structured output with one-shot correction, schemas at a third the tokens of JSON Schema, and one hash that verifies the whole chain."
+  description="Exact schemas, closed and pinned. TSON accepts only what was agreed, so AI can write data and be checked against it: a foundation for APIs, RPCs and identity."
   image="/images/og/home.png"
   home
 >
@@ -322,19 +322,23 @@ const routes = [
     <div class="max-w-5xl mx-auto px-6 pt-5 pb-5">
       <div class="grid md:grid-cols-2 gap-8">
         <div class="flex flex-col">
-          <!-- 35.5px is the last size that stays on one line in this 472px column; 34px keeps a
-               little headroom for font-rendering differences. -->
-          <h1 class="text-3xl lg:text-[34px] font-bold font-mono tracking-tight mb-3 leading-tight">
-            Schema and Data <span class="whitespace-nowrap">for <span class="text-teal-700">AI</span>.</span>
+          <!-- Two lines by design, one sentence each, and neither breaks. The longer, "Closed and
+               pinned.", is 18 characters: 34px fits the 472px column with room to spare, and 24px
+               below sm keeps it inside a 320px screen's 272px measure. -->
+          <h1 class="text-2xl sm:text-3xl lg:text-[34px] font-bold font-mono tracking-tight mb-3 leading-tight">
+            <span class="block whitespace-nowrap">Exact schemas.</span>
+            <span class="block whitespace-nowrap text-teal-700">Closed and pinned.</span>
           </h1>
           <p class="text-gray-500">
-            <strong class="text-gray-900">TSON (Typed Schema Object Notation)</strong> gives AI
-            structured output with one-shot correction. Schemas cost a third the tokens of JSON
-            Schema and enforce more. Every document imports its schema, every schema its
-            libraries — <strong class="text-gray-900">one hash verifies the chain</strong>.
+            As AI writes more of the data your systems act on, “close enough” stops being safe. <strong
+            class="text-gray-900">TSON (Typed Schema Object Notation)</strong> accepts only
+            what was agreed: a schema admits nothing it doesn’t declare, every document proves which
+            schema it follows, and look-alike characters can’t pass as trusted names. It’s exact
+            enough for AI to write and be checked against, and solid enough to build <strong
+            class="text-gray-900">APIs, RPCs and identity</strong> upon.
           </p>
         </div>
-        <figure class="relative bg-teal-100 rounded-2xl px-5 py-4">
+        <figure class="relative self-center bg-teal-100 rounded-2xl px-5 py-4">
           <span
             aria-hidden="true"
             class="hidden md:block absolute -left-1.5 top-6 h-3.5 w-3.5 rotate-45 bg-teal-100"
