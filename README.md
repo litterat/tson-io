@@ -1,14 +1,18 @@
 # tson.io
 
 tson.io is the home of the **TSON** (Typed Schema Object Notation)
-project: a schema and data format for data interchange, built around strong
-semantic definitions and closed-world, verifiable schemas.
+project: a schema and data format for data interchange, focused on exact
+schemas built from the shape of data. Its schemas are closed-world — a schema
+admits nothing it doesn't declare — and immutable: every document names the
+schema it follows by SHA-256 hash, and every schema its libraries. Names and
+tokens are checked against Unicode confusables and restricted scripts, so
+look-alike characters can't pass as trusted names.
 
 Where JSON-like formats optimise for visual readability, minimal syntax, and
 convention, TSON optimises for the opposite priorities — semantic transparency,
-explicit structure, and verifiable schemas. That makes it a natural fit for
-systems where correctness matters more than terseness, including AI and LLM
-pipelines that must read and write structured data without ambiguity.
+explicit structure, and verifiable schemas. That exactness is what lets AI both
+author schemas and write data against them, and what makes TSON a foundation
+for APIs, RPCs and identity.
 
 TSON is built from an abstract data model and type system — a *proto-schema* —
 for serialized data, derived from the physical constraints of serialization

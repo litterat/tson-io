@@ -313,7 +313,7 @@ const routes = [
 
 <Layout
   title="TSON (Typed Schema Object Notation)"
-  description="Exact schemas, closed and pinned. TSON accepts only what was agreed, so AI can write data and be checked against it: a foundation for APIs, RPCs and identity."
+  description="Exact schemas, closed and immutable. TSON accepts only what was agreed, so AI can write data and be checked against it: a foundation for APIs, RPCs and identity."
   image="/images/og/home.png"
   home
 >
@@ -323,11 +323,12 @@ const routes = [
       <div class="grid md:grid-cols-2 gap-8">
         <div class="flex flex-col">
           <!-- Two lines by design, one sentence each, and neither breaks. The longer, "Closed and
-               pinned.", is 18 characters: 34px fits the 472px column with room to spare, and 24px
-               below sm keeps it inside a 320px screen's 272px measure. -->
-          <h1 class="text-2xl sm:text-3xl lg:text-[34px] font-bold font-mono tracking-tight mb-3 leading-tight">
+               immutable.", is 21 characters, so each step is sized to the narrowest column it
+               serves: 20px for a 320px screen's 272px measure, 24px from 375px, 30px in the single
+               column from sm, 26px for md's 344px half column, and 34px for lg's 472px. -->
+          <h1 class="text-xl min-[375px]:text-2xl sm:text-3xl md:text-[26px] lg:text-[34px] font-bold font-mono tracking-tight mb-3 leading-tight">
             <span class="block whitespace-nowrap">Exact schemas.</span>
-            <span class="block whitespace-nowrap text-teal-700">Closed and pinned.</span>
+            <span class="block whitespace-nowrap text-teal-700">Closed and immutable.</span>
           </h1>
           <p class="text-gray-500">
             As AI writes more of the data your systems act on, “close enough” stops being safe. <strong
@@ -360,7 +361,7 @@ const routes = [
     <div class="max-w-5xl mx-auto px-6 pb-6">
       <Validator />
       <p class="text-sm text-gray-500 pt-5 max-w-4xl">
-        TSON data and schema documents share one lexer, one toolchain, one verification path. Both panes are editable, and everything you see runs in your browser. Every reference in the two headers is pinned by hash: the schema names its own content, its meta-schema and its type library, and the document names the schema. Edit the schema and those pins stop matching — a document's hash covers everything below the line that carries it, which is how it can name itself. That is what a consumer verifies before trusting a byte, and what the <code class="font-mono text-gray-900">re-pin</code> button restores.
+        TSON data and schema documents share one lexer, one toolchain, one verification path. Both panes are editable, and everything you see runs in your browser. Every reference in the two headers is pinned by hash: the schema names its own content and the core library it imports, which in turn pins the libraries and kernel beneath it, and the document names the schema. Edit the schema and those pins stop matching — a document's hash covers everything below the line that carries it, which is how it can name itself. That is what a consumer verifies before trusting a byte, and what the <code class="font-mono text-gray-900">re-pin</code> button restores.
       </p>
       <p class="text-sm text-gray-500 pt-3 max-w-4xl">
         Switch to <strong class="font-semibold text-gray-700">JSON Data</strong> and the same values are read from plain JSON against the same schema, under the <a href={`/2026/${CURRENT_REVISION}/tson-part3-json`} class="text-teal-700 hover:underline">JSON encoding</a>. The JSON carries no apparatus: the page supplies the schema and the root type, the way an API contract would, and <code class="font-mono text-gray-900">null</code> is TSON's <code class="font-mono text-gray-900">_</code>. JSON has no channel for <code class="font-mono text-gray-900">@</code> annotations, so the observatory's are absent there.

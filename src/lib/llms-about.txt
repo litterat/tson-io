@@ -2,7 +2,7 @@
 
 TSON (Typed Schema Object Notation) is a schema and data format for data interchange, focused on
 exact schemas built from the shape of data. Its schemas are closed-world — a schema admits nothing
-it doesn't declare — and pinned: every document names the schema it follows by SHA-256 hash, and
+it doesn't declare — and immutable: every document names the schema it follows by SHA-256 hash, and
 every schema its libraries. Names and tokens are checked against Unicode confusables and
 restricted scripts, so look-alike characters can't pass as trusted names. Where JSON-like formats
 optimise for visual readability, minimal syntax, and convention, TSON optimises for the opposite
