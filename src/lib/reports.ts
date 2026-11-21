@@ -70,8 +70,8 @@ export const REPORT_META: Record<string, ReportMeta> = {
     description:
       'Maps GraphQL SDL, which is a capability schema rather than a data schema: a response’s shape comes from the query, not from the type alone. Covers the input universe, the output type graph, and the per-query derivation that would make response contract validation possible.',
   },
-  'implementation-feedback': {
-    title: 'Implementation Feedback',
+  'specification-feedback': {
+    title: 'Specification Feedback',
     description:
       'Issues, ambiguities, and inconsistencies found in the specification while building the first implementation, each recorded with the reading that implementation chose and a suggested resolution. The most direct feedback loop the draft currently has.',
   },
@@ -103,7 +103,7 @@ export const REPORT_ORDER = [
   'asn1-to-tson-mapping',
   'avro-to-tson-mapping',
   'graphql-to-tson-mapping',
-  'implementation-feedback',
+  'specification-feedback',
   'one-level',
   'reference',
   'kernel-namespace',

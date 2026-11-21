@@ -17,7 +17,7 @@ it resolved are gone from here, because the spec now carries their rules and tha
 belongs. **This file is the as-built record**, not a pointer to one: where an entry proposes a design this
 implementation has built, the entry states the design, what is running, and what is not, so that a reviewer
 editing the spec needs nothing beside it. **Cite the spec, not the argument that got it there:** `docs/` and
-the Javadoc name the section that requires a behaviour, and a `SPEC-FEEDBACK.md #N` citation is for an entry
+the Javadoc name the section that requires a behaviour, and a `specification-feedback.md #N` citation is for an entry
 below, where there is no section to point at yet. When an entry closes, its citations become spec citations
 and the entry is deleted — nothing here is an archive.
 

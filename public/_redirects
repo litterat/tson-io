@@ -9,3 +9,13 @@
 /2026/38/reports/kernel-namespace /2026/39/reports/kernel-namespace 301
 /2026/38/reports/typed-facets /2026/39/reports/typed-facets 301
 /2026/38/reports/dependent-fields /2026/39/reports/dependent-fields 301
+
+# The implementation's register was published as implementation-feedback before it took the specification-feedback name.
+/2026/32/reports/implementation-feedback /2026/32/reports/specification-feedback 301
+/2026/33/reports/implementation-feedback /2026/33/reports/specification-feedback 301
+/2026/34/reports/implementation-feedback /2026/34/reports/specification-feedback 301
+/2026/38/reports/implementation-feedback /2026/38/reports/specification-feedback 301
+/raw/2026/32/reports/implementation-feedback.md /raw/2026/32/reports/specification-feedback.md 301
+/raw/2026/33/reports/implementation-feedback.md /raw/2026/33/reports/specification-feedback.md 301
+/raw/2026/34/reports/implementation-feedback.md /raw/2026/34/reports/specification-feedback.md 301
+/raw/2026/38/reports/implementation-feedback.md /raw/2026/38/reports/specification-feedback.md 301

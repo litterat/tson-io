@@ -99,7 +99,7 @@ with the revision it **landed in**, the way a change log does: it keeps `against
 revision it was written against and records the landing in `status:`. When a proposal lands,
 move it from the revision it was written against into the one it landed in, rewrite links to it,
 and add a 301 for its old URL to `public/_redirects`. Revision 38's design notes moved to revision
-39 this way; its `implementation-feedback.md` register stayed. Retained-revision report pages say
+39 this way; its `specification-feedback.md` register stayed. Retained-revision report pages say
 a report belongs to its revision rather than claiming it has been superseded.
 
 Report metadata resolves frontmatter first, then `REPORT_META` in `src/lib/reports.ts`, then the
@@ -129,7 +129,9 @@ artifacts take `.tn1`.
    same URLs and a "2026 Revision 33" line of their own, and bundle copies of `m/*.tn` that must
    be re-copied from the new revision.
 3. Bump `CURRENT_REVISION` in `src/lib/spec.ts` to `'34'`, and add `REVISION_NOTES` entries: one
-   for the new revision, and a closing summary for the one it supersedes.
+   for the new revision, and a closing summary for the one it supersedes. When the author's text
+   lands, set the new entry's `published` to that day (`YYYY-MM-DD`); the revisions index and
+   every page's revision notice show it.
 4. Update the target in `public/_redirects` to `/2026/34`.
 5. Run the public-sync step below for the new revision's files.
 6. `npx astro build`, and check `/2026/revisions` lists both, `/llms.txt` names only the new

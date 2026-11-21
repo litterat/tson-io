@@ -24,6 +24,12 @@ export interface RevisionChange {
 
 /** A revision's entry on the revisions index: a one-line summary, then its notable changes. */
 export interface RevisionNote {
+  /**
+   * The day the revision's text landed on the site, as `YYYY-MM-DD` — the "Land revision N"
+   * commit, not the verbatim copy that opens it. Revision 32 predates the revision paths: it
+   * was drafted in place from 6 July and published at `/2026/32` on 14 July.
+   */
+  published?: string;
   summary: string;
   changes?: RevisionChange[];
 }
@@ -36,7 +42,8 @@ export interface RevisionNote {
 export const REVISION_NOTES: Record<string, RevisionNote> = {
   // Plain text, except that `backticks` render as code.
   '39': {
-    summary: 'Adjudicates the 24-entry implementation-feedback register against revision 38, and removes the meta ladder.',
+    published: '2026-11-08',
+    summary: 'Adjudicates the 24-entry specification feedback register against revision 38, and removes the meta ladder.',
     changes: [
       {
         what: 'One directive: a header is an optional `!!id` and any number of `!!import`s, and `!!meta` and `!!schema` are parse errors',
@@ -89,7 +96,8 @@ export const REVISION_NOTES: Record<string, RevisionNote> = {
     ],
   },
   '38': {
-    summary: 'Adjudicates the 25-entry spec-feedback register against revision 37.',
+    published: '2026-10-26',
+    summary: 'Adjudicates the 25-entry specification feedback register against revision 37.',
     changes: [
       {
         what: 'A record\'s field names have a type, `name_type`, and a field name may be any single-line token the type admits',
@@ -142,7 +150,8 @@ export const REVISION_NOTES: Record<string, RevisionNote> = {
     ],
   },
   '37': {
-    summary: 'Adjudicates the 21-entry spec-feedback register against revision 36.',
+    published: '2026-10-08',
+    summary: 'Adjudicates the 21-entry specification feedback register against revision 36.',
     changes: [
       {
         what: '`identifier` is a text family, and an enum states which text type its members are',
@@ -191,7 +200,8 @@ export const REVISION_NOTES: Record<string, RevisionNote> = {
     ],
   },
   '36': {
-    summary: 'Adjudicates the 21-entry spec-feedback register against revision 35.',
+    published: '2026-09-23',
+    summary: 'Adjudicates the 21-entry specification feedback register against revision 35.',
     changes: [
       {
         what: 'A record field is three slots, replacing six field states: `?` on the name (key omittable), `?` on the type (`_` admitted), and its modifier',
@@ -232,7 +242,8 @@ export const REVISION_NOTES: Record<string, RevisionNote> = {
     ],
   },
   '35': {
-    summary: 'Adjudicates the 36-entry implementation feedback register against revision 34.',
+    published: '2026-09-05',
+    summary: 'Adjudicates the 36-entry specification feedback register against revision 34.',
     changes: [
       {
         what: 'TSON is no longer a JSON superset; a JSON document is read through a JSON reader',
@@ -277,7 +288,8 @@ export const REVISION_NOTES: Record<string, RevisionNote> = {
     ],
   },
   '34': {
-    summary: 'Adjudicates the 17-entry implementation feedback register against revision 33.',
+    published: '2026-08-29',
+    summary: 'Adjudicates the 17-entry specification feedback register against revision 33.',
     changes: [
       {
         what: 'Type names, field names and enum members must be identifiers',
@@ -306,8 +318,9 @@ export const REVISION_NOTES: Record<string, RevisionNote> = {
     ],
   },
   '33': {
+    published: '2026-08-25',
     summary:
-      'Adopts CR-structure-templates in full, and adjudicates the 59-entry implementation ' +
+      'Adopts CR-structure-templates in full, and adjudicates the 59-entry specification ' +
       'feedback register from revision 32.',
     changes: [
       {
@@ -341,6 +354,7 @@ export const REVISION_NOTES: Record<string, RevisionNote> = {
     ],
   },
   '32': {
+    published: '2026-07-14',
     summary: 'Editorial refactor.',
     changes: [
       {
@@ -376,6 +390,20 @@ export function revisionStatus(revision: string): RevisionStatus {
 /** Human label for a revision's status, used in banners and listings. */
 export function revisionStatusLabel(revision: string): string {
   return isCurrentRevision(revision) ? 'Current working draft' : 'Retained revision';
+}
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+/** `8 November 2026`, or undefined when the revision has no recorded date. */
+export function revisionPublished(revision: string): { iso: string; text: string } | undefined {
+  const iso = REVISION_NOTES[revision]?.published;
+  if (!iso) return undefined;
+  // Split rather than parse, so no time zone can move the day.
+  const [year, month, day] = iso.split('-').map(Number);
+  return { iso, text: `${day} ${MONTHS[month - 1]} ${year}` };
 }
 
 /** `/2026/33` */

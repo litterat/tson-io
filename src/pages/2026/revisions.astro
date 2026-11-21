@@ -16,6 +16,7 @@ import {
   isCurrentRevision,
   revisionOf,
   revisionPath,
+  revisionPublished,
   revisionStatusLabel,
 } from '../../lib/spec';
 
@@ -31,6 +32,7 @@ const revisions = [...new Set(specEntries.map(e => revisionOf(e.id)))]
     revision,
     current: isCurrentRevision(revision),
     note: REVISION_NOTES[revision],
+    published: revisionPublished(revision),
     documents: specEntries
       .filter(e => revisionOf(e.id) === revision)
       .sort((a, b) => (a.data.part ?? 99) - (b.data.part ?? 99)),
@@ -67,15 +69,20 @@ const codeClass = 'font-mono text-[0.8125rem] bg-gray-100 rounded px-1';
     </p>
 
     <ul class="space-y-10">
-      {revisions.map(({ revision, current, note, documents, changelogs, reportCount }) => (
+      {revisions.map(({ revision, current, note, published, documents, changelogs, reportCount }) => (
         <li class:list={[
           'rounded-lg border px-6 py-6',
           current ? 'border-teal-700/30 bg-teal-50/40' : 'border-gray-200',
         ]}>
           <div class="flex items-baseline justify-between gap-4 flex-wrap">
-            <a href={revisionPath(revision)} class="text-xl font-semibold hover:underline">
-              Revision {revision}
-            </a>
+            <div class="flex items-baseline gap-3 flex-wrap">
+              <a href={revisionPath(revision)} class="text-xl font-semibold hover:underline">
+                Revision {revision}
+              </a>
+              {published && (
+                <span class="text-sm text-gray-500">Published <time datetime={published.iso}>{published.text}</time></span>
+              )}
+            </div>
             <span class:list={[
               'font-mono text-xs font-semibold rounded-full px-3 py-1',
               current ? 'bg-teal-100 text-teal-800' : 'bg-gray-100 text-gray-600',

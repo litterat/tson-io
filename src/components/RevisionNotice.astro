@@ -20,6 +20,7 @@ import {
   REVISIONS_PATH,
   isCurrentRevision,
   revisionPath,
+  revisionPublished,
   revisionStatusLabel,
 } from '../lib/spec';
 
@@ -33,6 +34,7 @@ interface Props {
 
 const { revision, currentHref, kind = 'document' } = Astro.props;
 const current = isCurrentRevision(revision);
+const published = revisionPublished(revision);
 ---
 
 {current ? (
@@ -42,19 +44,25 @@ const current = isCurrentRevision(revision);
     </span>
     <span>{revisionStatusLabel(revision)}</span>
     <span>·</span>
+    {published && (
+      <>
+        <span>Published <time datetime={published.iso}>{published.text}</time></span>
+        <span>·</span>
+      </>
+    )}
     <a href={REVISIONS_PATH} class="hover:text-gray-900 underline">All revisions</a>
   </p>
 ) : (
   <div class="mb-8 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
     {kind === 'report' ? (
       <p>
-        <strong>Revision {revision} is a retained revision.</strong> This report belongs to
+        <strong>Revision {revision} is a retained revision{published && <>, published <time datetime={published.iso}>{published.text}</time></>}.</strong> This report belongs to
         it and stays with it — it is not carried forward or revised. Revision{' '}
         {CURRENT_REVISION} is the current working draft.
       </p>
     ) : (
       <p>
-        <strong>Revision {revision} is a retained revision.</strong> It stays published at this
+        <strong>Revision {revision} is a retained revision{published && <>, published <time datetime={published.iso}>{published.text}</time></>}.</strong> It stays published at this
         address so hash-pinned references keep resolving, but it is no longer the working draft —
         revision {CURRENT_REVISION} is.
       </p>

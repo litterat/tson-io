@@ -21,7 +21,7 @@ the design, what is running, and what is not, so that a reviewer editing the spe
 **Where the evidence is a consumer of this library rather than this library** — #16 through #19 were found
 building the HTTP layer in `ltr8-io-tson-java-http`, and this register is the collection point for all of it —
 the entry says so and states what is running there on the same terms. **Cite the spec, not the argument that got
-it there:** `docs/` and the Javadoc name the section that requires a behaviour, and a `SPEC-FEEDBACK.md #N`
+it there:** `docs/` and the Javadoc name the section that requires a behaviour, and a `specification-feedback.md #N`
 citation is for an entry below, where there is no section to point at yet. When an entry closes, its citations
 become spec citations and the entry is deleted — nothing here is an archive.
 
