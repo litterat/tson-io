@@ -14,7 +14,7 @@
 export const SERIES = '2026';
 
 /** Bump when starting a new spec revision. */
-export const CURRENT_REVISION = '39';
+export const CURRENT_REVISION = '40';
 
 /** One notable change: what changed, and briefly why. */
 export interface RevisionChange {
@@ -41,6 +41,7 @@ export interface RevisionNote {
  */
 export const REVISION_NOTES: Record<string, RevisionNote> = {
   // Plain text, except that `backticks` render as code.
+  '40': { summary: 'In progress.' },
   '39': {
     published: '2026-11-08',
     summary: 'Adjudicates the 24-entry specification feedback register against revision 38, and removes the meta ladder.',
