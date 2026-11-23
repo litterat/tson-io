@@ -53,7 +53,9 @@ Usage:
                             every pin their imports carry)
   pin.py FILE --stamp       rewrite the file's !!id line to carry the correct pin
                             (adds or replaces ?sha256=, keeping the rest as written)
-  pin.py --self-test        run the script's own checks (identity, header, digest)
+  pin.py --self-test [DIR]  run the script's own checks (identity, header, digest);
+                            with DIR (the revision 40 m/ directory), also check
+                            that its six bundled artifacts carry the pins below
 
 Exit status: 0 ok / match, 1 mismatch, 2 usage or malformed input,
 3 (--verify-refs) no mismatch, but a pinned reference had no local document to
@@ -74,6 +76,18 @@ WHITESPACE = set('\t\n\x0b\x0c\r \x85\u200e\u200f\u2028\u2029')  # Pattern_White
 ESCAPES = {'"': '"', '\\': '\\', 'b': '\b', 'f': '\f', 'n': '\n', 'r': '\r', 't': '\t', 's': ' '}
 UNRESERVED = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
 BIDI_CONTROLS = set('؜‎‏‪‫‬‭‮⁦⁧⁨⁩')
+
+
+# The revision 40 bundled artifacts and their pins ([TSON-SCHEMA] §13.2).
+BUNDLED = {
+    "meta.tn":     "291ddaf37566f9f084515d09626f1855d05f2cfb9413e3ce0073323f4933ddcd",
+    "numeric.tn":  "0337c18854a0e689ce53d9cae47e1cfd32bd54026acd6a3bac9abae358cb86f7",
+    "temporal.tn": "3d516776324209f0406523dac4cc7bac85af0d530599de85a55cdc0b3ef77b20",
+    "net.tn":      "80b8d1c1af70469b6513891498781454595202cdb3a49501b70b216b5108ea7d",
+    "core.tn":     "00eaf2174c7ba05510ce8410a4b7577bf6fd4bf6db8f099a7c8ec02edd053241",
+    "policy.tn":   "ffcecb04bf6be35c8e2c93375bf2c1bb1d09603f874823495ed7d8cf107fb408",
+}
+BUNDLED_BASE = "https://tson.io/2026/40/m/"
 
 
 class Malformed(Exception):
@@ -423,7 +437,7 @@ def main(argv):
         print(__doc__)
         return 2
     if argv[1] == "--self-test":
-        return self_test()
+        return self_test(argv[2] if len(argv) > 2 else None)
     path = argv[1]
     mode = argv[2] if len(argv) > 2 else None
     if os.path.isdir(path):
@@ -511,8 +525,9 @@ def main(argv):
     die(f"unknown mode {mode}")
 
 
-def self_test() -> int:
-    """Check the identity, header and digest rules against known answers."""
+def self_test(bundled_dir=None) -> int:
+    """Check the identity, header and digest rules against known answers, and,
+    given the revision's m/ directory, the bundled artifacts against BUNDLED."""
     failures = []
 
     def check(label, got, want):
@@ -528,10 +543,10 @@ def self_test() -> int:
 
     ident = canonical_identity
     # canonical identity: scheme and query dropped, host canonical, path NFC
-    check("scheme dropped", ident("http://tson.io/2026/39/m/meta.tn", False),
-          ident("https://tson.io/2026/39/m/meta.tn", False))
-    check("pin dropped", ident("https://tson.io/2026/39/m/meta.tn?sha256=" + "0" * 64, False),
-          "tson.io/2026/39/m/meta.tn")
+    check("scheme dropped", ident("http://tson.io/2026/40/m/meta.tn", False),
+          ident("https://tson.io/2026/40/m/meta.tn", False))
+    check("pin dropped", ident("https://tson.io/2026/40/m/meta.tn?sha256=" + "0" * 64, False),
+          "tson.io/2026/40/m/meta.tn")
     check("ASCII case folded", ident("https://Example.COM/x.tn", False), "example.com/x.tn")
     check("A-label read as U-label", ident("https://xn--bcher-kva.example/x.tn", False), "bücher.example/x.tn")
     check("percent-encoded UTF-8 read back", ident("https://example.com/sch%c3%a9mas/x.tn", False),
@@ -551,9 +566,9 @@ def self_test() -> int:
               "https://example.com/x.tn?sha256=ABC", "https://example.com/x.tn?v=2"):
         refused(f"reference {u}", lambda u=u: ident(u, False))
     # header: !!import only, in the header only
-    doc = ('!!import:"https://tson.io/2026/39/m/core.tn"\r\n  !!import:"/local/a.tn"\n'
+    doc = ('!!import:"https://tson.io/2026/40/m/core.tn"\r\n  !!import:"/local/a.tn"\n'
            '@doc:"see !!import:\\"https://evil.example/x.tn\\"" !order { a: "!!import:\\"x\\"" }\n')
-    check("header imports", header_imports(doc, True), ["https://tson.io/2026/39/m/core.tn", "/local/a.tn"])
+    check("header imports", header_imports(doc, True), ["https://tson.io/2026/40/m/core.tn", "/local/a.tn"])
     check("no header", header_imports("!date 2026-07-01\n", False), [])
     for bad in ('!!schema:"https://example.com/x.tn"\n_', '!!version:"1"\n_',
                 '!!import :"x"\n_', '!!import:"""\n  x\n  """\n_',
@@ -567,6 +582,21 @@ def self_test() -> int:
     check("digest", digest_of(b"_\n"), hashlib.sha256(b"_\n").hexdigest())
     check("with_pin", with_pin("https://example.com/x.tn?sha256=" + "0" * 64, "a" * 64),
           "https://example.com/x.tn?sha256=" + "a" * 64)
+    # the bundled artifacts: each !!id is its identity pinned by its own digest,
+    # and every !!import among them carries the pin of the artifact it names
+    if bundled_dir is not None:
+        pins = {ident(BUNDLED_BASE + n, True): d for n, d in BUNDLED.items()}
+        for name, want in BUNDLED.items():
+            try:
+                _, _, uri, body = load(os.path.join(bundled_dir, name))
+            except OSError as e:
+                failures.append(f"bundled {name}: {e}")
+                continue
+            check(f"bundled {name} digest", digest_of(body), want)
+            check(f"bundled {name} !!id", uri, BUNDLED_BASE + name + "?sha256=" + want)
+            for ref in header_imports(body.decode("utf-8"), True):
+                ref = decode_arg(ref)
+                check(f"bundled {name} imports {ref}", pin_from(ref), pins.get(ident(ref, False)))
 
     for f in failures:
         print("FAIL", f)

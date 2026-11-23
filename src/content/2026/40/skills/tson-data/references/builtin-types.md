@@ -1,15 +1,15 @@
 # Built-in type vocabulary — full contracts
 
-Source: TSON Part 1 §5 and §7.6 (2026 Revision 39). These annotations apply **only in schemaless processing** (a document with no `!!import`); where a processor reads such a document into a declared host type, an annotation MUST agree with the family that type names. **Any other `!name` in a schemaless document is a resolver error** — the vocabulary is fixed by the revision, so `!uiid`, `!Date` or a dotted `!geo.address` is caught where it is written. Under `!!import`, every `!name` resolves through the one namespace the imports' closures bind.
+Source: TSON Part 1 §5 and §7.6 (2026 Revision 40), with the facet names of the revision 40 libraries. These annotations apply **only in schemaless processing** (a document with no `!!import`); where a processor reads such a document into a declared host type, an annotation MUST agree with the family that type names. **Any other `!name` in a schemaless document is a resolver error** — the vocabulary is fixed by the revision, so `!uiid`, `!Date` or a dotted `!geo.address` is caught where it is written. Under `!!import`, every `!name` resolves through the one namespace the imports' closures bind.
 
 Each built-in name denotes the type its **library** declares under that name, with the same parsing contract, so a document moving under a schema whose closure holds the library keeps its meaning:
 
 | Library | Document | Built-in names it declares |
 |---|---|---|
-| kernel | `https://tson.io/2026/39/m/meta.tn` (pre-loaded; every library imports it) | `integer`, `int64`, `text`, `boolean`, `regex`, `bytes`, `iri`, `iri_reference` |
-| numeric | `https://tson.io/2026/39/m/numeric.tn` | `number`, `rational`, `complex`, `int8`–`int256` (but `int64`), `uint8`–`uint256`, `float32`, `float64` |
-| temporal | `https://tson.io/2026/39/m/temporal.tn` | `date`, `time`, `datetime`, `duration`, `period` |
-| net | `https://tson.io/2026/39/m/net.tn` | `uuid`, `uri`, `uri_reference`, `email`, `ipv4`, `ipv6`, `cidr4`, `cidr6`, `mac`, `hostname`, `host`, `media_type` |
+| kernel | `https://tson.io/2026/40/m/meta.tn` (pre-loaded; every library imports it) | `integer`, `int64`, `text`, `boolean`, `regex`, `bytes`, `iri`, `iri_reference` |
+| numeric | `https://tson.io/2026/40/m/numeric.tn` | `number`, `rational`, `complex`, `int8`–`int256` (but `int64`), `uint8`–`uint256`, `float32`, `float64` |
+| temporal | `https://tson.io/2026/40/m/temporal.tn` | `date`, `time`, `datetime`, `duration`, `period` |
+| net | `https://tson.io/2026/40/m/net.tn` | `uuid`, `uri`, `uri_reference`, `email`, `ipv4`, `ipv6`, `cidr4`, `cidr6`, `mac`, `hostname`, `host`, `media_type` |
 
 `core.tn` imports numeric, temporal and net (each of which imports the kernel), so a closure holding core has every name above. A closure holding only numeric has no `uuid`; one holding no library at all has no `text`.
 
@@ -151,6 +151,12 @@ an admitted one; a processor MUST reject a value outside it whether or not its o
 one. A longer span is a `!period`, or a `!number` in the unit a schema names. The ceiling is a value rule and
 the floor a lexical one: a seconds count is summed from the `D`, `H`, `M` and `S` components, so `P400000D`
 overflows with no single component long enough to catch.
+
+Under a schema, `temporal.time_type`, `temporal.datetime_type` and `temporal.duration_type` carry
+`fraction_digits` (at most 9): `!time ^ { fraction_digits: 3 }` admits a whole number of milliseconds. It
+constrains the value, not the spelling — `"12:00:00.500"` is admitted under `fraction_digits: 1` and is
+written `12:00:00.5`. The schemaless atoms have none set. Each temporal constructor also carries `min`/`max`
+(or `exclusive_min`/`exclusive_max`), and `duration` and `period` a `multiple_of` step.
 
 ## Text, identifier and network atoms
 

@@ -1,6 +1,6 @@
 # TSON data pitfalls
 
-Every mistake this skill has seen writing TSON data documents, with the fix (2026 Revision 39). The rows
+Every mistake this skill has seen writing TSON data documents, with the fix (2026 Revision 40). The rows
 SKILL.md repeats are the commonest — chiefly JSON and YAML habits; the rest live only here.
 
 ## Header, directives and namespace
@@ -12,15 +12,18 @@ SKILL.md repeats are the commonest — chiefly JSON and YAML habits; the rest li
 | `!!import:"…"` then `{ … }` (untagged root) | under `!!import` the root names its type: a validation error | `!order { … }` |
 | `!!import:"…"` then `!schema { … }` meant as data | a root tagged `!schema` makes a schema document | name your own type something else, or use the tson-schema skill |
 | `!uiid …`, `!Date …`, `!person { … }`, `!geo.address { … }` with no `!!import` | a type annotation outside the built-in vocabulary is a resolver error, not a marker | `!uuid`, `!date`; for your own types, import the schema that declares them |
-| `!uuid …`, `!ipv4 …`, `!mac …` under imports whose closure lacks `net.tn` | each built-in name lives in one library: an unresolved type | import `https://tson.io/2026/39/m/net.tn`, or `core.tn` for every library |
+| `!uuid …`, `!ipv4 …`, `!mac …` under imports whose closure lacks `net.tn` | each built-in name lives in one library: an unresolved type | import `https://tson.io/2026/40/m/net.tn`, or `core.tn` for every library |
 | `!date …` without `temporal.tn`, `!int32 …` without `numeric.tn` in the closure | as above | import the library, or `core.tn` |
 | `@deprecated`, `@title` under imports whose closure lacks `core.tn` | the author annotations are core's own; the libraries do not declare them | import `core.tn`; `@doc` is the kernel's and is reachable through any library |
 | `!address` for a type the schema nests as `geo => !schema { address => … }` | names resolve from the root: there is no `address` at the root | `!geo.address` |
 | `!box<text> { … }`, `!text<x> "a"` | a tag is a qualified name and carries no argument list: a parse error | `!text_box { … }`, where the schema declares `text_box => box<text>` |
+| `!box { … }` where `box => <T> { … }` | a parametric record is applied, never named bare: a validation error | `!text_box { … }`, over the schema's `text_box => box<text>` |
+| `!enum [A B]`, `!set [a b]` in data | `enum` and `set` are incomplete entries, no types: the tag is refused | tag the type the schema declares (`!status`, `!tags`) |
+| `tags: !tags [a b]` where the schema writes `tags: set<text>` in place | a type written in place has no name, and a tag there is a validation error | `tags: [a b]` |
 | `!!id:"orders/1042.tn"`, `!!id:"https://Example.com/x.tn#v2"` | an identity is canonical: a host-less path is absolute; lowercase host; no fragment, port or userinfo | `!!id:"/orders/1042.tn"`, `!!id:"https://example.com/x.tn"` |
 | `!!id:"https://xn--bcher-kva.example/x.tn"`, `!!id:"https://example.com/sch%C3%A9mas/x.tn"`, `!!id:"https://example.com/a%2fb.tn"` | an `!!id` is written in canonical form only: U-labels, non-ASCII written as itself (NFC), reserved escapes in uppercase hex | `https://bücher.example/x.tn`, `https://example.com/schémas/x.tn`, `https://example.com/a%2Fb.tn` — an `!!import` may use any of the other spellings |
 | `!!id:"…?sha256=deadbeef"` | invented or truncated hash | run `scripts/pin.py` or omit the pin |
-| `!!import:"…/2026/38/m/core.tn"` beside a `…/2026/39/…` import | two revisions of one library declare the same names: the closure collides | import one revision throughout |
+| `!!import:"…/2026/39/m/core.tn"` beside a `…/2026/40/…` import | two revisions of one library declare the same names: the closure collides | import one revision throughout |
 
 ## Tokens, references and quoting
 
@@ -30,13 +33,13 @@ SKILL.md repeats are the commonest — chiefly JSON and YAML habits; the rest li
 | `'text'` | `'` is a lexer error | `"text"` |
 | `[, 1]`, `[1, , 2]` | a comma with no value before it | drop it — `[1, 2, 3,]` and `{ a: 1, }` are legal |
 | `time: 14:30:00Z`, `url: https://…`, `email: a@b.c`, `net: 10.0.0.0/8`, `ratio: 2/3` | `:` `@` `/` outside the profile | quote them |
-| `msg: Hello! ` | a word with an adjacent `!` then whitespace is a sibling reference, not text | `msg: "Hello!"` |
-| `msg: Hello!}`, `[a, Wow!]`, `a!b` | a `!` after a token must be followed by whitespace: parse errors | `"Hello!"`, `"Wow!"`, `"a!b"` |
-| `type: List<String>`, `expr: f<x>` | an application (a reference value), not text | `"List<String>"` |
-| `cmp: a < b`, `type: Map <K V>` | `<` not adjacent to a name: a parse error | quote the text |
-| `t: "int32"`, `t: "set<text>"` at a reference-typed slot | a quoted token is never a reference | `t: int32`, written bare |
-| `t: set<text>` at a `meta.type_ref` slot | an application must be one the schema itself closes: a validation error otherwise | name an alias the schema declares, or ask for the application in the schema |
-| `t: kind!` at a `meta.type_ref` slot | a sibling reference stands only at a record field's type: a validation error | a type's name |
+| `msg: Hello!`, `[a, Wow!]`, `a!b` | a `!` glued to the token before it: a parse error | `"Hello!"`, `"Wow!"`, `"a!b"` |
+| `type: List<String>`, `expr: f<x>`, `cmp: a < b` | `<` and `>` are schema grammar: a parse error in any data value | `"List<String>"`, `"a < b"` |
+| `t: set<text>`, `{ set<text> => 1 }` | an argument list is schema grammar: a parse error | a name the schema declares for the application (`names => set<text>`, then `t: names`) |
+| `t: "set<text>"` at a reference-typed slot | quoted, it is text outside a name's grammar: refused at the slot | `t: names`, as above |
+| `type: kind!` in data (a resolved form, a type stored as data) | `kind!` is schema grammar; in a data document it is a parse error | `type: { of: !meta.dependent { on: kind } }` |
+| `t: box` at a `meta.type_ref` slot, `box => <T> { … }` | a parametric record is no type's name: a validation error | the declared application, `t: text_box` |
+| `m: @doc:"x" orders.place_order`, `m: !method orders.place_order` at a `meta.ref<method>` slot | a name is written bare: refused | `m: orders.place_order` |
 | `{ value: 42  kind: int32 }` where the schema says `kind: meta.type_ref  value?: kind!` | the dependent field is written before its free sibling: a validation error | `{ kind: int32  value: 42 }` |
 | `address: 0x71C7…` (meant as a string) | resolves to a number | `"0x71C7…"` |
 | `enabled: yes`, `flag: True` | strings, not booleans | `true` |

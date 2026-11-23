@@ -15,20 +15,23 @@ Part 2 §7, condensed. This is what changes in a data document once `!!import:"�
 - **Records are closed, with no exception**: any field not declared by the record's type is a validation error, whether the record is annotated or sits at a typed position. Open-ended data lives in a declared map-typed field.
 - **Field names are judged by the record that reads them**, under its name type: matched against the declared names in the name type's form (under a case-folding name type `Content-Type` is the field `content-type`, and both spellings in one record are a duplicate), a name that is no value of it being an unrecognised field. A document that imports a schema has its field names judged by that schema alone, so `{ "@id": x }` is fine wherever the record declares `"@id"`.
 - Type-expression syntax is unavailable in data: annotate an array or map with a *named* type (`int_list => [integer]`, then `!int_list [1 2 4]`).
-- `!T value` validates by what `T` is: an atom instance validates one token (`!age 42`, never `!age { … }`); a record type validates a record; a choice admits any conforming variant; a constructor (`!numeric.integer_type { min: 0 }`) validates a *constraint record* — that is what resolver output is. `!numeric.integer_type 42` and `!age { min: 0 }` are type errors. A tag naming a **value entry** (`!orders`) is refused: a value entry is no type.
+- **A type written in place is named by no tag.** A value at a position whose type is written in place (`tags: [text]`, `f: page<order>`, `at: { x: int32 }`) carries no tag naming the type, and a tag there is a validation error; the value is read by the type's own form.
+- `!T value` validates by what `T` is: an atom instance validates one token (`!age 42`, never `!age { … }`); a record type validates a record; a choice admits any conforming variant; a constructor (`!numeric.integer_type { min: 0 }`) validates a *constraint record* — that is what resolver output is. `!numeric.integer_type 42` and `!age { min: 0 }` are type errors. A tag naming a **value entry** (`!orders`), an **incomplete entry** (`!set`, `!enum`) or a **parametric record** (`!box`) is a validation error: none is a type.
 - **Subsumption**: at a position typed `T`, `!S value` is admitted iff `S` is `T` or `T` is in `S`'s `chain.supertypes` (IS-A — composition and refinement chains; a subtracted type has none). The value then validates as `S` in full. What an *untagged* value means depends on `T`'s extension:
   - `T` OPEN or FINAL — the value is exactly `T`; there is no structural recovery of a subtype.
   - `T` ABSTRACT with no selector — the tag is **required**; an untagged value, or a tag naming `T` itself, is a validation error.
   - `T` ABSTRACT with `=?` selectors — the reader reads the selector fields at `T`'s types, matches the value (or tuple) against the members' pins, and validates the whole value as the matched member. A missing selector or unmatched value is a validation error; a tag is optional and, where written, must name the matched member or a subtype of it.
-- Templates: never a data annotation. A record template may *type a position* as a family base; the tag then names a declared member, never the template.
+- A family built over a parametric record is used through its abstract base (`pet => abstract { kind: text =? … }`, `pet_of => <T> pet & { pet: T }`, `dog => pet_of<dog_type> & { kind?: = "dog" }`): the position is typed `pet`, and a value is placed by its selector or tagged `!dog`.
 
 ## Reference-typed positions
 
 A field typed by a reference holds a **name**, never the thing named:
 
-- at `meta.type_ref` or a `meta.ref<C>` over a constructor, a type's name, judged a member of the document's closure: at `kind: meta.ref<net.uuid_type>` write `kind: stock_id`, never a UUID; at `request: meta.ref<meta.record>`, `request: person`, never a person. An application is written unquoted, its arguments separated by whitespace — `pair<text integer>` — and names the entry the schema closed it to (one the schema never closed is a validation error);
+- at `meta.type_ref` or a `meta.ref<C>` over a constructor, a type's name, judged a member of the document's closure: at `kind: meta.ref<net.uuid_type>` write `kind: stock_id`, never a UUID; at `request: meta.ref<meta.record>`, `request: person`, never a person;
 - at `meta.ref<T>` over an ordinary type, a value's qualified name: `method: orders.place_order`, walked over the namespace the document's imports bind; a name reaching nothing, a type, or a value of another type is a validation error;
-- a sibling reference (`kind!`) is refused at every slot but a record field's type.
+- **never an argument list**: `<` and `>` have no role in a data value, so `pair<text integer>` is a parse error. A generic type is written by the name its schema declares for the application (`text_pair => pair<text, text>`, then `text_pair`); a type no declaration names is named nowhere in data, though a value at a position it types is written untagged;
+- **quoting is spelling**: a quoted token there is the reference its text spells, so `orders.place_order` and `"orders.place_order"` are one name. Write it unquoted unless a segment holds a character outside the token profile (`"main.public api.ping"`). The same holds of a type's name in a type value written as data, `!meta.array { element_type: "text" }`;
+- `kind!` is schema grammar; in a data document it is a parse error. A type value read as data writes a dependent type in full, `{ type: { of: !meta.dependent { on: kind } } }`.
 
 **Dependent fields.** At `setting => { kind: meta.type_ref  value?: kind! }`, `{ kind: int32  value: 7 }` reads `7` as an `int32`. Where the sibling is free (neither pinned nor a discriminator), **write it before the dependent field** — the one place field order matters in TSON text; a dependent field written first is a validation error naming both. A pinned or discriminating sibling orders nothing.
 
@@ -73,7 +76,11 @@ Map keys are decoded by the declared key type, so keys equal under an atom key t
 
 ## Choices in data
 
-Write `!variant value`. Omit the tag only when the choice is disjoint (every variant a different discrimination class — and a float admitting NaN/infinity, a compound-keyed map or `meta.declared` has no class); otherwise a missing tag is a validation error. A tag is never wrong. At a disjoint choice an untagged value is read in its token's class, with no fallback: `42` at `( int8 | text )` is the number, `"42"` the text.
+Write `!variant value`. Omit the tag only when the choice is disjoint (every variant a different discrimination class — and a float admitting NaN/infinity, a compound-keyed map, a nested choice or `meta.declared` has no class); otherwise a missing tag is a validation error. A tag is never wrong. At a disjoint choice an untagged value is read in its token's class, with no fallback: `42` at `( int8 | text )` is the number, `"42"` the text.
+
+- **A tag names a variant, or a type that IS-A exactly one variant.** At `( text | shape )`, `shape` abstract, `!circle { … }` selects `shape` and validates as a `circle`; `!shape { … }` is refused as at any abstract position. A tag whose type IS-A two variants and names neither is a validation error.
+- **A nested choice is tagged by its own name**, and its value read there untagged: at `( boolean | narrow )` over `narrow => ( int32 | text )`, write `!narrow 5`. A value carries one tag.
+- A variant written in place (`( [text] | int32 )`) has no name, so it is selected untagged alone; a choice that needs tags names every variant.
 
 ## Declared positions: `meta.declared`
 
@@ -94,12 +101,29 @@ attachments => { items: [meta.declared] }
 ```
 
 - **A value naming no type at a declared position is a validation error** — `meta.declared` is not "any": it is "any type the closure holds, named".
-- A foreign type is admitted by **importing its schema** — into the schema that declares the position, or into the data document itself, whose namespace is the union of its imports. There is no way for a value to name a schema the document did not import, by design.
+- A foreign type is admitted by **importing its schema** — into the schema that declares the position, or into the data document itself, whose namespace is the union of its imports — or by an **extern** the schema declares (below). No value names a schema of its own: a directive at a value position is a parse error.
 - Where only a few types are meant, a choice over them says so and is checked at load.
+
+## Extern positions: a foreign value's scope
+
+A schema names one entry of a schema it does not import with an extern, `order_v2 => !meta.extern { schema: "https://example.com/order-2.tn"  type: order }`. A value at a position typed by one is a **foreign value**, read against the target under the foreign schema:
+
+```
+!!import:"https://example.com/shipping.tn"
+!envelope {
+  id: 9f1c2d3e-4b5a-4c6d-8e7f-0a1b2c3d4e5f
+  body: !order_v2 { sku: A  payment: !card { number: "4111" } }
+}
+```
+
+- **Inside the value, every name is the foreign schema's**: tags, annotations, names at reference-typed slots, tags at declared positions. `!card` above is `order-2.tn`'s `card`, whatever the reading document's namespace holds under that name. Write the body exactly as in a document importing the foreign schema.
+- **The tag in front of it is the enclosing scope's.** It names the extern, or a name of the enclosing scope reaching the target or a subtype of it — usually another extern (`rush_v1 => !meta.extern { … type: rush_order }`, then `!rush_v1 { … }`). The foreign schema's own name (`!rush_order`) is unresolved at the boundary.
+- An untagged value, or one tagged by the position's own extern, is the target itself: placed by its selectors where it is abstract and names them, and refused where it is abstract and names none.
+- Scopes nest (a foreign schema's own externs open scopes inside its values) and are set by the schema, never by the data. Limits, policies and name hygiene run across the boundary as within one document, and a diagnostic inside a foreign value names the foreign schema and the extern.
 
 ## Error categories at this layer
 
-- Parse errors: a directive past the header or under any name but `id` and `import`, adjacency violations (`box <T>`, `kind!` without following whitespace), a reference carrying arguments where only a token is admitted, malformed values, and a token an atom's parser refuses (`twelve` at `integer`, a leap second at `time`, `ü` under `uri`). (The Java CLI reports structural ones under the code `VALIDATION_ERROR` and atom refusals as `ATOM_FORM_INVALID`.)
-- Resolver errors: unresolved type or annotation names (`!uuid` under a schema whose closure lacks `net.tn`), schema load/compile failures (bad facets, facet values their family refuses, invalid defaults, refuted `@meta.disjoint`, incoherent bounds, unproductive recursion, wait cycles, collisions in the import closure, import cycles, hash mismatches), a failed family check (a member not pinning a selector, colliding pins anywhere in the closure, composing onto a FINAL record, an undeclared family member), a failed dependent-field rule.
-- Validation errors: closed-record violations (an undeclared field name, a name that is no value of the record's name type included), a name at a reference-typed field that reaches nothing or the wrong kind of thing, constraint violations (a relative reference under `uri`, a scheme outside `schemes`), missing required fields (an unmarked name omitted), `_` at a non-voidable field, a field group with no option or two options chosen, or a chosen option missing a member, a dependent field written before its free sibling, untagged non-disjoint choice values, an untagged value at an ABSTRACT position with no selector or at a `meta.declared` position, an unmatched selector value, duplicate set members or typed-equal map keys, wrong-form empty braces, a contradicting fixed value.
+- Parse errors: a directive past the header or under any name but `id` and `import`, a directive at a value position, `<` or `>` in a value (an argument list), `kind!` in a data document, malformed values, and a token an atom's parser refuses (`twelve` at `integer`, a leap second at `time`, `ü` under `uri`). (The Java CLI reports structural ones under the code `VALIDATION_ERROR` and atom refusals as `ATOM_FORM_INVALID`.)
+- Resolver errors: unresolved type or annotation names (`!uuid` under a schema whose closure lacks `net.tn`), schema load/compile failures (bad facets, facet values their family refuses, invalid defaults, refuted `@meta.disjoint`, incoherent bounds, unproductive recursion, wait cycles, collisions in the import closure, import cycles, hash mismatches), a failed family check (a member not pinning a selector, colliding pins anywhere in the closure, composing onto a FINAL record, an undeclared family member), a failed dependent-field rule, a choice that is not disjoint holding a variant written in place or a non-disjoint choice, an extern whose foreign schema does not load or runs on another kernel.
+- Validation errors: closed-record violations (an undeclared field name, a name that is no value of the record's name type included), a name at a reference-typed field that reaches nothing or the wrong kind of thing, constraint violations (a relative reference under `uri`, a scheme outside `schemes`), missing required fields (an unmarked name omitted), `_` at a non-voidable field, a field group with no option or two options chosen, or a chosen option missing a member, a dependent field written before its free sibling, untagged non-disjoint choice values, a tag whose type IS-A two variants of a choice and names neither, a tag at a position typed in place or naming a parametric record or an incomplete entry, an untagged value at an ABSTRACT position with no selector or at a `meta.declared` position, an unmatched selector value, duplicate set members or typed-equal map keys, wrong-form empty braces, a contradicting fixed value.
 - **Refused** and **undetermined** are two outcomes beside the four categories, neither a verdict on validity, both located at the reference and naming their reason. *Refused*: this processor will not supply the schema — not held and not fetched, a host off its allowlist, a required pin missing, past its size limit — or declined the document under its hygiene policy or limits; a processor configured otherwise may accept it. *Undetermined*: it could not obtain the schema — nothing at the reference, no answer — so nothing was judged. A pin mismatch on a schema that *was* obtained stays a resolver error.

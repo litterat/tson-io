@@ -1,7 +1,7 @@
 # Type families, constructors and facets
 
-Condensed from `meta.tn`, `numeric.tn`, `temporal.tn`, `net.tn` and `core.tn` (2026 Revision 39), Part 2 §4.2,
-§5.5, §5.7 and §9. Every name below is written as an importer writes it: the vocabulary an author uses sits at a
+Condensed from `meta.tn`, `numeric.tn`, `temporal.tn`, `net.tn` and `core.tn` (2026 Revision 40), Part 2 §4.2,
+§5.3–§5.5, §5.7, §7.4 and §9. Every name below is written as an importer writes it: the vocabulary an author uses sits at a
 document's **root** (`text`, `int32`, `date`, `uuid`), and the machinery sits in **schema maps nested in the
 root**, named by path (`numeric.decimal_type`, `meta.record`, `unicode.identifier_type`). Every name resolves from
 the root, inside the bundled documents too; there is no lexical scope.
@@ -12,11 +12,18 @@ schema whose closure holds the kernel may declare one (`extending.md`). A family
 instances. Apply a constructor directly only when you mean a *fresh, unrelated* family: `dogs =>
 !numeric.integer_type {}` has the same body as `integer` and no relation to it.
 
+`^` always follows `!name` and its body is values. Over an instance it refines (IS-A the source); over a
+constructor of types, `!C ^ { values }`, it **constructs `C` and leaves it open**: the body leaves at least one
+required field absent, and the entry is an **incomplete entry** — no type, no value, named only before `^` (to
+write more of it) and as the head of a completion (`!X { … }`, `!X value`, `X<A>`). The kernel's `enum` and
+`meta.set_type` are incomplete entries, so a slot that holds an enum *type* is `meta.enum_type`, and one that
+holds set types is `meta.ref<meta.array>`.
+
 **Facets are typed by their family's instance.** A bound, a step or a member of the constrained family is read
 by that family's own instance, declared in the same document: `numeric.integer_type`'s bounds are `integer`,
 `numeric.decimal_type`'s are `number` (and so are a float's), `temporal.date_type`'s are `date`,
 `net.ipv4_type.within` is `[cidr4]`. Every facet that counts something (a length, an item count, a digit count, a
-prefix length, a precision) is `numeric.count`, the kernel's `!int64 ^ { min: 0 }`. A facet value the type
+prefix length, a UUID version) is `numeric.count`, the kernel's `!int64 ^ { min: 0 }`. A facet value the type
 refuses is a resolver error at load (`!number ^ { min: 0x10 }`, `!date ^ { min: 2026 }`). There is no `value`
 type and no untyped facet.
 
@@ -36,17 +43,17 @@ type**. Import fewer when you want fewer names reserved.
 | `temporal.tn` | `meta.tn` | `date time datetime duration period` | `temporal`: `date_type time_type datetime_type duration_type period_type` |
 | `net.tn` | `meta.tn` | `email ipv4 ipv6 cidr4 cidr6 mac hostname host media_type uri_reference uri uuid` | adds to `net`: `email_type ipv4_type ipv6_type cidr4_type cidr6_type mac_type hostname_type host_type media_type_type uri_type uuid_type` |
 | `core.tn` | the three libraries | `deprecated title comment examples read_only write_only` | none |
-| `policy.tn` | `meta.tn` | nothing | `policy`: `processor identifier_policy script_policy limits restriction_level limit` |
+| `policy.tn` | `meta.tn` | nothing | `policy`: `processor identifier_policy token_policy limits restriction_level limit` |
 
-- `!!import:"https://tson.io/2026/39/m/core.tn"` — every bundled type.
-- `!!import:"https://tson.io/2026/39/m/temporal.tn"` — `date`, `time`, … and the kernel; no `int32`, no `uuid`.
-- `!!import:"https://tson.io/2026/39/m/meta.tn"` — the kernel's thirteen roots and its maps only.
+- `!!import:"https://tson.io/2026/40/m/core.tn"` — every bundled type.
+- `!!import:"https://tson.io/2026/40/m/temporal.tn"` — `date`, `time`, … and the kernel; no `int32`, no `uuid`.
+- `!!import:"https://tson.io/2026/40/m/meta.tn"` — the kernel's thirteen roots and its maps only.
 
 **Every name in the closure is reserved.** A closure holding the kernel reserves its thirteen root names and the
 map names `meta`, `atom`, `numeric`, `unicode`, `net` and `binary`; each library adds its root names (and
 `temporal`); `core.tn` adds the six annotations. Declaring a reserved name is a resolver error (*"'title'
 collides with an entry of the same name brought in by !!import"*). Under `core.tn`, `record`, `identifier`,
-`type_ref`, `field_name`, `count`, `value`, `kind` and `core` stay free. A schema importing `temporal.tn` alone
+`type_ref`, `bounded`, `count`, `value`, `kind` and `core` stay free. A schema importing `temporal.tn` alone
 may declare its own `int32`; one importing `net.tn` may not declare `mac`. The two maps two documents declare,
 `numeric` and `net`, are open and hold both documents' members.
 
@@ -161,8 +168,8 @@ parser. `allow_relative: false` with `allow_fragment: false` is RFC 3986's absol
 `a`–`z`, Continue adding `0`–`9` and `_`), `start_add`, `continue_add`, `medial` and `exclude` (each `text`, read
 as a set of code points; a `medial` character stands only between two others, never doubled or at an edge), plus
 every text facet. The kernel's `meta.identifier => !unicode.identifier_type { continue_add: "-" }` is [TSON-DATA]
-§7.7's grammar and the type of every naming position (`meta.type_name`, `meta.field_name` and `meta.param_name`
-are its aliases); its second instance `net.scheme_name` is a URI scheme: `!unicode.identifier_type { start: ASCII
+§7.7's grammar and the type of every naming position (`meta.type_name` and `meta.param_name` are its aliases,
+and it is the name type of every record and enum that states no other); its second instance `net.scheme_name` is a URI scheme: `!unicode.identifier_type { start: ASCII
 continue: ASCII  continue_add: "+-."  exclude: "_"  normalization: ASCII_CASEFOLD }`.
 
 - **A value typed by an identifier family is a name**: name hygiene reaches it, and the keys of a map keyed by
@@ -200,14 +207,14 @@ quoted where the content needs it.
 | Constructor → instance | Facets (types) | Ordering |
 |---|---|---|
 | `temporal.date_type` → `date` | bounds: `date` | TOTAL |
-| `temporal.time_type` → `time` | bounds: `time`; `precision: numeric.count` | **TOTAL** — the value is the UTC time of day; second 60 is refused |
-| `temporal.datetime_type` → `datetime` | bounds: `datetime`; `precision: numeric.count` | **TOTAL** — the value is the instant; second 60 (a leap second) is refused |
-| `temporal.duration_type` → `duration` | bounds: `duration`; `precision: numeric.count`; `multiple_of: duration` | **TOTAL** — signed exact decimal **seconds** |
+| `temporal.time_type` → `time` | bounds: `time`; `fraction_digits: numeric.count` | **TOTAL** — the value is the UTC time of day; second 60 is refused |
+| `temporal.datetime_type` → `datetime` | bounds: `datetime`; `fraction_digits: numeric.count` | **TOTAL** — the value is the instant; second 60 (a leap second) is refused |
+| `temporal.duration_type` → `duration` | bounds: `duration`; `fraction_digits: numeric.count`; `multiple_of: duration` | **TOTAL** — signed exact decimal **seconds** |
 | `temporal.period_type` → `period` | bounds: `period`; `multiple_of: period` | **TOTAL** — signed integer **months** |
 
 ```
 launch  => !date ^ { min: "2026-01-01" }
-recent  => !datetime ^ { exclusive_min: "2026-01-01T00:00:00Z"  precision: 3 }
+recent  => !datetime ^ { exclusive_min: "2026-01-01T00:00:00Z"  fraction_digits: 3 }
 slot    => !duration ^ { multiple_of: PT15M  max: PT8H }
 quarter => !period ^ { multiple_of: P3M }
 ```
@@ -221,16 +228,17 @@ both; a span that is genuinely both is a record with a field of each. A month ha
 that has one, which is what makes each totally ordered. A week is 7 days and a day 86400 s, so the week form
 belongs to `duration`. A `duration`'s magnitude is at most 2⁶³ − 1 nanoseconds.
 
-`precision: N` is a constraint on the *value*: it admits a whole number of 10⁻ᴺ seconds, so `precision: 3` is
-millisecond resolution and `precision: 0` whole seconds. Reading admits any spelling of an admitted value,
-trailing zeros included (`12:00:00.500` passes `precision: 1`); a writer writes at most N digits. Nothing is
+`fraction_digits: N` is a constraint on the *value*: it admits a whole number of 10⁻ᴺ seconds, so
+`fraction_digits: 3` is millisecond resolution and `fraction_digits: 0` whole seconds — the same facet name, and
+the same digit count, as `numeric.decimal_type`'s. Reading admits any spelling of an admitted value, trailing zeros
+included (`12:00:00.500` passes `fraction_digits: 1`); a writer writes at most N digits (`12:00:00.5`). Nothing is
 truncated — a value off the grid is rejected. N is at most 9 (a larger value is a schema-load error), from the
 `"." 1*9DIGIT` fraction shared by `time`, `datetime` and `duration`. There is no timezone facet: RFC 3339 already
 mandates the offset.
 
 ## Network and identifier (`net.tn`)
 
-**Import `https://tson.io/2026/39/m/net.tn` (or `core.tn`) to use any of these.** The kernel holds only
+**Import `https://tson.io/2026/40/m/net.tn` (or `core.tn`) to use any of these.** The kernel holds only
 `net.iri_type` and its schemes; every name below comes from `net.tn`.
 
 | Constructor → instance | Facets (types) |
@@ -245,7 +253,7 @@ mandates the offset.
 | `net.media_type_type` → `media_type` | `allow_parameters?: boolean ~ false` (a permission), `types?: [text]`, `suffixes?: [text]` (member sets) |
 | `net.uri_type` → `uri_reference`, `uri` | see the text table above |
 | `net.email_type` → `email` | the text facets |
-| `net.uuid_type` → `uuid` | `version?: numeric.count` |
+| `net.uuid_type` → `uuid` | `version?: numeric.count` — RFC 9562's version field; **settable once** (a refinement may set or restate it, never change it) |
 
 CIDR list entries are `cidr4`/`cidr6` values, quoted: `within: ["10.0.0.0/8" "192.168.0.0/16"]`. An entry with
 nonzero host bits (`"10.0.0.1/8"`) is refused at load by the `cidr4` reader. **A `within`/`excluding` pair MUST
@@ -297,16 +305,23 @@ is read by the field's own type, and every facet by its family.
 
 ```
 meta.enum_type => meta.atom & { name_type: meta.identifier_ref  members: meta.enum_set }
-enum           => meta.enum_type ^ { name_type?: = meta.identifier }
+enum           => !meta.enum_type ^ { name_type: meta.identifier }
 ```
 
 Entries are listed by path; in `meta.tn` the first is declared as `enum_type` inside `meta => !schema { … }`, and
 `enum` sits at the root.
 
+**`enum` is an incomplete entry**, not a type: `meta.enum_type` with `name_type` written and `members` left open.
+`!enum [A B C]` completes it — the positional form, `members` being the one field it leaves absent — and resolves
+to `!meta.enum_type { name_type: meta.identifier  members: [A B C] }`. Declaring an enum and using it is `status =>
+!enum [OPEN DONE]`, then `s: status`. Naming `enum` itself where a type stands (`a: enum`, `<E: enum>`) is a
+resolver error, and `!enum` as a data tag a validation error; a field whose value is an enum *type*, a meta-level
+slot, is typed `meta.enum_type`, which admits enums over any name type.
+
 `meta.enum_set => !meta.set_type { element_type: text  min_items: 1 }`. An enum is a closed set of **names** and
 the identifier family they are drawn from — the same `name_type` slot a record has for its field names:
 
-- **`!enum [A B C]`** — a vocabulary of identifiers (`name_type` pinned to `meta.identifier`). Name hygiene
+- **`!enum [A B C]`** — a vocabulary of identifiers (`name_type` written as `meta.identifier`). Name hygiene
   applies to the set, and the class is the members' shared class read off their tokens (`[true false]` boolean;
   `[A B]` string; mixed → none).
 - **`!meta.enum_type { name_type: words  members: ["sedentary" "lightly active"] }`** — names of an identifier
@@ -328,59 +343,136 @@ Kernel root: `boolean => !enum [true false]`.
 
 | Constructor | Fields | Notes |
 |---|---|---|
-| `meta.choice` | `variants: [meta.type_ref]`, `disjoint?: boolean` | the closed sum; sugar `(A \| B)`; two or more; no `void` variant. The resolver derives `disjoint` and writes it in the choice body; it is discarded and recomputed on ingest. Assert it with `@meta.disjoint` |
+| `meta.choice` | `variants: [meta.type_expr]`, `disjoint?: boolean` | the closed sum; sugar `(A \| B)`; two or more; no `void` variant. A variant is a name or a type written in place. The resolver derives `disjoint` and writes it in the choice body; it is discarded and recomputed on ingest. Assert it with `@meta.disjoint` |
 | `meta.declared_type` → `meta.declared` | — | the open sum: a value names its own type by its tag, among every type of the reading document's closure, and is validated in full against it. An untagged value is a validation error. It is what a schema map's entries are |
+| `meta.dependent` (final) | `on: text` | a dependent field's type: a sum written in place at a record field's type, `{ of: !meta.dependent { on: kind } }`, sugar `kind!`. The value is read against the type its sibling `kind` names (`extending.md`). Never declared, and at no other slot |
 
-A position admits a foreign schema's types by importing that schema.
+Three rules shape a choice beyond disjointness:
+
+- **A tag names a variant, or a type that IS-A exactly one variant.** At `item => ( text | shape )` with `shape`
+  abstract and `circle => shape & { r: int32 }`, `!circle { … }` selects `shape` and validates as a `circle`. A
+  tag whose type IS-A two variants and names neither selects none, a validation error.
+- **A choice that is not disjoint names every variant.** A variant written in place has no name a tag could give,
+  so `( [text] | [int32] )` is a resolver error: declare `texts => [text]` and `ints => [int32]`, then `( texts |
+  ints )`. A disjoint choice may hold one, `( [text] | int32 )`.
+- **A variant that is a choice is disjoint**, so a choice nests one deep. Over two records `either => ( a | b )`,
+  `( text | either )` is a resolver error naming the fix, `( text | a | b )`. A nested choice has no class, so the
+  outer choice is not disjoint and a value there carries the tag naming the nested choice: at `( boolean | narrow
+  )` over `narrow => ( int32 | text )`, write `!narrow 5`.
+
+A position admits a foreign schema's types by importing that schema, or one entry of a schema it cannot import
+by an extern (below).
+
+## Hops (kernel)
+
+| Constructor | Fields | Notes |
+|---|---|---|
+| `meta.alias` | `target: meta.type_ref` | `user_id => uuid`: another name for the same entry. A hop, no type of its own; output keeps it as written |
+| `meta.extern` | `schema: iri_reference`, `type: text` | `order_v1 => !meta.extern { schema: "https://example.com/order-1.tn"  type: order }`: one entry of another schema under a name of this one, none of that schema's names entering this one. It stands wherever a type's name does, and is sealed: no `&`, `-`, `^`, application, default or pin through it, and no qualified name selects through it. Values at its positions are read in the foreign schema's scope (`data-under-schema.md`) |
+
+Both compose `meta.top` directly and reach no base kind, so neither entry is a type or carries a chain; a
+judgement through either is made of the entry it reaches. Two externs of one entry, or an extern beside the
+entry's own name, are one type written twice and cannot both be variants of a choice.
 
 ## References (kernel)
 
 ```
-meta.reference_type => meta.atom & { of: meta.type_ref  allow_sibling?: boolean ~ true }
-meta.ref            => <T> !meta.reference_type { of: T  allow_sibling: false }
-meta.field_type_ref => !meta.reference_type { of: meta.type }
-meta.type_ref       => !meta.field_type_ref ^ { allow_sibling: false }
+meta.ref            => meta.atom & { of: meta.type_ref }
+meta.type_ref       => !meta.ref { of: meta.type }
 meta.identifier_ref => !meta.type_ref ^ { of: unicode.identifier_type }
 ```
 
-`meta.field_type_ref` types a record field's type and is the one reference that admits a sibling reference;
-`meta.type_ref` holds the names of the types a value can have; `meta.identifier_ref` the names of the identifier
-families.
+`meta.ref` is the one reference constructor, and `meta.ref<T>` its application, the construction `!meta.ref {
+of: T }` (positionally `!meta.ref T`). `meta.type_ref` holds the names of the types a value can have,
+`meta.identifier_ref` the names of the identifier families.
 
 One atom whose values are **names**. A value conforms when the entry it names, past alias hops, holds a value
 whose type is `of` or IS-A it, so the slot's meaning comes from `of`:
 
 - **`of` a constructor** — the slot holds a *type's name*: `meta.type_ref` (any type a value can have),
-  `meta.ref<meta.record>` (record types, and constructors, whose declarations are records), `meta.ref<net.uuid_type>`
-  (types built with `uuid_type`: `stock_id`, never a UUID), `meta.identifier_ref`.
+  `meta.ref<meta.record>` (record types, and constructors, whose declarations are records),
+  `meta.ref<meta.array>` (array types, every set type among them), `meta.ref<net.uuid_type>` (types built with
+  `uuid_type`: `stock_id`, never a UUID), `meta.identifier_ref`.
 - **`of` any other type** — the slot holds a value's **qualified name**: `meta.ref<method>` takes
   `orders.place_order`, never a method written inline (`extending.md`).
 
-A reference is string-class. `allow_sibling` is a permission true only at `meta.field_type_ref`; every other
-reference refuses a sibling reference (`kind!`, `declaration-forms.md`). Any schema whose closure holds
-the kernel writes `meta.ref<T>` and `meta.type_ref` at a field.
+A reference is string-class, and its value is a **name, never an application**: a parametric record is named
+only as the head of an application, so a slot holds the name a declaration gives one (`bt => box<int32>`, then
+`bt`). `of` names a type or a constructor, never a value entry, a parametric record or an incomplete entry
+(`meta.ref<meta.set_type>` is refused; `meta.ref<meta.array>` admits every set type). A refinement narrows `of` to
+a type IS-A the source's. Any schema whose closure holds the kernel writes `meta.ref<T>` and `meta.type_ref` at a
+field.
+
+### Type slots
+
+```
+meta.type_inline => { of: meta.type }
+meta.type_expr   => @meta.disjoint ( meta.type_ref | meta.type_inline )
+```
+
+Every slot that names the type of a value — `meta.record_field.type`, `meta.array.element_type`,
+`meta.map.value_type`, `meta.tuple_element.element_type`, each of `meta.choice.variants`, and
+`meta.type_chain.parents` — is a `meta.type_expr`: a **name**, or a **type written in place**, `{ of: !C { … }
+}`. `tags: [text]` resolves to `type: { of: !meta.array { element_type: text } }`. Every other slot naming a type
+is `meta.type_ref` and holds a name alone: a map's `key_type`, a parameter's `bound`, an alias's `target`, a
+reference's `of`, a chain's `supertypes` and `subtypes`, and `meta.apply`'s `head` and `arguments`. Where only a
+name stands, an application or a form is a resolver error (`{box<text> => int32}`, `meta.ref<box<text>>`):
+declare it and name it.
+
+**What may be written in place**: a container, a tuple, a choice, a reference, a completion (`set<text>`), an
+applied constructor, a record body (`at: { x: int32  y: int32 }`), an application of a parametric record (which
+closes to the record written in place), and, at a record field's type alone, a dependent type. **Declared and
+named, never in place**: an atom refinement or construction (`!integer ^ { … }`), an enum, a namespace type,
+`meta.declared`, a composition or a subtraction. A type written in place has no name, no chain and no tag, and is
+IS-A nothing; two equal ones are one type, and a name and a type written in place are never one type.
+
+### Applications
+
+```
+meta.apply => final meta.type & { head: meta.type_ref  arguments: [meta.type_ref; 1..] }
+```
+
+`H<a₁ … aₙ>` in schema source is sugar for `meta.apply`, and what it means depends on the head:
+
+- **A constructor** — constructed over its **argument slots**, its required fields with no default and no pin
+  that hold a type, in declaration order: `meta.array<text>` is `[text]`, `meta.map<text int32>` is `{text =>
+  int32}`, `meta.ref<method>` is `!meta.ref { of: method }`. An argument is not followed through an alias, so
+  `meta.array<user_id>` is `[user_id]`. A construction leaving another required field unwritten is refused
+  (`meta.enum_type<meta.identifier>`).
+- **An incomplete entry** — completed, the arguments filling the slots it left absent: `set<text>` is `!meta.array
+  { element_type: text  ordered: false  unique_items: true }`; over `nonempty => !meta.array ^ { min_items: 1 }`,
+  `nonempty<uuid>` is the type `[uuid; 1..]` is.
+- **A parametric record** — substituted (`parametric-records.md`).
+
+An argument is a type and never a literal: no number and no quoted token. A sugar form or record body is never an
+argument, and a parametric record's argument is a name, or one of the enclosing parametric record's parameters
+(`orders => [order]`, then `page<orders>`). An application of a constructor or incomplete entry may take another
+application as an argument (`meta.map<text meta.array<T>>`). `meta.apply` stays in resolved output only inside a
+parametric record over one of its parameters, and as `@meta.application`'s value. No data value carries an
+argument list.
 
 ## Products (kernel)
 
 | Constructor | Fields | Sugar |
 |---|---|---|
-| `meta.record` | `fields: meta.field_map` (name → `meta.record_field`, ordered), `groups?: [meta.field_group]`, `extension?: meta.record_extension_type ~ OPEN`, `discriminators?: [text; 1..]`, `name_type?: meta.identifier_ref` | `{ … }`; `abstract { … }`, `final { … }`; `=?` on a field |
-| `meta.record_template` | the same, `fields: meta.record_template_field_map`, plus `parameters: [meta.template_param; 1..]` | `<T> { … }` |
-| `meta.array` | `element_type: meta.type_ref`, `voidable? ~ false`, `ordered? ~ true`, `unique_items? ~ false`, `min_items?`, `max_items?: numeric.count` | `[T]`, `[T; N..M]`, `[T?]` |
-| `meta.set_type` (`meta.array ^`) | `voidable? = false`, `ordered? = false`, `unique_items? = true`; bounds as array's | `set<T>` — the kernel root's template. **A set may be empty**; say `min_items: 1` for one that may not |
-| `meta.map` | `key_type`, `value_type: meta.type_ref`, `voidable? ~ false`, `ordered? ~ false`, `min_items?`, `max_items?: numeric.count` | `{K => V}`, `{K => V?; 1..}` |
-| `meta.namespace` (`meta.map ^`) | `key_type: meta.identifier_ref`, `voidable? = false` | none — a map keyed by names, whose values a qualified name enters (`extending.md`) |
-| `meta.tuple` | `elements: [meta.tuple_element]` (`{ element_type: meta.type_ref  voidable? }`) | `[T, U?]`; one position: `meta.tuple1<T>`, `meta.voidable_tuple1<T>` |
+| `meta.record` | `fields: meta.field_map` (name → `meta.record_field`, ordered), `parameters?: [meta.param; 1..]`, `groups?: [meta.field_group]`, `extension?: meta.record_extension_type ~ OPEN`, `discriminators?: [text; 1..]`, `name_type?: meta.identifier_ref` | `{ … }`; `abstract { … }`, `final { … }`; `=?` on a field; `<T> { … }`, `<T: text> { … }` for a parametric record (`meta.param` = `{ name: meta.param_name  bound?: meta.type_ref }`) |
+| `meta.array` | `element_type: meta.type_expr`, `voidable? ~ false`, `ordered? ~ true`, `unique_items? ~ false`, `min_items?`, `max_items?: numeric.count` | `[T]`, `[T; N..M]`, `[T?]`, `meta.array<T>` |
+| `meta.set_type` — incomplete | `!meta.array ^ { voidable: false  ordered: false  unique_items: true }`, `element_type` left open; the root's `set` is an alias of it | `set<T>`. No type: a slot holding set types is `meta.ref<meta.array>`. **A set may be empty**; say `min_items: 1` in a named completion for one that may not |
+| `meta.map` | `key_type: meta.type_ref` (a name only), `value_type: meta.type_expr`, `voidable? ~ false`, `ordered? ~ false`, `min_items?`, `max_items?: numeric.count` | `{K => V}`, `{K => V?; 1..}`, `meta.map<K V>` |
+| `meta.namespace` (`meta.map & { … }`) | `key_type: meta.identifier_ref`, `voidable? = false` | none — a map keyed by names, whose values a qualified name enters (`extending.md`). Its `key_type` admits no `.` |
+| `meta.tuple` | `elements: [meta.tuple_element]` (`{ element_type: meta.type_expr  voidable? }`) | `[T, U?]`, two positions or more. One position is declared: `one_text => !meta.tuple [{ element_type: text }]` (add `voidable: true` to admit `[_]`) |
 
 `ordered` says whether two values differing only in order are one value; it never changes what a document may
 write, and output keeps the written order. A map whose entry order matters is `!meta.map { key_type: K
 value_type: V  ordered: true }` — the sugar has no spelling for it. A container's part is a value or void, never
 missing, so containers carry `voidable` and no `optional`.
 
-Explicit constructor applications are declaration bodies (`lookup => !meta.map { key_type: text  value_type:
-integer }`), never inline at a field: `{ e: !enum [A B] }` is refused — name it first. They are the way to an
-ordered map, a composite map key, or a bounded set at a field (`tag_set => !meta.set_type { element_type: text
-min_items: 1 }`, then `tags: tag_set`).
+A **construction** (`!C { … }`) and a **refinement** (`!I ^ { … }`) are declaration bodies, never written at a
+field: `{ e: !enum [A B] }` is refused — name it first. The sugar, an applied constructor and a completion are
+written in place (`ids: meta.array<uuid>`, `tags: set<text>`). Declarations are the way to an ordered map, a
+composite map key, or a bounded set at a field (`tag_set => !meta.set_type { element_type: text  min_items: 1 }`,
+then `tags: tag_set`). A shape reused over many element types is a **construction left open**: `nonempty =>
+!meta.array ^ { min_items: 1 }`, then `nonempty<text>` wherever it is wanted.
 
 ## Which names exist
 
@@ -391,17 +483,19 @@ float32 float64`.
 `temporal.tn`: `date time datetime duration period`.
 `net.tn`: `email ipv4 ipv6 cidr4 cidr6 mac hostname host media_type uri_reference uri uuid`.
 `core.tn` (annotations): `deprecated title comment examples read_only write_only`.
-By path, the ones an author reaches for: `meta.identifier`, `meta.type_ref`, `meta.ref<T>`, `meta.record`,
-`meta.map`, `meta.set_type`, `meta.namespace`, `meta.enum_type`, `meta.tuple1<T>`, `meta.voidable_tuple1<T>`,
+By path, the ones an author reaches for: `meta.identifier`, `meta.type_ref`, `meta.ref<T>`, `meta.type_expr`,
+`meta.record`, `meta.array`, `meta.map`, `meta.set_type`, `meta.namespace`, `meta.enum_type`, `meta.extern`,
 `meta.declared`, `numeric.count`, and the constructors for a fresh family (`!net.uuid_type {}`,
 `!unicode.identifier_type { … }`, `!binary.bytes_type { encoding: HEX }`).
 
 Names that do **not** exist: `string str int float double bool binary base64 base64url base32 hex timestamp decimal
 url ip any null unknown unit value list array map record object identifier kind ref text_enum declared
 dynamic non_empty_text positive_integer non_negative_integer negative_integer non_positive_integer annotation
-documentation` at the root, nor any kernel constructor unqualified (`integer_type` is `numeric.integer_type`). A sign bound, a non-empty text and an
-`identifier` are one line a schema writes for itself. `set`, `bytes`, `period`, `iri` and `doc` *do* exist at the
-root.
+documentation` at the root, nor any kernel constructor unqualified (`integer_type` is `numeric.integer_type`),
+nor `meta.field_name` (a field name is a value of its record's `name_type`), `meta.template` or `meta.tuple1`. A
+sign bound, a non-empty text and an `identifier` are one line a schema writes for itself. `set`, `bytes`,
+`period`, `iri` and `doc` *do* exist at the root, `set` and `enum` as incomplete entries a schema completes
+(`set<T>`, `!enum [ … ]`) and never names as a type.
 
 ## Annotation types
 
@@ -412,7 +506,9 @@ Resolved from the root like any name, in the annotating document's namespace:
   (whether the value space has a finite least and greatest value: `date`, `datetime`, `duration` and the fixed
   widths do, `uuid`, `mac` and the CIDR families do not), `@atom.exact:true|false`, `@atom.numeric` (bare).
   `@meta.disjoint` (bare, on a choice; checked at load). `meta.annotation` marks a type meant as an annotation.
-  `@meta.synthetic` and `@meta.application` are resolver-attached; writing either is a resolver error.
+  `@meta.application` (on a declared application's key: `{ head: pair  arguments: [text integer] }`, a
+  `meta.apply` value) and `@meta.completion` (on a declared completion's key: `{ of: [meta.set_type] }`) are
+  resolver-attached; writing either is a resolver error.
 - **`core.tn`**: `@title:"…"` (plain text), `@comment:"…"` (for maintainers; a documentation tool leaves it out),
   `@examples:["…" "…"]` (a list of *text*, conventionally the value in TSON notation, `"{ x: 1 }"`; nothing parses
   it), `@deprecated` (bare; a reason belongs in `@doc`), `@read_only` / `@write_only` (bare, never both on one
