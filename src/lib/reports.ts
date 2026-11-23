@@ -109,6 +109,15 @@ export const REPORT_ORDER = [
   'kernel-namespace',
   'typed-facets',
   'dependent-fields',
+  'rev40-proposal',
+  'template-simplification',
+  'refinement-source',
+  'inline-types',
+  'references-and-dependent-fields',
+  'inline-records',
+  'names-only-reference',
+  'open-construction-design',
+  'extern',
 ];
 
 /** `32/reports/avro-to-tson-mapping` -> `avro-to-tson-mapping` */
