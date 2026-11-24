@@ -80,7 +80,7 @@ Routes:
 
 | Path | Collection | Shown as |
 | --- | --- | --- |
-| `{revision}/tson-part1-data.md`, `tson-part2-schema.md` | `spec` (`part` set) | "TSON Specification", first |
+| `{revision}/tson-part1-data.md`, `tson-part2-schema.md`, `tson-part3-json.md` (from 36) | `spec` (`part` set) | "TSON Specification", first, in `part` order |
 | `{revision}/tson-guide.md`, any other spec doc | `spec` (no `part`) | "TSON Specification", after the parts |
 | `{revision}/*-changelog.md` | `changelog` | "Reports" → "Change Log" |
 | `{revision}/reports/*.md` | `reports` | "Reports", split by kind |
@@ -117,31 +117,49 @@ format hasn't frozen into. Everything unversioned therefore uses the bare `.tn` 
 reads as "development file, pre-v1 spec". When the draft freezes as version 1, the released
 artifacts take `.tn1`.
 
-**Starting a new revision** (e.g. 33 -> 34):
+**Starting a new revision** (e.g. 40 -> 41) is a run of separate commits, the way revisions 38, 39
+and 40 went. Opening and landing are kept apart so the author's batch reads as one diff against the
+previous revision.
+
+*Open* — "Open revision 41 as a verbatim copy of 40":
 1. Copy the previous revision's `*.md`, `m/`, `fixtures/`, and `skills/` into
-   `src/content/2026/34/`. Do **not** copy `reports/` or the previous revision's
-   `*-changelog.md` — both belong to the revision they were filed under.
-2. In the copies, rewrite `2026/33` -> `2026/34` (the self-referencing
-   `!!id`/`!!import` URLs (revisions before 39 also carry `!!meta` and `!!schema`) and the spec's own cross-references), and the
-   `## 2026 Revision 33` headings. Drop the previous revision's "what changed" sentence from the
-   **Status:** paragraph — it describes the old revision, not the new one. The hash pins come
-   across stale (see below) until the author re-stamps them. The skills carry the
-   same URLs and a "2026 Revision 33" line of their own, and bundle copies of `m/*.tn` that must
-   be re-copied from the new revision.
-3. Bump `CURRENT_REVISION` in `src/lib/spec.ts` to `'34'`, and add `REVISION_NOTES` entries: one
-   for the new revision, and a closing summary for the one it supersedes. When the author's text
-   lands, set the new entry's `published` to that day (`YYYY-MM-DD`); the revisions index and
-   every page's revision notice show it.
-4. Update the target in `public/_redirects` to `/2026/34`.
-5. Run the public-sync step below for the new revision's files.
-6. `npx astro build`, and check `/2026/revisions` lists both, `/llms.txt` names only the new
-   revision, and the retained revision's pages carry the banner.
+   `src/content/2026/41/`, **byte for byte**. Do **not** copy `reports/` or the previous
+   revision's `*-changelog.md` — both belong to the revision they were filed under. Do not rewrite
+   the `2026/40` URLs, headings or pins in the copies; they stay stale until the landing.
+2. Bump `CURRENT_REVISION` in `src/lib/spec.ts` to `'41'` and add a placeholder
+   `REVISION_NOTES` entry, `'41': { summary: 'In progress.' }`.
+3. Update the target in `public/_redirects` to `/2026/41`.
+4. Run the public-sync step below for the new revision's schemas and skills.
+
+*Land* — "Land the revision 41 draft: …", when the author's text arrives:
+5. The batch replaces the copies and adds `tson-rev41-changelog.md`. It should carry the
+   `2026/40` -> `2026/41` rewrite itself — the self-referencing `!!id`/`!!import` URLs (revisions
+   before 39 also carry `!!meta` and `!!schema`), the spec's own cross-references, the
+   `## 2026 Revision 41` headings, a **Status:** paragraph without the previous revision's "what
+   changed" sentence, and re-stamped pins (see below). Check each; a leftover `2026/40` outside
+   the change log and reports is a miss.
+6. Re-run the public sync for `m/` and `fixtures/`.
+
+*Follow through* — one commit each, in whatever order the material arrives:
+7. **Reports.** The new revision's design notes go in `41/reports/`; the feedback register written
+   against revision 40 is published under `40/reports/`. Add `REPORT_META`/`REPORT_ORDER` entries
+   in `src/lib/reports.ts` where frontmatter doesn't cover them.
+8. **Skills.** Bring `41/skills/` up to the revision's design: the `2026/41` URLs, the "2026
+   Revision 41" line, fresh copies of `m/*.tn` in `tson-schema/references/`, and every example
+   valid under the new revision. Keep both `SKILL.md` bodies under the size ceiling and rebuild
+   the `.skill` bundles (below).
+9. **Notes.** Replace the placeholder `REVISION_NOTES` entry with the summary and changes, set
+   `published` to the day the text landed (`YYYY-MM-DD`; the revisions index and every page's
+   revision notice show it), and give the superseded revision its closing summary.
+10. **The rest of the site** — see "Surfaces that follow the current revision" below.
+11. `npx astro build`, and check `/2026/revisions` lists both, `/llms.txt` names only the new
+    revision, and the retained revision's pages carry the banner.
 
 `public/_headers` needs **no** change: the `/2026/:revision/m/*` and `/2026/:revision/skills/*`
 rules cover every revision. Each uses one Cloudflare placeholder plus one splat, which is the
 maximum a single rule allows.
 
-The `.tn` files carry **real** sha256 pins (revisions 33–39 all do): the digest is over the file's
+The `.tn` files carry **real** sha256 pins (every revision from 33 on): the digest is over the file's
 bytes after its `!!id` line, computed bottom-up — from revision 39 the kernel `meta.tn` first, then
 numeric, temporal, net and policy pinning the kernel, then core pinning the three libraries — and
 Part 2 §13.2 repeats all six. (Revisions 33–38 have a separate `meta-kernel.tn` at the bottom.) Copying a revision forward therefore
@@ -210,12 +228,36 @@ Run `npx astro build` before committing spec or schema changes — it's the only
 catches a broken content-collection frontmatter field or a stale cross-reference between the
 `.tn` files and the spec prose that describes them.
 
+## Surfaces that follow the current revision
+
+Bumping `CURRENT_REVISION` moves every link, but these carry revision-specific content written by
+hand, and nothing in the build notices when they fall behind:
+
+| Surface | What goes stale |
+| --- | --- |
+| `vendor/ltr8-tson-0.{revision}.{patch}.tgz` | The validator's engine. `@ltr8/tson` is not on npm; it is a committed tarball named in `package.json` as a `file:` dependency, and it bundles its own schemas and pins, so it implements the revision it was built from, not `CURRENT_REVISION`. |
+| `src/components/Validator.astro` | The demo schemas and scenarios, and the observatory's identity, `https://tson.io/2026/{revision}/examples/observatory.tn`, written out in the schema spec and in the TSON and JSON scenario data. |
+| `src/pages/index.astro` | The snippets, each row's `§` chip and `#anchor` into Part 1 or Part 2 (section numbers move between revisions), and the abbreviated `core.tn` pin in the versioning example. |
+| `src/pages/compare.astro` | The TSON column of the feature table, and the spectrum. Its links to `/2026/32/reports/…` are deliberate: the mapping reports were written against revision 32 and stay there. |
+| `public/images/og/home.svg` and `home.png` | The share card shows a schema sample and the same abbreviated `core.tn` pin. Edit the SVG, then re-render the PNG at 1200×630. |
+| `README.md`, `src/lib/llms-about.txt` | The opening description of the project and of the bundled schema set. |
+
+To replace the tarball, add the new one, point `package.json` at it with `npm install
+./vendor/{new}.tgz`, and delete the old one. The filename must change whenever the contents do: a
+different tarball at the same path leaves a stale integrity hash in the lockfile and fails `npm ci`
+on Cloudflare. `.nvmrc` pins Node 24 because the package requires it.
+
+Before committing a pass over these, run every snippet and demo schema through a validator built
+for the new revision, confirm the forms the revision removed are refused, and check each `#anchor`
+against the built page — a broken anchor still builds.
+
 ## Working on the specification
 
-Part 1 (`tson-part1-data.md`), Part 2 (`tson-part2-schema.md`), the developer guide
-(`tson-guide.md`), the three `.tn` schema sources, and their resolved fixtures are edited
-directly by the author outside of Claude Code and land as batches of changes to summarize and
-commit. When asked to summarize and commit a landed batch:
+Part 1 (`tson-part1-data.md`), Part 2 (`tson-part2-schema.md`), Part 3 (`tson-part3-json.md`),
+the developer guide (`tson-guide.md`), the revision's change log, the `.tn` schema sources in
+`m/`, and their resolved fixtures are edited directly by the author outside of Claude Code and
+land as batches of changes to summarize and commit. When asked to summarize and commit a landed
+batch:
 
 - Read every changed file's diff before writing the commit message — the `.tn` files usually
   carry the real semantic change (new fields, constructors, grammar), while the spec prose
