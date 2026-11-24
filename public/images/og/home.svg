@@ -16,7 +16,7 @@
 
   <g font-size="18" font-weight="500" xml:space="preserve">
     <text x="530" y="190" xml:space="preserve"><tspan fill="#2dd4bf">!!id:</tspan><tspan fill="#d6c3a5">"…people.tn?sha256=c4d5e6f7…a2b3c4d5"</tspan></text>
-    <text x="530" y="218" xml:space="preserve"><tspan fill="#2dd4bf">!!import:</tspan><tspan fill="#d6c3a5">"…core.tn?sha256=4e8d9c43…4d9a562e"</tspan></text>
+    <text x="530" y="218" xml:space="preserve"><tspan fill="#2dd4bf">!!import:</tspan><tspan fill="#d6c3a5">"…core.tn?sha256=00eaf217…dd053241"</tspan></text>
     <text x="530" y="274" xml:space="preserve"><tspan fill="#2dd4bf">!schema</tspan><tspan fill="#6b7280" xml:space="preserve"> {</tspan></text>
     <text x="530" y="302" xml:space="preserve"><tspan fill="#e5e7eb">  person</tspan><tspan fill="#2dd4bf" xml:space="preserve"> =&gt;</tspan><tspan fill="#6b7280" xml:space="preserve"> {</tspan></text>
     <text x="530" y="328" xml:space="preserve"><tspan fill="#e5e7eb" xml:space="preserve">    name</tspan><tspan fill="#6b7280">:</tspan><tspan fill="#d6c3a5" xml:space="preserve"> text</tspan></text>

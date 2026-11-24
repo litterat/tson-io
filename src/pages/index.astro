@@ -25,7 +25,7 @@ const trySession = `<span class="tp">$</span> <span class="tk">git clone https:/
 
 // ── the forbidden edit: v2 with a REQUIRED field ─────────────
 const v2Schema = `<span class="gain">!!id:</span><span class="ts">"https://example.com/people-v2.tn?sha256=ac3f2e1a…a8e5be21"</span>
-<span class="gain">!!import:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/core.tn?sha256=4e8d9c43…4d9a562e"</span>
+<span class="gain">!!import:</span><span class="ts">"https://tson.io/2026/${CURRENT_REVISION}/m/core.tn?sha256=00eaf217…dd053241"</span>
 <span class="gain">!schema</span> {
   <span class="tk">person</span>   <span class="gain">=&gt;</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">born</span><span class="tp">:</span> <span class="ts">date</span>  <span class="added"><span class="tk">email</span><span class="tp">:</span> <span class="ts">text</span></span> }
   <span class="tk">employee</span> <span class="gain">=&gt;</span> <span class="ts">person</span> <span class="gain">&amp;</span> { <span class="tk">department</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">level</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">rank</span> <span class="gain">~</span> <span class="tn">L1</span> }
@@ -126,11 +126,11 @@ const schemaRows = [
     ],
   },
   {
-    chip: '§5.7', href: `${part2Url}#57-refinement`, title: 'Refinement',
-    why: 'Tighten inherited fields without adding any: defaults can move, pins can\'t, contracts only narrow. Each of a field\'s three answers moves one way and never back.',
+    chip: '§5.8', href: `${part2Url}#58-supertype-composition`, title: 'Tightening a field',
+    why: 'A composition body that names an inherited field restates it: defaults can move, pins can\'t, contracts only narrow. Each of a field\'s three answers moves one way and never back, so the result is still IS-A its source.',
     snippets: [
       { tag: 'schema', kind: 'schema', html: `<span class="tk">service</span>    <span class="gain">=&gt;</span> { <span class="tk">host</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">port</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">~</span> <span class="tn">8080</span> }
-<span class="tk">production</span> <span class="gain">=&gt;</span> <span class="ts">service</span> <span class="gain">^</span> { <span class="tk">port</span><span class="gain">?</span><span class="tp">:</span> <span class="gain">=</span> <span class="tn">443</span> }` },
+<span class="tk">production</span> <span class="gain">=&gt;</span> <span class="ts">service</span> <span class="gain">&amp;</span> { <span class="tk">port</span><span class="gain">?</span><span class="tp">:</span> <span class="gain">=</span> <span class="tn">443</span> }` },
       { tag: "data (port fixed at 443; value doesn't need repeating)", kind: 'data', html: `<span class="gain">!production</span> { <span class="tk">host</span><span class="tp">:</span> <span class="ts">"prod.internal"</span> }` },
     ],
   },
@@ -164,14 +164,13 @@ const schemaRows = [
     ],
   },
   {
-    chip: '§5.10', href: `${part2Url}#510-templates-and-parameters`, title: 'Templates',
-    why: 'Definitions with blanks, over type parameters and value parameters both. Each parameter has a type, derived from where it stands or bounded as <T: text>, and every application is checked against it. A declaration naming a fully bound application is that type, under its own name.',
+    chip: '§5.10', href: `${part2Url}#510-parametric-records`, title: 'Parametric records',
+    why: 'A record with type parameters, each bounded where it needs to be as <T: text>, and every application checked against its bound. A type can be written in place, a record body included, so nothing is named that does not need a name. A declaration naming an application is the substituted record under that name; bare paged names nothing.',
     snippets: [
-      { tag: 'schema', kind: 'schema', html: `<span class="tk">paged</span>        <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">T</span><span class="gain">&gt;</span> { <span class="tk">items</span><span class="tp">:</span> <span class="tp">[</span><span class="ts">T</span><span class="tp">]</span>  <span class="tk">cursor</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">text</span> }
-<span class="tk">labelled</span>     <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">T</span><span class="tp">:</span> <span class="ts">text</span><span class="gain">&gt;</span> { <span class="tk">label</span><span class="tp">:</span> <span class="ts">T</span>  <span class="tk">note</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">text</span> }
-<span class="tk">retry_policy</span> <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">N</span><span class="gain">&gt;</span> { <span class="tk">attempts</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">~</span> <span class="ts">N</span> }
-<span class="tk">checkout</span>     <span class="gain">=&gt;</span> <span class="ts">retry_policy</span><span class="gain">&lt;</span><span class="tn">5</span><span class="gain">&gt;</span>` },
-      { tag: 'data', kind: 'data', html: `<span class="gain">!checkout</span> { <span class="tk">attempts</span><span class="tp">:</span> <span class="tn">10</span> }` },
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">paged</span>    <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">T</span><span class="gain">&gt;</span> { <span class="tk">items</span><span class="tp">:</span> <span class="tp">[</span><span class="ts">T</span><span class="tp">]</span>  <span class="tk">page</span><span class="tp">:</span> { <span class="tk">cursor</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">size</span><span class="tp">:</span> <span class="ts">integer</span> } }
+<span class="tk">labelled</span> <span class="gain">=&gt;</span> <span class="gain">&lt;</span><span class="ts">T</span><span class="tp">:</span> <span class="ts">text</span><span class="gain">&gt;</span> { <span class="tk">label</span><span class="tp">:</span> <span class="ts">T</span>  <span class="tk">note</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">text</span> }
+<span class="tk">tag_page</span> <span class="gain">=&gt;</span> <span class="ts">paged</span><span class="gain">&lt;</span><span class="ts">text</span><span class="gain">&gt;</span>` },
+      { tag: 'data (an application is named, never written in data)', kind: 'data', html: `<span class="gain">!tag_page</span> { <span class="tk">items</span><span class="tp">:</span> <span class="tp">[</span><span class="ts">urgent reviewed</span><span class="tp">]</span>  <span class="tk">page</span><span class="tp">:</span> { <span class="tk">cursor</span><span class="tp">:</span> <span class="ts">c2</span>  <span class="tk">size</span><span class="tp">:</span> <span class="tn">2</span> } }` },
     ],
   },
   {
@@ -184,7 +183,7 @@ const schemaRows = [
   },
   {
     chip: '§7.8', href: `${part2Url}#78-declared-positions-the-open-sum`, title: 'Extension points that stay verified',
-    why: 'A position where the data names its own type. meta.declared, the open sum, admits any type in the schema\'s namespace — its own declarations and its imports — and the payload is validated in full against the type it names. This is not an escape hatch to unchecked data: a foreign type comes in by importing its schema.',
+    why: 'A position where the data names its own type. meta.declared, the open sum, admits any type in the schema\'s namespace — its own declarations and its imports — and the payload is validated in full against the type it names. This is not an escape hatch to unchecked data: every type it admits is one the schema can already name.',
     snippets: [
       { tag: 'schema', kind: 'schema', html: `<span class="tk">event</span> <span class="gain">=&gt;</span> {
   <span class="tk">at</span><span class="tp">:</span>      <span class="ts">datetime</span>
@@ -194,6 +193,15 @@ const schemaRows = [
   <span class="tk">at</span><span class="tp">:</span>      <span class="ts">"2026-07-01T09:00:00Z"</span>
   <span class="tk">subject</span><span class="tp">:</span> <span class="gain">!sku</span> <span class="ts">"A-123"</span>
 }` },
+    ],
+  },
+  {
+    chip: '§5.13', href: `${part2Url}#513-externs`, title: 'Externs',
+    why: 'One type of another schema, under a name of your own, without importing anything else of it. The extern is sealed: nothing is derived from it, and a value at its position is read under its own schema, so two versions of one schema can sit side by side in one document.',
+    snippets: [
+      { tag: 'schema', kind: 'schema', html: `<span class="tk">location</span> <span class="gain">=&gt;</span> <span class="gain">!meta.extern</span> { <span class="tk">schema</span><span class="tp">:</span> <span class="ts">"https://example.com/geo.tn"</span>  <span class="tk">type</span><span class="tp">:</span> <span class="ts">point</span> }
+<span class="tk">depot</span>    <span class="gain">=&gt;</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">at</span><span class="tp">:</span> <span class="ts">location</span> }` },
+      { tag: 'data (at is read as geo.tn\'s point)', kind: 'data', html: `<span class="gain">!depot</span> { <span class="tk">name</span><span class="tp">:</span> <span class="ts">North</span>  <span class="tk">at</span><span class="tp">:</span> { <span class="tk">lat</span><span class="tp">:</span> <span class="tn">-37.81</span>  <span class="tk">lon</span><span class="tp">:</span> <span class="tn">144.96</span> } }` },
     ],
   },
 ];

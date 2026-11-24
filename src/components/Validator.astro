@@ -401,7 +401,7 @@
 }
 `;
 
-  const OBSERVATORY_BODY = `@doc:"A tour of the schema language: atom refinements, enums over a name type, typed field names, bounded templates, field groups, maps, sets, tuples, composition, refinement, subtraction and guarded recursion."
+  const OBSERVATORY_BODY = `@doc:"A tour of the schema language: atom refinements, enums over a name type, typed field names, bounded parametric records, open constructions, field groups, maps, sets, tuples, composition, restated fields, subtraction and guarded recursion."
 !schema {
   @doc:"Three letters, a dash, three digits."
   designator => !text ^ { pattern: "[A-Z]{3}-[0-9]{3}" }
@@ -428,26 +428,23 @@
   json_record => !meta.record { name_type: json_name  extension: ABSTRACT  fields: {} }
   linked_id   => json_record & { "@id": iri  "@type": text }
 
-  @doc:"A type parameter, used at an element position."
-  bag => <T> [T]
+  @doc:"An open construction: an array with its element type left open, completed where it is used."
+  bag => !meta.array ^ { min_items: 1 }
 
-  @doc:"Two type parameters, the second bounded: an argument for B must be text or a type that IS-A it."
+  @doc:"A parametric record with two type parameters, the second bounded: an argument for B must be text or a type that IS-A it."
   pair => <A, B: text> { first: A  second: B }
 
-  @doc:"A type parameter and a value parameter: a fixed-length vector."
-  vector => <T, N> [T; N]
+  @doc:"A map whose key type is settled and whose value type is left open."
+  index_of => !meta.map ^ { key_type: designator }
 
-  @doc:"Partial application re-declares the open parameter."
-  index_of => <V> {designator => V}
-
-  @doc:"A set: unordered, unique, and possibly empty. Written through the kernel's set template."
+  @doc:"A set: unordered, unique, and possibly empty. Written by completing the kernel's set."
   partner_set => set<non_empty_text>
 
   coordinate => [number, number]
 
   reading_window => [datetime, datetime]
 
-  sample_run => vector<number, 4>
+  sample_run => [number; 4]
 
   short_label => !text ^ { min_length: 1  max_length: 12 }
 
@@ -513,8 +510,8 @@
     notes?:       bag<non_empty_text>
   }
 
-  @doc:"Refinement tightens fields of an existing record: a pin, and a required field relaxed to an injected default."
-  radio_instrument => instrument ^ {
+  @doc:"A composition that restates inherited fields and adds none: a pin, and a required field relaxed to an injected default."
+  radio_instrument => instrument & {
     band:         = RADIO
     aperture_mm?: ~ 25000
   }
@@ -595,7 +592,7 @@
 
   const PEOPLE: SchemaSpec = { id: 'https://example.com/people.tn', body: PEOPLE_BODY };
   const OBSERVATORY: SchemaSpec = {
-    id: 'https://tson.io/2026/39/examples/observatory.tn',
+    id: 'https://tson.io/2026/40/examples/observatory.tn',
     body: OBSERVATORY_BODY,
   };
 
@@ -768,8 +765,8 @@
 `,
     },
     {
-      // The whole schema language in one document: atom refinements, enums, templates and
-      // partial application, field groups, maps, sets, tuples, composition, refinement,
+      // The whole schema language in one document: atom refinements, enums, parametric records
+      // and open constructions, field groups, maps, sets, tuples, composition, restated fields,
       // subtraction, guarded recursion and a sealed family — and a field's three
       // slots (key omission, `_`, value) in their useful combinations, labelled in place.
       id: 'observatory',
@@ -778,7 +775,7 @@
       root: 'observatory',
       ok: true,
       schema: OBSERVATORY,
-      data: `!!import:"https://tson.io/2026/39/examples/observatory.tn?sha256=__PIN__"
+      data: `!!import:"https://tson.io/2026/40/examples/observatory.tn?sha256=__PIN__"
 
 !observatory {
   id:          "MKA-001"
@@ -878,7 +875,7 @@
 
   telemetry: {
     stream_id:  "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
-    endpoint:   "https://tson.io/2026/39/examples/observatory.tn"
+    endpoint:   "https://tson.io/2026/40/examples/observatory.tn"
     host:       "relay.mauna-kea.example"
     format:     "application/cbor"
     heartbeat:  "PT30S"
@@ -1019,7 +1016,7 @@
 
   "telemetry": {
     "stream_id":  "f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
-    "endpoint":   "https://tson.io/2026/39/examples/observatory.tn",
+    "endpoint":   "https://tson.io/2026/40/examples/observatory.tn",
     "host":       "relay.mauna-kea.example",
     "format":     "application/cbor",
     "heartbeat":  "PT30S",

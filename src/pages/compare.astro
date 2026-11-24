@@ -99,9 +99,9 @@ const sections: Section[] = [
       { feature: 'Recursive types', cells: [['y', 'yes'], ['y', 'yes'], ['y', 'yes, via `$ref`'], ['y', 'yes'], ['y', 'yes'], ['n', '— anchors reuse values, not types']] },
       { feature: 'Composition (inherit, IS-A)', cells: [['y', '`A & B & { … }` — several parents, no diamonds'], ['y', '`extension`, substitution groups; one parent'], ['p', '`allOf` merges constraints; no IS-A'], ['n', '— nest a message instead'], ['p', '`COMPONENTS OF` copies fields'], ['p', '`<<` merge key (YAML 1.1)']] },
       { feature: 'Sealed hierarchy (abstract, final, discriminator)', cells: [['y', '`abstract { kind: text =? }`; members pin `kind`, placed untagged; `final`'], ['p', '`abstract` and `final` on types; `xsi:type` selects'], ['p', '`oneOf` with `const`; OpenAPI adds `discriminator`'], ['n', '— no inheritance; wrap in a `oneof`'], ['n', '— `CHOICE` only'], ['n', '—']] },
-      { feature: 'Refinement (narrow, keep IS-A)', cells: [['y', '`T ^ { … }` — tighten, default or fix fields; never adds or removes one'], ['y', '`restriction`'], ['p', '`allOf` plus keywords; no subtype relation'], ['n', '—'], ['y', 'subtype constraints, `WITH COMPONENTS`'], ['n', '—']] },
+      { feature: 'Refinement (narrow, keep IS-A)', cells: [['y', '`!integer ^ { … }` narrows a value; a composition restates a field, `A & { port?: = 443 }`, tightening it and never loosening'], ['y', '`restriction`'], ['p', '`allOf` plus keywords; no subtype relation'], ['n', '—'], ['y', 'subtype constraints, `WITH COMPONENTS`'], ['n', '—']] },
       { feature: 'Subtraction (remove fields)', cells: [['y', '`A - { password }` — breaks IS-A; the result has no supertypes'], ['p', '`restriction` can drop optional parts'], ['n', '— copy the schema'], ['n', '—'], ['p', '`WITH COMPONENTS` can mark optional components `ABSENT`'], ['n', '—']] },
-      { feature: 'Generics', cells: [['y', 'templates over types and values, `vector<T, N>`; typed parameters, bounds such as `<T: text>`, checked at each application'], ['n', '—'], ['p', '`$dynamicRef` approximates'], ['n', '—'], ['y', 'parameterized types (X.683)'], ['n', '—']] },
+      { feature: 'Generics', cells: [['y', 'parametric records, `pair<A, B>`; parameters are types, bounds such as `<T: text>` checked at each application'], ['n', '—'], ['p', '`$dynamicRef` approximates'], ['n', '—'], ['y', 'parameterized types (X.683)'], ['n', '—']] },
       { feature: 'Open type (value names its type)', cells: [['y', '`meta.declared`, the open sum — any type the schema names, validated against it'], ['y', '`xs:any`, `xsi:type`'], ['p', '`{}` accepts anything, unchecked'], ['y', '`google.protobuf.Any`'], ['y', 'open types, `EMBEDDED PDV`'], ['p', 'tags']] },
       { feature: 'Field typed by another field', cells: [['y', 'dependent fields, `value?: kind!` — read as the type the sibling names'], ['p', 'type alternatives, `xs:alternative` (1.1)'], ['p', '`if` / `then` / `else` on a `const`'], ['p', '`google.protobuf.Any`, a type URL beside opaque bytes'], ['y', 'open types under a table constraint, `&Type({Set}{@id})`'], ['n', '—']] },
       { feature: 'Annotations on data', cells: [['y', '`@name:value` on any value, map key or field; preserved in order'], ['p', 'attributes, where the schema admits them'], ['n', '— JSON has no metadata channel'], ['n', '—'], ['n', '—'], ['p', 'tags and anchors; comments are discarded']] },
@@ -241,7 +241,7 @@ const foundations = [
 
 const spectrum = [
   {
-    title: 'Template',
+    title: 'Parametric record',
     body: 'Types are still blank. Nothing can be validated until they are filled.',
     html: `<span class="tk">pair</span> <span class="gain">=&gt;</span> <span class="tp">&lt;</span><span class="ts">T</span><span class="tp">,</span> <span class="ts">U</span><span class="tp">&gt;</span> <span class="tp">{</span> <span class="tk">first</span><span class="tp">:</span> <span class="ts">T</span>  <span class="tk">second</span><span class="tp">:</span> <span class="ts">U</span> <span class="tp">}</span>`,
   },
@@ -251,9 +251,9 @@ const spectrum = [
     html: `<span class="tk">config</span> <span class="gain">=&gt;</span> <span class="tp">{</span> <span class="tk">host</span><span class="tp">:</span> <span class="ts">text</span>  <span class="tk">port</span><span class="gain">?</span><span class="tp">:</span> <span class="ts">integer</span> <span class="gain">~</span> <span class="ts">8080</span> <span class="tp">}</span>`,
   },
   {
-    title: 'Refinement',
-    body: 'Some values are fixed, `=`, and can no longer change. The result still IS-A the type it refines.',
-    html: `<span class="tk">production</span> <span class="gain">=&gt;</span> <span class="ts">config</span> <span class="gain">^</span> <span class="tp">{</span> <span class="tk">host</span><span class="gain">?</span><span class="tp">:</span> <span class="gain">=</span> <span class="ts">"prod.example.com"</span> <span class="tp">}</span>`,
+    title: 'Restatement',
+    body: 'Some values are fixed, `=`, and can no longer change. A composition that only tightens fields still IS-A the type it restates.',
+    html: `<span class="tk">production</span> <span class="gain">=&gt;</span> <span class="ts">config</span> <span class="gain">&amp;</span> <span class="tp">{</span> <span class="tk">host</span><span class="gain">?</span><span class="tp">:</span> <span class="gain">=</span> <span class="ts">"prod.example.com"</span> <span class="tp">}</span>`,
   },
   {
     title: 'Value',
@@ -264,7 +264,7 @@ const spectrum = [
 ];
 
 const spectrumNote =
-  'TSON follows the research in keeping blanks out of data: templates are schema-only, and a data document holds values. It takes Part 5\'s parameter bounds in a simple form: `<T: text>` names one type, and each application must supply that type or one that IS-A it. And a bare template name is read as a family only when the template has a record body, standing as the base of the members a schema declares from it; every other reference binds all its parameters, `pair<text,\u00a0integer>`.';
+  'TSON follows the research in keeping blanks out of data: parametric records are schema-only, and a data document holds values and names a declared application rather than writing one. It takes Part 5\'s parameter bounds in a simple form: `<T: text>` names one type, and each application must supply that type or one that IS-A it. And it keeps only type blanks: a parameter is a type, never a value, and a parametric record named bare names nothing, so every reference binds all its parameters, `pair<text,\u00a0integer>`.';
 
 // Bodies are HTML (the YAML entry links to the guide).
 const further = [
@@ -431,13 +431,13 @@ const reports = [
         </div>
 
         <div class="pt-12">
-          <h3 class="text-lg font-semibold mb-1.5">One spectrum, from template to value</h3>
+          <h3 class="text-lg font-semibold mb-1.5">One spectrum, from parametric record to value</h3>
           <p class="text-sm text-gray-500 max-w-3xl mb-5">
             The second idea holds the rest together: data and schemas are not separate kinds of
-            thing but points on one line, told apart by how many blanks remain. A template leaves
+            thing but points on one line, told apart by how many blanks remain. A parametric record leaves
             types blank, a type leaves values blank, and a value has none left. The{' '}
             <a href={`${guideUrl}#5-a-tour-of-the-type-operations`} class="text-teal-700 hover:underline">developer guide</a>{' '}
-            names this spectrum of completeness as the basis of TSON's templates, and every type
+            names this spectrum of completeness as the basis of TSON's parametric records, and every type
             operation is a step along it, in one direction only.
           </p>
           <ol class="grid gap-3">
