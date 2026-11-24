@@ -41,7 +41,56 @@ export interface RevisionNote {
  */
 export const REVISION_NOTES: Record<string, RevisionNote> = {
   // Plain text, except that `backticks` render as code.
-  '40': { summary: 'In progress.' },
+  '40': {
+    published: '2026-11-24',
+    summary: 'Adjudicates the 21-entry specification feedback register against revision 39: parametric records, inline types, open construction and the extern.',
+    changes: [
+      {
+        what: 'A parametric record is a `meta.record` with `parameters`, and nothing else takes parameters; `meta.template` and `meta.record_template` are gone',
+        why: 'templates were a second kind of declaration with rules of their own, while a record with parameters needs only the record rules and three of its own',
+      },
+      {
+        what: 'An application such as `box<text>` is sugar for `meta.apply`, and an argument is a type expression; a number or a quoted token is no argument',
+        why: 'value arguments and partial application had no regular instantiation, and with them gone instantiation terminates because an argument is a name',
+      },
+      {
+        what: 'A type slot holds a name or a type written in place, `meta.type_expr`, and nothing is lifted or minted; `@meta.synthetic` is gone',
+        why: 'synthetic entries with resolver-chosen names made two implementations\' resolved forms differ by naming alone',
+      },
+      {
+        what: 'A dependent field\'s type is a sum in place, `!meta.dependent { on: kind }`, whose sugar `kind!` stands at a field\'s type alone, and `kind!` leaves the data grammar',
+        why: 'a sibling reference in data and in every type slot was more reach than a dependent field needs',
+      },
+      {
+        what: 'No argument list in a data value: `<` and `>` are reserved again, and a reference in data is a name',
+        why: 'an application is schema grammar, so data names a declared type and a Class 1 processor reads no structured reference',
+      },
+      {
+        what: 'One reference constructor, `meta.ref`, whose `of` says whether it names types or values; `meta.reference_type` is gone',
+        why: 'two constructors said nearly the same thing',
+      },
+      {
+        what: 'Open construction: `!C ^ { values }` over a constructor declares an incomplete entry, completed later, and the kernel\'s `enum` and `set` are two',
+        why: 'a construction left part-written had to be a type, so `enum` and `set` were types no value could have',
+      },
+      {
+        what: '`^` follows `!name` and takes values; record refinement goes, and `&` is the one way to derive a record',
+        why: 'refining a record and composing one were two operators for one relation',
+      },
+      {
+        what: 'An extern, `!meta.extern { schema: …  type: … }`, names one entry of another schema under a local name, and a value at its position is read under its own schema',
+        why: 'a foreign type came in only by importing its whole namespace',
+      },
+      {
+        what: 'A tag at a choice names a variant or a type IS-A exactly one, and a choice listed as a variant is disjoint',
+        why: 'which variant read a tagged value was unstated where a tag reached more than one',
+      },
+      {
+        what: 'One name for each thing: `fraction_digits` in place of `precision`, `policy.token_policy`, and `meta.field_name` removed',
+        why: 'the kernel and the libraries named the same idea differently in different places',
+      },
+    ],
+  },
   '39': {
     published: '2026-11-08',
     summary: 'Adjudicates the 24-entry specification feedback register against revision 38, and removes the meta ladder.',
